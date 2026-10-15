@@ -10,6 +10,13 @@ const establishments = [
 ];
 
 async function main() {
+  // Idempotente: el contenedor puede ejecutar el seed en cada arranque (SEED_DEMO_DATA=true).
+  const [{ count }] = await prisma.$queryRaw<{ count: bigint }[]>`SELECT count(*) FROM establishments`;
+  if (count > 0n) {
+    console.log(`Seed omitido: ya hay ${count} establecimientos`);
+    return;
+  }
+
   for (const e of establishments) {
     await prisma.$executeRaw`
       INSERT INTO establishments (id, name, category, address, location, updated_at)

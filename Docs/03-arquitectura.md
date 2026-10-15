@@ -8,10 +8,12 @@ flowchart LR
     APP[App Flutter<br/>cliente y domiciliario]
     WEB[Web Next.js<br/>cliente, operador, admin]
   end
-  subgraph Render
+  subgraph SnapDeploy
     API[API NestJS<br/>/api/v1]
-    DB[(PostgreSQL + PostGIS)]
     REDIS[(Redis<br/>fase 3)]
+  end
+  subgraph Neon
+    DB[(PostgreSQL + PostGIS)]
   end
   EXT[Servicios externos<br/>SMS, mapas, archivos, push]
 
@@ -34,10 +36,11 @@ RapiChonta/
 ├── web/          # Next.js
 ├── app/          # Flutter
 ├── Docs/         # Esta documentación
-└── render.yaml   # Infraestructura de pruebas como código
+├── .github/workflows/snapdeploy-sync.yml  # Copia develop a las ramas deploy/* que despliega SnapDeploy
+└── render.yaml   # Alternativa: infraestructura en Render
 ```
 
-Cada carpeta es un proyecto independiente con sus propias dependencias. Render solo reconstruye el servicio cuya carpeta cambió (`buildFilter`).
+Cada carpeta es un proyecto independiente con sus propias dependencias. `api/` y `web/` tienen su `Dockerfile`; el workflow de sincronización solo actualiza la rama `deploy/*` del servicio cuya carpeta cambió, y SnapDeploy reconstruye solo ese contenedor ([guía](11-despliegue-snapdeploy.md)).
 
 ## Arquitectura limpia
 

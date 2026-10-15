@@ -11,9 +11,10 @@ Esta carpeta es la fuente de verdad del proyecto: qué se construye, con qué, c
 | 05 | [Flujos y UX](05-flujos-y-ux.md) | Recorrido del cliente, del operador y del domiciliario; estados del pedido; lineamientos visuales |
 | 06 | [Seguridad](06-seguridad.md) | Autenticación, roles, protección de datos y del dinero |
 | 07 | [Roadmap por fases](07-roadmap.md) | Orden de implementación y criterio de "terminado" de cada fase |
-| 08 | [Despliegue en Render](08-despliegue-render.md) | Cómo levantar el entorno de pruebas con `render.yaml` |
+| 08 | [Despliegue en Render](08-despliegue-render.md) | Alternativa: entorno de pruebas con `render.yaml` |
 | 09 | [Convenciones de trabajo](09-convenciones.md) | Ramas, commits, PRs, pruebas y estilo |
 | 10 | [Decisiones y preguntas abiertas](10-aspectos-adicionales.md) | Decisiones del negocio ya tomadas y lo que falta por definir |
+| 11 | [Despliegue en SnapDeploy](11-despliegue-snapdeploy.md) | Cómo levantar el entorno de pruebas actual (contenedores Docker + Neon) |
 
 ## Resumen de decisiones
 
@@ -22,12 +23,12 @@ Esta carpeta es la fuente de verdad del proyecto: qué se construye, con qué, c
 - **Dinero:** caja diaria por domiciliario con trazabilidad, o domiciliario que compra con dinero propio; el domiciliario paga a RapiChonta un porcentaje de cada domicilio. Tarifas fijas por zona (barrios y veredas) configuradas en el panel.
 - **Asignación:** el operador ve quién está cerca y envía el pedido a un domiciliario o a todos; el primero que acepta lo toma.
 - **Idiomas:** español e inglés desde archivos JSON (web y app), con precios aproximados en USD/EUR.
-- **Monorepo** con tres proyectos independientes: `api/`, `web/`, `app/`, y `render.yaml` en la raíz.
+- **Monorepo** con tres proyectos independientes: `api/`, `web/`, `app/`; cada servicio con su `Dockerfile`.
 - **API:** NestJS + TypeScript, PostgreSQL 16 + PostGIS, Prisma.
 - **Web:** Next.js + React + Tailwind CSS + Framer Motion + MapLibre.
 - **App:** Flutter (Android, iOS, Huawei AppGallery y web desde un solo código).
 - **Mapas:** OpenStreetMap / MapLibre, para no depender de Google (indispensable en Huawei) ni pagar por mapa cargado en el MVP.
-- **Ramas:** `main` (producción), `develop` (integración y despliegue de pruebas en Render), ramas `feature/*` hacia `develop`.
+- **Ramas:** `main` (producción), `develop` (integración y despliegue de pruebas en SnapDeploy), ramas `feature/*` hacia `develop`.
 
 ## Estado actual del código
 
