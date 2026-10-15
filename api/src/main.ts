@@ -1,11 +1,16 @@
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { DomainErrorFilter } from './shared/infrastructure/domain-error.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Detrás de proxies (balanceador y, en el contenedor único, la web) la IP real viene en X-Forwarded-For.
+  // TRUST_PROXY = número de proxies de confianza; sin él, el límite por IP vería solo la IP del proxy.
+  if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY));
 
   app.use(helmet());
   app.enableCors({

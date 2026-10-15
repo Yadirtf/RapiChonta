@@ -14,7 +14,7 @@ Esta carpeta es la fuente de verdad del proyecto: qué se construye, con qué, c
 | 08 | [Despliegue en Render](08-despliegue-render.md) | Alternativa: entorno de pruebas con `render.yaml` |
 | 09 | [Convenciones de trabajo](09-convenciones.md) | Ramas, commits, PRs, pruebas y estilo |
 | 10 | [Decisiones y preguntas abiertas](10-aspectos-adicionales.md) | Decisiones del negocio ya tomadas y lo que falta por definir |
-| 11 | [Despliegue en SnapDeploy](11-despliegue-snapdeploy.md) | Cómo levantar el entorno de pruebas actual (contenedores Docker + Neon) |
+| 11 | [Despliegue en SnapDeploy](11-despliegue-snapdeploy.md) | Cómo levantar el entorno de pruebas actual (un contenedor Docker + Neon) |
 
 ## Resumen de decisiones
 
@@ -23,7 +23,7 @@ Esta carpeta es la fuente de verdad del proyecto: qué se construye, con qué, c
 - **Dinero:** caja diaria por domiciliario con trazabilidad, o domiciliario que compra con dinero propio; el domiciliario paga a RapiChonta un porcentaje de cada domicilio. Tarifas fijas por zona (barrios y veredas) configuradas en el panel.
 - **Asignación:** el operador ve quién está cerca y envía el pedido a un domiciliario o a todos; el primero que acepta lo toma.
 - **Idiomas:** español e inglés desde archivos JSON (web y app), con precios aproximados en USD/EUR.
-- **Monorepo** con tres proyectos independientes: `api/`, `web/`, `app/`; cada servicio con su `Dockerfile`.
+- **Monorepo** con tres proyectos independientes: `api/`, `web/`, `app/`; un `Dockerfile` en la raíz despliega API y web juntas.
 - **API:** NestJS + TypeScript, PostgreSQL 16 + PostGIS, Prisma.
 - **Web:** Next.js + React + Tailwind CSS + Framer Motion + MapLibre.
 - **App:** Flutter (Android, iOS, Huawei AppGallery y web desde un solo código).

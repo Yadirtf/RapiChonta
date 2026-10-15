@@ -17,7 +17,7 @@ Criterios usados para elegir: escalar sin reescribir, comunidad grande (fácil c
 | Mapa app | flutter_map (OpenStreetMap) | 8 |
 | Idiomas web | next-intl con archivos `messages/<idioma>.json` | 4 |
 | Idiomas app | `flutter gen-l10n` con archivos `lib/l10n/app_<idioma>.arb` (JSON) | — |
-| Hosting de pruebas | SnapDeploy (contenedores Docker) + Neon (PostgreSQL con PostGIS) | Render (`render.yaml`) |
+| Hosting de pruebas | SnapDeploy (un contenedor Docker con API y web) + Neon (PostgreSQL con PostGIS) | Render (`render.yaml`) |
 
 ## API: NestJS
 
