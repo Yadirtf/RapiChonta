@@ -18,7 +18,7 @@
 | Catálogo | Solo establecimientos registrados; no se puede pedir en otros lugares. | [01](01-vision-y-alcance.md) |
 | Dominios | Aún no hay dominio; se usan las URLs de Render. | [08](08-despliegue-render.md) |
 | Envío del pedido | El operador ve quién está cerca y decide: a un domiciliario específico o a todos (el primero que acepte lo toma). | [05](05-flujos-y-ux.md#asignación-el-operador-decide-el-domiciliario-acepta) |
-| Comisión | El domiciliario paga a RapiChonta un porcentaje de cada domicilio completado. | [04](04-modelo-de-datos.md#decisiones) |
+| Comisión | El domiciliario paga a RapiChonta un porcentaje **fijo** de cada domicilio completado, configurable en el panel. | [04](04-modelo-de-datos.md#decisiones) |
 | Cuenta del QR | La cuenta personal del domiciliario (MVP). | [06](06-seguridad.md) |
 | Cliente no confirma | El domiciliario toma una foto desde la app y el operador la revisa. | [05](05-flujos-y-ux.md#entrega-y-confirmación) |
 | Tarifas por zona | Una tarifa para los barrios del casco urbano y rangos con tarifa para veredas y lugares aledaños. | [04](04-modelo-de-datos.md#decisiones) |
@@ -33,10 +33,9 @@
 
 ## Preguntas abiertas
 
-Ninguna bloquea el trabajo. Mientras no haya respuesta, se implementa la propuesta.
+No queda ninguna duda que bloquee el desarrollo.
 
-1. **¿El porcentaje de comisión es fijo o cambia según cuántos servicios haga el domiciliario?** Por ejemplo 20 % siempre, o 20 % hasta 30 domicilios al mes y 15 % desde ahí. Propuesta: un porcentaje fijo configurable en el panel; si se quieren escalas, se agregan sin cambiar el resto.
-2. **Valores iniciales** que el administrador cargará en el panel: porcentaje de comisión, tarifa de los barrios, rangos y tarifas de las veredas, y horario de operación. No hacen falta para programar, pero sí antes del piloto.
+1. **Valores iniciales** que el administrador cargará en el panel: porcentaje de comisión, tarifa de los barrios, rangos y tarifas de las veredas, y horario de operación. No hacen falta para programar, pero sí antes del piloto.
 
 ## Temas que siguen vigentes
 
