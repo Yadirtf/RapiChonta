@@ -14,6 +14,7 @@
     "lucide-react": "^1.57.0",
     "maplibre-gl": "^5.24.0",
     "next": "15.5.28",
+    "next-intl": "^4.14.9",
     "react": "19.1.0",
     "react-dom": "19.1.0"
   },

@@ -15,6 +15,8 @@ Criterios usados para elegir: escalar sin reescribir, comunidad grande (fácil c
 | Mapa web | MapLibre GL JS + OpenFreeMap / MapTiler | MapLibre 5 |
 | App | Flutter + Riverpod + go_router + Dio | Flutter 3.35+, Riverpod 3 |
 | Mapa app | flutter_map (OpenStreetMap) | 8 |
+| Idiomas web | next-intl con archivos `messages/<idioma>.json` | 4 |
+| Idiomas app | `flutter gen-l10n` con archivos `lib/l10n/app_<idioma>.arb` (JSON) | — |
 | Hosting de pruebas | Render (Blueprint `render.yaml`) | — |
 
 ## API: NestJS
@@ -61,6 +63,7 @@ Criterios usados para elegir: escalar sin reescribir, comunidad grande (fácil c
 | Necesidad | MVP | Cuando crezca |
 | --- | --- | --- |
 | Teselas de mapa | OpenFreeMap (gratis) / OSM | MapTiler o Stadia (plan pago, estilo propio) |
+| Tasa de cambio para precios aproximados | TRM oficial del Banco de la República (datos abiertos, gratis) para USD; EUR desde un servicio gratuito de tasas | Mismo |
 | Dirección de entrega | Punto elegido en el mapa + referencia escrita (en Villagarzón las direcciones escritas son poco precisas) | Geocodificación si se expande a otras ciudades |
 | SMS / WhatsApp OTP | Twilio Verify o proveedor local | Mismo |
 | Archivos (fotos de factura) | Cloudflare R2 o S3 | Mismo |

@@ -20,8 +20,8 @@ RapiChonta permite pedir de los establecimientos registrados en la plataforma. E
 | --- | --- | --- |
 | Cliente (local o extranjero) | Explora el mapa, arma el pedido con el menú, sigue el estado, decide si falta un producto, confirma la entrega y paga | App y web |
 | Domiciliario | Recibe la notificación del pedido y decide si lo toma, compra, marca "listo", entrega y cobra | App (modo domiciliario; puede cambiar a modo cliente) |
-| Operador | Supervisa los pedidos, atiende incidencias y reportes de "no recibido", apoya la asignación | Panel en la web |
-| Administrador | Registra establecimientos (con su área en el mapa), menús, domiciliarios, tarifas y cajas diarias | Panel en la web |
+| Operador | Ve los domiciliarios cercanos y envía cada pedido a uno o a todos, supervisa, revisa fotos de entrega, atiende incidencias y actualiza menús | Panel en la web |
+| Administrador | Todo lo del operador, más establecimientos (con su área en el mapa), domiciliarios, zonas y tarifas, comisión, horario y cajas diarias | Panel en la web |
 | Comercio aliado | Recibe pedidos directos | **Fuera del MVP** (fase de integración) |
 
 ## Modos de cumplimiento del pedido
@@ -40,22 +40,26 @@ Ambos modos convivirán y el cliente elegirá. El modelo de datos ya contempla l
 - Carrito y pedido con dirección por ubicación actual o elegida en el mapa (también para enviar a otra persona).
 - Registro e inicio de sesión del cliente con número de celular.
 - Domiciliarios registrados y verificados por RapiChonta, con rol propio.
-- Notificación al domiciliario para aceptar el pedido.
+- El operador ve los domiciliarios cercanos y envía el pedido a uno específico o a todos; el primero que acepta lo toma.
+- Horario de operación: fuera de horario se ve el mapa pero no se puede pedir.
+- Español e inglés, con precios aproximados en dólares o euros para extranjeros.
 - Estados automáticos por ubicación: "en el establecimiento" (al entrar al área del local) y "llegando" (a pocos metros del cliente).
 - Aviso al domiciliario cuando se cumple el tiempo de preparación para que marque "listo" o "sigue en preparación".
 - Chat estructurado (opciones cerradas) cuando falta un producto o cambió el precio.
-- Confirmación de entrega por parte del cliente ("Recibí mi pedido") y reporte de "no lo recibí".
-- Pago contra entrega: efectivo, Nequi, Daviplata o transferencia con el QR que muestre el domiciliario.
-- Caja diaria por domiciliario con trazabilidad del dinero, o modo "compra con dinero propio".
-- Panel de administración: establecimientos y su área, menús, domiciliarios, tarifas fijas, cajas.
+- Confirmación de entrega por parte del cliente ("Recibí mi pedido"), reporte de "no lo recibí" y entrega con foto revisada por el operador si el cliente no confirma.
+- Pago contra entrega: efectivo, Nequi, Daviplata o transferencia con el QR de la cuenta del domiciliario. La tarifa la paga siempre el cliente; no hay promociones en el MVP.
+- Tope de 100.000 COP por pedido para clientes nuevos.
+- Caja diaria por domiciliario con trazabilidad del dinero, o modo "compra con dinero propio". El domiciliario paga a RapiChonta un porcentaje de cada domicilio completado.
+- Panel de administración: establecimientos y su área, menús, domiciliarios, zonas con tarifa fija (barrios y veredas), comisión, horario, cajas.
 
 **No entra (todavía):**
 
 - Integración directa con comercios.
 - Ubicación del domiciliario en vivo para el cliente (decisión de producto: el cliente ve estados, no el mapa del domiciliario).
-- Tarifas por kilometraje.
+- Tarifas por kilometraje (se usan zonas con tarifa fija).
+- Promociones y cupones.
 - Pasarela de pago en línea dentro de la app.
-- Calificaciones, cupones y fidelización.
+- Calificaciones y fidelización.
 
 ## Métricas de éxito del MVP
 

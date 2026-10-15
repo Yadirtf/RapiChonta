@@ -6,7 +6,8 @@ import { container } from "@/infrastructure/di/container";
 
 export function useNearbyEstablishments(origin: GeoPoint, categories: EstablishmentCategory[], enabled: boolean) {
   const [data, setData] = useState<Establishment[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  // Código de error; la vista lo traduce con messages/<idioma>.json (errors.*).
+  const [error, setError] = useState<"NEARBY_FAILED" | null>(null);
   const [loading, setLoading] = useState(false);
   const key = categories.join(",");
 
@@ -17,7 +18,7 @@ export function useNearbyEstablishments(origin: GeoPoint, categories: Establishm
     container.getNearbyEstablishments
       .execute(origin, key.split(",") as EstablishmentCategory[])
       .then((result) => !cancelled && (setData(result), setError(null)))
-      .catch(() => !cancelled && setError("No pudimos cargar los establecimientos cercanos."))
+      .catch(() => !cancelled && setError("NEARBY_FAILED"))
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;

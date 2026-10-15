@@ -11,14 +11,6 @@ extension EstablishmentCategoryX on EstablishmentCategory {
         EstablishmentCategory.pharmacy => 'PHARMACY',
       };
 
-  String get label => switch (this) {
-        EstablishmentCategory.fastFood => 'Comida rápida',
-        EstablishmentCategory.restaurant => 'Restaurantes',
-        EstablishmentCategory.supermarket => 'Supermercados',
-        EstablishmentCategory.store => 'Tiendas',
-        EstablishmentCategory.pharmacy => 'Farmacias',
-      };
-
   static EstablishmentCategory fromApi(String value) =>
       EstablishmentCategory.values.firstWhere((c) => c.apiValue == value, orElse: () => EstablishmentCategory.store);
 }

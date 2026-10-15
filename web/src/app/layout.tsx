@@ -1,20 +1,25 @@
 import type { Metadata, Viewport } from "next";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
 const font = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta" });
 
-export const metadata: Metadata = {
-  title: "RapiChonta",
-  description: "Pide comida rápida, mercado y lo que necesites. Nosotros lo compramos y te lo llevamos.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("app");
+  return { title: "RapiChonta", description: t("description") };
+}
 
 export const viewport: Viewport = { themeColor: "#14121F" };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const locale = await getLocale();
   return (
-    <html lang="es" className={font.variable}>
-      <body className="font-sans antialiased">{children}</body>
+    <html lang={locale} className={font.variable}>
+      <body className="font-sans antialiased">
+        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+      </body>
     </html>
   );
 }

@@ -36,7 +36,18 @@ Un domiciliario en **modo cliente** usa los mismos permisos de cliente para sus 
 - **Caja diaria:** el administrador abre la caja de cada domiciliario registrando monto y medio de entrega (efectivo o transferencia). Cada compra y cobro es un movimiento inmutable; al cierre del día el sistema calcula lo que el domiciliario debe devolver y entregar. Nadie puede editar ni borrar un movimiento: los errores se corrigen con un movimiento de ajuste firmado por un administrador.
 - La entrega solo la confirma el cliente. Un "no lo recibí" bloquea el pedido como incidencia hasta que RapiChonta decide.
 - Tope de compra por pedido para clientes nuevos (propuesta: 100.000 COP) hasta que tengan historial de pedidos entregados.
-- Los QR de pago que muestra el domiciliario deben ser de cuentas registradas en el sistema (ver preguntas abiertas).
+- En el MVP el QR de pago es de la cuenta personal del domiciliario: el administrador registra esas cuentas en su perfil y el cierre de caja usa los medios de cobro que el domiciliario marcó en cada pedido.
+- La foto de entrega solo se puede tomar con la cámara dentro de la app (no desde la galería) y se guarda con fecha, hora y ubicación.
+
+## Ubicación: dentro de la ley y como lo hacen las apps de domicilios
+
+La referencia es cómo trabajan apps como Rappi: la ubicación se pide para un fin claro, con permiso del usuario, y solo mientras hace falta.
+
+- **Cliente:** la ubicación se usa para centrar el mapa y, si él quiere, como dirección de entrega. Puede negarla y elegir el punto a mano. No se rastrea al cliente.
+- **Domiciliario:** acepta en su registro una autorización expresa explicando que su ubicación se usa para detectar la llegada al local y al cliente, y para que el operador vea quién está cerca. Solo se toma mientras está "disponible" o con un pedido activo; al desactivarse, se deja de enviar.
+- **Nadie fuera de RapiChonta ve la ubicación del domiciliario.** El cliente solo ve estados.
+- Se guarda el historial de ubicaciones el tiempo mínimo necesario para resolver reclamos (propuesta: 30 días) y luego se borra.
+- Android e iOS muestran al usuario cuándo una app usa su ubicación en segundo plano; el texto del permiso debe decir exactamente para qué se usa.
 
 ## Datos personales
 

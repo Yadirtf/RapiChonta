@@ -1,0 +1,32 @@
+{
+  "app": {
+    "description": "Pide comida rápida, mercado y lo que necesites en Villagarzón. Nosotros lo compramos y te lo llevamos."
+  },
+  "menu": {
+    "explore": "Explorar",
+    "myOrders": "Mis pedidos",
+    "myAccount": "Mi cuenta",
+    "language": "Idioma"
+  },
+  "categories": {
+    "FAST_FOOD": "Comida rápida",
+    "RESTAURANT": "Restaurantes",
+    "SUPERMARKET": "Supermercados",
+    "STORE": "Tiendas",
+    "PHARMACY": "Farmacias"
+  },
+  "map": {
+    "nearYou": "Cerca de ti",
+    "enableLocation": "Activa tu ubicación para ver lo más cercano",
+    "searching": "buscando…",
+    "places": "{count, plural, =0 {sin lugares} one {# lugar} other {# lugares}}"
+  },
+  "establishment": {
+    "orderHere": "Pedir aquí",
+    "courierBuysForYou": "Un domiciliario de RapiChonta hace la compra por ti.",
+    "close": "Cerrar"
+  },
+  "errors": {
+    "NEARBY_FAILED": "No pudimos cargar los establecimientos cercanos."
+  }
+}

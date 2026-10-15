@@ -70,7 +70,8 @@ Organizada por **módulos de negocio**, cada uno con sus cuatro capas:
 | `orders` | Creación, estados, ajustes por producto faltante, incidencias | 1 (dominio ✅) |
 | `dispatch` | Disponibilidad, ofertas al domiciliario, geocercas | 2 |
 | `cash` | Cajas diarias, movimientos, cierre de cuentas | 2 |
-| `fees` | Tarifas fijas de domicilio | 1 |
+| `fees` | Zonas con tarifa fija (barrios y veredas) | 1 |
+| `settings` | Horario de operación, comisión, topes y tiempos límite, tasa de cambio | 1 |
 | `notifications` | Push (FCM y Huawei Push Kit), SMS | 2 |
 
 Si un módulo necesita escalar por separado (por ejemplo `dispatch`), se extrae como servicio aparte sin tocar los demás, porque ya está aislado.
@@ -86,6 +87,16 @@ Rutas previstas: `/` (mapa), `/pedido/[id]` (seguimiento), `/operador` (panel de
 ### App (`app/lib`)
 
 *Feature-first*: cada funcionalidad (`establishments`, `orders`, `auth`, `courier`) tiene `domain/`, `data/` y `presentation/`. Riverpod hace de contenedor de dependencias. El mismo binario sirve para cliente y domiciliario: la navegación cambia según el rol del usuario autenticado.
+
+## Idiomas
+
+Los textos nunca se escriben en el código:
+
+- **Web:** `web/messages/es.json` y `en.json`, cargados con next-intl. El idioma sale de la elección del usuario (cookie), si no del navegador, si no español. Plurales y formatos de número con ICU (`{count, plural, ...}`).
+- **App:** `app/lib/l10n/app_es.arb` y `app_en.arb` (JSON); Flutter genera la clase `AppLocalizations` con un método por texto, así un texto faltante es un error de compilación y no un texto vacío en pantalla.
+- **API:** responde **códigos** (`NEARBY_FAILED`, `ORDER_LIMIT_EXCEEDED`), no frases; cada cliente los traduce. Los textos que salen del servidor (notificaciones push, SMS) usan sus propios archivos `api/src/i18n/<idioma>.json` y el idioma guardado del usuario (`User.locale`).
+
+Agregar un idioma es copiar el archivo español y traducirlo. Si más adelante se quiere que personas no técnicas editen los textos, estos mismos archivos se pueden sincronizar con una plataforma de traducción (Crowdin, Tolgee) sin cambiar el código.
 
 ## Tiempo real
 

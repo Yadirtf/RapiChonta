@@ -18,6 +18,10 @@ lib/
 
 Regla: `presentation → domain ← data`. El dominio no importa Flutter, Dio ni Riverpod.
 
+## Idiomas
+
+Los textos viven en `lib/l10n/app_es.arb` y `app_en.arb` (JSON). `flutter pub get` genera `AppLocalizations` (no se versiona); en un widget: `AppLocalizations.of(context).menuMyOrders`. La app usa el idioma del teléfono si es español o inglés; si no, español. Para agregar un idioma basta crear `app_<idioma>.arb`.
+
 ## Primer arranque
 
 Las carpetas de plataforma (`android/`, `ios/`, `web/`) no se versionan todavía: se generan una vez con el SDK instalado.

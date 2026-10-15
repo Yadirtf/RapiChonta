@@ -33,3 +33,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # Genera AppLocalizations desde lib/l10n/*.arb
+  generate: true

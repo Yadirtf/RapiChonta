@@ -39,6 +39,7 @@ enum OrderStatus {
   PREPARING
   ON_THE_WAY
   ARRIVING
+  PENDING_REVIEW
   DELIVERED
   DISPUTED
   CANCELLED
@@ -76,7 +77,8 @@ enum MoneyTransferMethod {
 enum CashMovementType {
   OPENING // base entregada por RapiChonta
   PURCHASE // compra en un establecimiento
-  COLLECTION // cobro al cliente (compra + domicilio)
+  COLLECTION // cobro al cliente (compra + domicilio), recibido en la cuenta del domiciliario en el MVP
+  COMMISSION // porcentaje del domicilio que el domiciliario paga a RapiChonta
   DELIVERY_FEE // valor del domicilio a rendir
   RETURN // devolución de dinero a RapiChonta al cierre
   ADJUSTMENT
@@ -105,6 +107,25 @@ enum IncidentType {
 enum IncidentStatus {
   OPEN
   RESOLVED
+}
+
+/// Barrios del casco urbano o veredas/lugares aledaños: cada zona tiene su tarifa fija.
+enum ZoneKind {
+  URBAN
+  RURAL
+}
+
+enum OfferMode {
+  SPECIFIC // el operador eligió un domiciliario
+  BROADCAST // enviado a todos los disponibles; el primero que acepta lo toma
+}
+
+enum OfferResponse {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  TAKEN_BY_OTHER
 }
 
 enum PushProvider {
@@ -184,9 +205,8 @@ model Establishment {
   createdAt DateTime                              @default(now()) @map("created_at")
   updatedAt DateTime                              @updatedAt @map("updated_at")
 
-  orders           Order[]
-  products         Product[]
-  deliveryFeeRules DeliveryFeeRule[]
+  orders   Order[]
+  products Product[]
 
   @@index([location], type: Gist)
   @@index([category])
@@ -214,19 +234,22 @@ model Product {
   @@map("products")
 }
 
-/// Tarifas de domicilio configuradas en el panel de administración (no dependen del kilometraje).
-model DeliveryFeeRule {
-  id              String   @id @default(uuid()) @db.Uuid
-  name            String
-  amount          Decimal  @db.Decimal(12, 2)
-  /// Vacío = tarifa general; con valor = tarifa específica de ese establecimiento.
-  establishmentId String?  @map("establishment_id") @db.Uuid
-  isActive        Boolean  @default(true) @map("is_active")
-  createdAt       DateTime @default(now()) @map("created_at")
+/// Zonas de cobertura dibujadas en el panel. La tarifa del pedido es la de la zona donde cae la dirección.
+model DeliveryZone {
+  id        String                                  @id @default(uuid()) @db.Uuid
+  name      String
+  kind      ZoneKind
+  area      Unsupported("geography(Polygon, 4326)")
+  fee       Decimal                                 @db.Decimal(12, 2)
+  sortOrder Int                                     @default(0) @map("sort_order")
+  isActive  Boolean                                 @default(true) @map("is_active")
+  createdAt DateTime                                @default(now()) @map("created_at")
+  updatedAt DateTime                                @updatedAt @map("updated_at")
 
-  establishment Establishment? @relation(fields: [establishmentId], references: [id])
+  orders Order[]
 
-  @@map("delivery_fee_rules")
+  @@index([area], type: Gist)
+  @@map("delivery_zones")
 }
 
 model Order {
@@ -236,6 +259,7 @@ model Order {
   establishmentId  String          @map("establishment_id") @db.Uuid
   courierId        String?         @map("courier_id") @db.Uuid
   addressId        String          @map("address_id") @db.Uuid
+  deliveryZoneId   String          @map("delivery_zone_id") @db.Uuid
   status           OrderStatus     @default(PENDING_ASSIGNMENT)
   fulfillmentMode  FulfillmentMode @default(COURIER_PURCHASE) @map("fulfillment_mode")
   paymentMethod    PaymentMethod   @default(CASH) @map("payment_method")
@@ -244,6 +268,10 @@ model Order {
   deliveryFee      Decimal         @map("delivery_fee") @db.Decimal(12, 2)
   estimatedReadyAt DateTime?       @map("estimated_ready_at")
   prepDelayed      Boolean         @default(false) @map("prep_delayed")
+  /// Porcentaje vigente al crear el pedido (0.1500 = 15 %) y valor que el domiciliario paga a RapiChonta.
+  commissionRate   Decimal         @map("commission_rate") @db.Decimal(5, 4)
+  commissionAmount Decimal         @map("commission_amount") @db.Decimal(12, 2)
+  deliveryProofUrl String?         @map("delivery_proof_url")
   receiptUrl       String?         @map("receipt_url")
   customerNotes    String?         @map("customer_notes")
   createdAt        DateTime        @default(now()) @map("created_at")
@@ -253,6 +281,8 @@ model Order {
   establishment Establishment      @relation(fields: [establishmentId], references: [id])
   courier       CourierProfile?    @relation(fields: [courierId], references: [userId])
   address       Address            @relation(fields: [addressId], references: [id])
+  deliveryZone  DeliveryZone       @relation(fields: [deliveryZoneId], references: [id])
+  offers        OrderOffer[]
   items         OrderItem[]
   events        OrderStatusEvent[]
   adjustments   OrderAdjustment[]
@@ -391,4 +421,56 @@ model DeviceToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("device_tokens")
+}
+
+/// Cada notificación de un pedido a un domiciliario y su respuesta (trazabilidad de la asignación).
+model OrderOffer {
+  id          String        @id @default(uuid()) @db.Uuid
+  orderId     String        @map("order_id") @db.Uuid
+  courierId   String        @map("courier_id") @db.Uuid
+  sentById    String?       @map("sent_by_id") @db.Uuid // operador o administrador; vacío si lo envió el sistema
+  mode        OfferMode
+  response    OfferResponse @default(PENDING)
+  expiresAt   DateTime      @map("expires_at")
+  respondedAt DateTime?     @map("responded_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([courierId, response])
+  @@map("order_offers")
+}
+
+/// Horario de operación de RapiChonta. Fuera de horario se ve el mapa pero no se puede pedir.
+model OperatingHours {
+  id        String @id @default(uuid()) @db.Uuid
+  dayOfWeek Int    @map("day_of_week") // 0 = domingo ... 6 = sábado
+  opensAt   String @map("opens_at") // "08:00", hora de Colombia
+  closesAt  String @map("closes_at") // "22:00"
+
+  @@unique([dayOfWeek, opensAt])
+  @@map("operating_hours")
+}
+
+/// Parámetros que el administrador cambia sin desplegar: porcentaje de comisión, tope de clientes nuevos,
+/// tiempos límite, umbral de "llegando". Ver Docs/04-modelo-de-datos.md.
+model AppSetting {
+  key         String   @id
+  value       Json
+  description String?
+  updatedById String?  @map("updated_by_id") @db.Uuid
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+}
+
+/// Tasa de cambio aproximada para mostrar precios en otras monedas (referencia, no se cobra en ellas).
+model ExchangeRate {
+  currency   String   @id // USD, EUR
+  copPerUnit Decimal  @map("cop_per_unit") @db.Decimal(12, 4)
+  source     String
+  fetchedAt  DateTime @map("fetched_at")
+
+  @@map("exchange_rates")
 }

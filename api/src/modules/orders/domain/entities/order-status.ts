@@ -5,14 +5,15 @@
  */
 export enum OrderStatus {
   PENDING_ASSIGNMENT = 'PENDING_ASSIGNMENT', // creado, buscando domiciliario
-  OFFERED = 'OFFERED',                       // notificado a un domiciliario, esperando que acepte
+  OFFERED = 'OFFERED',                       // notificado a uno o varios domiciliarios: el primero que acepte lo toma
   ACCEPTED = 'ACCEPTED',                     // aceptado: el domiciliario va hacia el establecimiento
   AT_ESTABLISHMENT = 'AT_ESTABLISHMENT',     // la app detectó que entró al área del local: está haciendo el pedido
   AWAITING_CUSTOMER = 'AWAITING_CUSTOMER',   // falta un producto o cambió el precio: el cliente debe decidir
   PREPARING = 'PREPARING',                   // pedido pagado en el local, en preparación
   ON_THE_WAY = 'ON_THE_WAY',                 // el domiciliario marcó "listo" y va hacia el cliente
   ARRIVING = 'ARRIVING',                     // el domiciliario está a pocos metros: el cliente debe confirmar
-  DELIVERED = 'DELIVERED',                   // el cliente confirmó "Recibí mi pedido"
+  PENDING_REVIEW = 'PENDING_REVIEW',         // el cliente no confirmó: el domiciliario subió foto de entrega y el operador revisa
+  DELIVERED = 'DELIVERED',                   // el cliente confirmó "Recibí mi pedido" o el operador aprobó la foto
   DISPUTED = 'DISPUTED',                     // el cliente reportó que no lo recibió: decide RapiChonta
   CANCELLED = 'CANCELLED',
 }
@@ -25,7 +26,8 @@ const TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   [OrderStatus.AWAITING_CUSTOMER]: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
   [OrderStatus.PREPARING]: [OrderStatus.ON_THE_WAY],
   [OrderStatus.ON_THE_WAY]: [OrderStatus.ARRIVING, OrderStatus.DISPUTED],
-  [OrderStatus.ARRIVING]: [OrderStatus.DELIVERED, OrderStatus.DISPUTED],
+  [OrderStatus.ARRIVING]: [OrderStatus.DELIVERED, OrderStatus.DISPUTED, OrderStatus.PENDING_REVIEW],
+  [OrderStatus.PENDING_REVIEW]: [OrderStatus.DELIVERED, OrderStatus.DISPUTED],
   [OrderStatus.DISPUTED]: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
   [OrderStatus.DELIVERED]: [],
   [OrderStatus.CANCELLED]: [],

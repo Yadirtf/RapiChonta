@@ -19,7 +19,9 @@ Esta carpeta es la fuente de verdad del proyecto: qué se construye, con qué, c
 
 - **Lanzamiento:** Villagarzón, Putumayo, con 2 operadores y 2 domiciliarios.
 - **Modelo MVP:** el cliente pide de los menús que administra RapiChonta, un domiciliario verificado recibe la notificación y acepta, compra en el establecimiento y entrega. El cliente ve estados (no la ubicación del domiciliario), confirma la entrega y paga contra entrega. RapiChonta es intermediaria; los comercios no están integrados todavía.
-- **Dinero:** caja diaria por domiciliario con trazabilidad, o domiciliario que compra con dinero propio. Tarifas fijas configuradas en el panel.
+- **Dinero:** caja diaria por domiciliario con trazabilidad, o domiciliario que compra con dinero propio; el domiciliario paga a RapiChonta un porcentaje de cada domicilio. Tarifas fijas por zona (barrios y veredas) configuradas en el panel.
+- **Asignación:** el operador ve quién está cerca y envía el pedido a un domiciliario o a todos; el primero que acepta lo toma.
+- **Idiomas:** español e inglés desde archivos JSON (web y app), con precios aproximados en USD/EUR.
 - **Monorepo** con tres proyectos independientes: `api/`, `web/`, `app/`, y `render.yaml` en la raíz.
 - **API:** NestJS + TypeScript, PostgreSQL 16 + PostGIS, Prisma.
 - **Web:** Next.js + React + Tailwind CSS + Framer Motion + MapLibre.

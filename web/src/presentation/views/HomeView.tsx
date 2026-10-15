@@ -2,9 +2,10 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { MapPin, X } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import { useCallback, useState } from "react";
-import { CATEGORY_LABELS, type Establishment, type EstablishmentCategory } from "@/core/domain/entities/establishment";
+import type { Establishment, EstablishmentCategory } from "@/core/domain/entities/establishment";
 import { SideMenu } from "../components/layout/SideMenu";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { useNearbyEstablishments } from "../hooks/useNearbyEstablishments";
@@ -15,9 +16,13 @@ const NearbyMap = dynamic(() => import("../components/map/NearbyMap").then((m) =
   loading: () => <div className="h-full w-full animate-pulse bg-surface" />,
 });
 
-const formatDistance = (m: number) => (m < 1000 ? `${m} m` : `${(m / 1000).toFixed(1)} km`);
-
 export function HomeView() {
+  const t = useTranslations();
+  const format = useFormatter();
+  const formatDistance = (m: number) =>
+    m < 1000
+      ? format.number(m, { style: "unit", unit: "meter", maximumFractionDigits: 0 })
+      : format.number(m / 1000, { style: "unit", unit: "kilometer", maximumFractionDigits: 1 });
   const [categories, setCategories] = useState<EstablishmentCategory[]>(["FAST_FOOD", "RESTAURANT"]);
   const [selected, setSelected] = useState<Establishment | null>(null);
   const { position, status } = useGeolocation();
@@ -37,14 +42,14 @@ export function HomeView() {
         <header className="pointer-events-none absolute inset-x-0 top-0 flex justify-center p-4">
           <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm shadow-lg backdrop-blur">
             <MapPin className="size-4 text-brand-strong" />
-            {status === "denied" ? "Activa tu ubicación para ver lo más cercano" : "Cerca de ti"}
-            <span className="font-semibold">· {loading ? "buscando…" : `${data.length} lugares`}</span>
+            {status === "denied" ? t("map.enableLocation") : t("map.nearYou")}
+            <span className="font-semibold">· {loading ? t("map.searching") : t("map.places", { count: data.length })}</span>
           </div>
         </header>
 
         {error && (
           <p role="alert" className="absolute left-1/2 top-20 -translate-x-1/2 rounded-xl bg-red-600 px-4 py-2 text-sm text-white shadow">
-            {error}
+            {t(`errors.${error}`)}
           </p>
         )}
 
@@ -57,18 +62,18 @@ export function HomeView() {
               transition={{ type: "spring", stiffness: 320, damping: 28 }}
               className="absolute inset-x-4 bottom-4 mx-auto max-w-md rounded-3xl bg-white p-5 shadow-2xl"
             >
-              <button onClick={() => setSelected(null)} aria-label="Cerrar" className="absolute right-4 top-4 text-ink/50">
+              <button onClick={() => setSelected(null)} aria-label={t("establishment.close")} className="absolute right-4 top-4 text-ink/50">
                 <X className="size-5" />
               </button>
               <p className="text-xs font-semibold uppercase tracking-wider text-brand-strong">
-                {CATEGORY_LABELS[selected.category]} · {formatDistance(selected.distanceMeters)}
+                {t(`categories.${selected.category}`)} · {formatDistance(selected.distanceMeters)}
               </p>
               <h2 className="mt-1 text-xl font-bold text-ink">{selected.name}</h2>
               <p className="text-sm text-ink/60">{selected.address}</p>
               <button className="mt-4 w-full rounded-2xl bg-brand py-3 font-bold text-ink transition-transform active:scale-[0.98]">
-                Pedir aquí
+                {t("establishment.orderHere")}
               </button>
-              <p className="mt-2 text-center text-xs text-ink/50">Un domiciliario de RapiChonta hace la compra por ti.</p>
+              <p className="mt-2 text-center text-xs text-ink/50">{t("establishment.courierBuysForYou")}</p>
             </motion.article>
           )}
         </AnimatePresence>

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/establishment.dart';
 import '../providers/establishments_providers.dart';
+import 'category_label.dart';
 
 const _icons = {
   EstablishmentCategory.fastFood: Icons.fastfood_rounded,
@@ -20,6 +22,7 @@ class SideMenu extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selected = ref.watch(selectedCategoriesProvider);
+    final l10n = AppLocalizations.of(context);
 
     return Container(
       width: 280,
@@ -41,14 +44,14 @@ class SideMenu extends ConsumerWidget {
             for (final category in EstablishmentCategory.values)
               _MenuItem(
                 icon: _icons[category]!,
-                label: category.label,
+                label: category.label(l10n),
                 active: selected.contains(category),
                 onTap: () => ref.read(selectedCategoriesProvider.notifier).toggle(category),
               ),
             const Spacer(),
             const Divider(color: Colors.white12),
-            _MenuItem(icon: Icons.delivery_dining_rounded, label: 'Mis pedidos', onTap: () {}),
-            _MenuItem(icon: Icons.person_rounded, label: 'Mi cuenta', onTap: () {}),
+            _MenuItem(icon: Icons.delivery_dining_rounded, label: l10n.menuMyOrders, onTap: () {}),
+            _MenuItem(icon: Icons.person_rounded, label: l10n.menuMyAccount, onTap: () {}),
             const SizedBox(height: 12),
           ],
         ),

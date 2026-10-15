@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+
+import '../l10n/app_localizations.dart';
 
 import 'router.dart';
 import 'theme.dart';
@@ -14,13 +15,9 @@ class RapiChontaApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       routerConfig: appRouter,
-      // Español primero; inglés para usuarios extranjeros.
-      supportedLocales: const [Locale('es'), Locale('en')],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
+      // Idioma del teléfono si es español o inglés; si no, español (primero de la lista).
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
     );
   }
 }

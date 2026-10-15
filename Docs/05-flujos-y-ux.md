@@ -59,13 +59,17 @@ flowchart LR
 - La dirección puede ser la ubicación actual o un punto elegido en el mapa, con referencia ("casa azul, segundo piso"). Si el pedido es para otra persona, se registra su nombre y teléfono.
 - El total se calcula con los precios del menú más la tarifa del domicilio configurada por el administrador.
 
-## Asignación: el domiciliario acepta el pedido
+## Asignación: el operador decide, el domiciliario acepta
 
-1. Al crearse el pedido, se notifica (push) a un domiciliario disponible y verificado, empezando por el más cercano al establecimiento.
-2. La notificación abre una pantalla con el establecimiento, los productos, el total a comprar y la tarifa, y dos botones: **Tomar pedido** / **No puedo**.
-3. Si acepta, el cliente recibe "Tu pedido está en proceso".
-4. Si rechaza o no responde en el tiempo definido (propuesta: 60 s), se ofrece al siguiente. Si nadie acepta, el pedido aparece resaltado en el panel del operador para que gestione.
-5. Cada oferta, aceptación y rechazo queda registrada (trazabilidad).
+1. El pedido nuevo entra al panel del operador/administrador con alerta sonora.
+2. El panel muestra en un mapa el establecimiento, el punto de entrega y los domiciliarios disponibles ordenados por cercanía al establecimiento (solo el personal de RapiChonta ve esta información).
+3. El operador elige una de dos opciones:
+   - **Enviar a un domiciliario específico.**
+   - **Enviar a todos los disponibles:** el primero que acepte se queda con el servicio; a los demás se les retira la oferta ("ya fue tomado").
+4. El domiciliario recibe una notificación push que abre una pantalla con el establecimiento, los productos, el total a comprar y la tarifa, y dos botones: **Tomar pedido** / **No puedo**.
+5. Si acepta, el cliente recibe "Tu pedido está en proceso".
+6. Si nadie acepta en el tiempo definido (propuesta: 60 s), el pedido vuelve al panel resaltado para que el operador lo envíe a otro o a todos.
+7. Cada oferta, a quién se envió, quién la envió y la respuesta de cada domiciliario quedan registradas (`OrderOffer`).
 
 ## Estados que ve el cliente
 
@@ -134,14 +138,15 @@ No es un chat libre. El domiciliario elige el producto con problema y el motivo;
 - **Aceptar el nuevo precio** (si el motivo es cambio de precio).
 - **Cancelar el pedido.**
 
-La decisión tiene un tiempo límite visible (propuesta: 3 minutos) porque el domiciliario está esperando. Si vence, se aplica la opción por defecto (propuesta: quitar el producto; si era el único, cancelar). Cada decisión queda registrada en `OrderAdjustment`.
+La decisión tiene un tiempo límite visible de **3 minutos** porque el domiciliario está esperando. Si vence, **se quita el producto** y se sigue con el resto; si era el único producto, el pedido se cancela. Cada decisión queda registrada en `OrderAdjustment`.
 
 ## Entrega y confirmación
 
 1. Al llegar el pedido a `ARRIVING`, el cliente recibe una notificación y, si tiene la app abierta, se muestra una **pantalla de entrega** con el total a pagar y el botón **Recibí mi pedido**.
 2. Esa pantalla no se puede cerrar hasta que el cliente marque **Recibí mi pedido** o **No lo recibí**.
-3. El cliente paga al domiciliario: efectivo, o Nequi, Daviplata o transferencia escaneando el QR que el domiciliario le muestra.
+3. El cliente paga al domiciliario: efectivo, o Nequi, Daviplata o transferencia escaneando el QR de la **cuenta personal del domiciliario** (así funciona en el MVP). El domiciliario marca en la app con qué medio cobró.
 4. **No lo recibí:** se crea una incidencia, el pedido pasa a `DISPUTED`, el operador recibe una alerta prioritaria y el domiciliario es notificado. El operador decide (entregado o cancelado) y ambos reciben la resolución.
+5. **El cliente no confirma** (no abre la app, sin batería): pasado el tiempo definido en `ARRIVING` (propuesta: 10 minutos), la app del domiciliario habilita **Entregar con foto**. La foto se toma con la cámara dentro de la app (no se puede subir una de la galería), queda con fecha, hora y ubicación como evidencia, y el pedido pasa a `PENDING_REVIEW`. El operador la revisa y marca entregado o abre una incidencia.
 
 ## Flujo del domiciliario
 
@@ -151,9 +156,21 @@ El domiciliario puede cambiar a **modo cliente** desde su menú para hacer pedid
 
 ## Panel del operador
 
-- Lista de pedidos activos con su estado y alertas: sin domiciliario, preparación retrasada, decisión del cliente vencida, incidencias.
+- Lista de pedidos activos con su estado y alertas: sin asignar, nadie aceptó, preparación retrasada, decisión del cliente vencida, entrega con foto por revisar, incidencias.
+- Mapa con los domiciliarios disponibles y su cercanía al establecimiento.
 - Detalle de cada pedido con su línea de tiempo completa (quién hizo qué y cuándo).
-- Acciones: ofrecer el pedido a un domiciliario específico, cancelar, resolver incidencias.
+- Acciones: enviar a un domiciliario o a todos, cancelar, revisar fotos de entrega, resolver incidencias.
+- **Actualizar menús:** productos, precios, disponibilidad y tiempos de preparación.
+
+## Horario de operación
+
+El administrador define el horario por día. Fuera de horario la app muestra el mapa y los menús, pero el botón de pedir se reemplaza por "Abrimos a las 8:00 a. m." (o la hora que corresponda).
+
+## Idiomas y moneda
+
+- Español e inglés. Los textos no están en el código: viven en archivos JSON por idioma (`web/messages/es.json`, `app/lib/l10n/app_es.arb`). Agregar un idioma es agregar un archivo.
+- La app usa el idioma del teléfono o navegador y el usuario puede cambiarlo desde el menú.
+- Los precios se cobran en pesos colombianos. Para extranjeros se muestra al lado un valor aproximado en dólares o euros según la tasa de cambio del día (por ejemplo `$ 25.000 · ≈ US$ 6,10`), marcado claramente como aproximado.
 
 ## Sistema visual
 

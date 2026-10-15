@@ -15,11 +15,3 @@ export interface Establishment {
   location: GeoPoint;
   distanceMeters: number;
 }
-
-export const CATEGORY_LABELS: Record<EstablishmentCategory, string> = {
-  FAST_FOOD: "Comida rápida",
-  RESTAURANT: "Restaurantes",
-  SUPERMARKET: "Supermercados",
-  STORE: "Tiendas",
-  PHARMACY: "Farmacias",
-};

@@ -22,6 +22,10 @@ src/
 
 Regla: `app → presentation → application → domain`; `infrastructure → domain`. Un componente nunca llama `fetch` directamente.
 
+## Idiomas
+
+Los textos viven en `messages/es.json` y `messages/en.json` (next-intl), nunca en los componentes. En un componente: `const t = useTranslations(); t("menu.myOrders")`. El idioma se toma de la cookie `NEXT_LOCALE` (selector ES/EN del menú), luego del navegador y por defecto español. Para agregar un idioma: crear `messages/<idioma>.json` y sumarlo a `LOCALES` en `src/i18n/config.ts`.
+
 ## Desarrollo local
 
 ```bash

@@ -12,6 +12,7 @@ const newOrder = () =>
     ],
     fulfillmentMode: FulfillmentMode.COURIER_PURCHASE,
     deliveryFee: 5000,
+    commissionRate: 0.2,
   });
 
 describe('Order', () => {
@@ -20,12 +21,14 @@ describe('Order', () => {
     expect(order.status).toBe(OrderStatus.PENDING_ASSIGNMENT);
     expect(order.itemsTotal).toBe(28000);
     expect(order.estimatedPrepMinutes).toBe(15);
+    expect(order.commissionAmount).toBe(1000);
   });
 
   it('recorre el flujo completo hasta que el cliente confirma la entrega', () => {
     const order = newOrder();
-    order.offerTo('k-1');
-    order.accept('k-1');
+    order.offerTo(['k-1', 'k-2']);
+    order.accept('k-2');
+    expect(order.courierId).toBe('k-2');
     order.transitionTo(OrderStatus.AT_ESTABLISHMENT);
     order.confirmPurchase(28000);
     order.markPrepDelayed();
@@ -36,18 +39,38 @@ describe('Order', () => {
     expect(order.prepDelayed).toBe(true);
   });
 
-  it('vuelve a buscar domiciliario si el ofrecido rechaza', () => {
+  it('vuelve a la cola si nadie acepta', () => {
     const order = newOrder();
-    order.offerTo('k-1');
+    order.offerTo(['k-1']);
     order.releaseOffer();
     expect(order.status).toBe(OrderStatus.PENDING_ASSIGNMENT);
-    expect(order.courierId).toBeUndefined();
+    expect(order.offeredTo).toEqual([]);
   });
 
   it('no deja aceptar a un domiciliario al que no se le ofreció', () => {
     const order = newOrder();
-    order.offerTo('k-1');
+    order.offerTo(['k-1']);
     expect(() => order.accept('k-2')).toThrow(DomainError);
+  });
+
+  it('solo el primero que acepta se queda con el pedido', () => {
+    const order = newOrder();
+    order.offerTo(['k-1', 'k-2']);
+    order.accept('k-1');
+    expect(() => order.accept('k-2')).toThrow(DomainError);
+  });
+
+  it('pasa a revisión del operador cuando el domiciliario sube foto de entrega', () => {
+    const order = newOrder();
+    order.offerTo(['k-1']);
+    order.accept('k-1');
+    order.transitionTo(OrderStatus.AT_ESTABLISHMENT);
+    order.confirmPurchase(28000);
+    order.transitionTo(OrderStatus.ON_THE_WAY);
+    order.transitionTo(OrderStatus.ARRIVING);
+    order.submitDeliveryProof('https://archivos/entrega.jpg');
+    expect(order.status).toBe(OrderStatus.PENDING_REVIEW);
+    order.transitionTo(OrderStatus.DELIVERED);
   });
 
   it('rechaza saltos de estado inválidos', () => {

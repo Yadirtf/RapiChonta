@@ -11,7 +11,7 @@ CREATE TYPE "UserRole" AS ENUM ('CUSTOMER', 'COURIER', 'OPERATOR', 'ADMIN');
 CREATE TYPE "EstablishmentCategory" AS ENUM ('FAST_FOOD', 'RESTAURANT', 'SUPERMARKET', 'STORE', 'PHARMACY');
 
 -- CreateEnum
-CREATE TYPE "OrderStatus" AS ENUM ('PENDING_ASSIGNMENT', 'OFFERED', 'ACCEPTED', 'AT_ESTABLISHMENT', 'AWAITING_CUSTOMER', 'PREPARING', 'ON_THE_WAY', 'ARRIVING', 'DELIVERED', 'DISPUTED', 'CANCELLED');
+CREATE TYPE "OrderStatus" AS ENUM ('PENDING_ASSIGNMENT', 'OFFERED', 'ACCEPTED', 'AT_ESTABLISHMENT', 'AWAITING_CUSTOMER', 'PREPARING', 'ON_THE_WAY', 'ARRIVING', 'PENDING_REVIEW', 'DELIVERED', 'DISPUTED', 'CANCELLED');
 
 -- CreateEnum
 CREATE TYPE "FulfillmentMode" AS ENUM ('COURIER_PURCHASE', 'MERCHANT_DIRECT');
@@ -29,7 +29,7 @@ CREATE TYPE "CashBoxStatus" AS ENUM ('OPEN', 'CLOSED');
 CREATE TYPE "MoneyTransferMethod" AS ENUM ('CASH', 'BANK_TRANSFER');
 
 -- CreateEnum
-CREATE TYPE "CashMovementType" AS ENUM ('OPENING', 'PURCHASE', 'COLLECTION', 'DELIVERY_FEE', 'RETURN', 'ADJUSTMENT');
+CREATE TYPE "CashMovementType" AS ENUM ('OPENING', 'PURCHASE', 'COLLECTION', 'COMMISSION', 'DELIVERY_FEE', 'RETURN', 'ADJUSTMENT');
 
 -- CreateEnum
 CREATE TYPE "AdjustmentReason" AS ENUM ('UNAVAILABLE', 'PRICE_CHANGED');
@@ -42,6 +42,15 @@ CREATE TYPE "IncidentType" AS ENUM ('NOT_RECEIVED', 'WRONG_ORDER', 'OTHER');
 
 -- CreateEnum
 CREATE TYPE "IncidentStatus" AS ENUM ('OPEN', 'RESOLVED');
+
+-- CreateEnum
+CREATE TYPE "ZoneKind" AS ENUM ('URBAN', 'RURAL');
+
+-- CreateEnum
+CREATE TYPE "OfferMode" AS ENUM ('SPECIFIC', 'BROADCAST');
+
+-- CreateEnum
+CREATE TYPE "OfferResponse" AS ENUM ('PENDING', 'ACCEPTED', 'REJECTED', 'EXPIRED', 'TAKEN_BY_OTHER');
 
 -- CreateEnum
 CREATE TYPE "PushProvider" AS ENUM ('FCM', 'HMS');
@@ -127,15 +136,18 @@ CREATE TABLE "products" (
 );
 
 -- CreateTable
-CREATE TABLE "delivery_fee_rules" (
+CREATE TABLE "delivery_zones" (
     "id" UUID NOT NULL,
     "name" TEXT NOT NULL,
-    "amount" DECIMAL(12,2) NOT NULL,
-    "establishment_id" UUID,
+    "kind" "ZoneKind" NOT NULL,
+    "area" geography(Polygon, 4326) NOT NULL,
+    "fee" DECIMAL(12,2) NOT NULL,
+    "sort_order" INTEGER NOT NULL DEFAULT 0,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "delivery_fee_rules_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "delivery_zones_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -146,6 +158,7 @@ CREATE TABLE "orders" (
     "establishment_id" UUID NOT NULL,
     "courier_id" UUID,
     "address_id" UUID NOT NULL,
+    "delivery_zone_id" UUID NOT NULL,
     "status" "OrderStatus" NOT NULL DEFAULT 'PENDING_ASSIGNMENT',
     "fulfillment_mode" "FulfillmentMode" NOT NULL DEFAULT 'COURIER_PURCHASE',
     "payment_method" "PaymentMethod" NOT NULL DEFAULT 'CASH',
@@ -154,6 +167,9 @@ CREATE TABLE "orders" (
     "delivery_fee" DECIMAL(12,2) NOT NULL,
     "estimated_ready_at" TIMESTAMP(3),
     "prep_delayed" BOOLEAN NOT NULL DEFAULT false,
+    "commission_rate" DECIMAL(5,4) NOT NULL,
+    "commission_amount" DECIMAL(12,2) NOT NULL,
+    "delivery_proof_url" TEXT,
     "receipt_url" TEXT,
     "customer_notes" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -264,6 +280,52 @@ CREATE TABLE "device_tokens" (
     CONSTRAINT "device_tokens_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "order_offers" (
+    "id" UUID NOT NULL,
+    "order_id" UUID NOT NULL,
+    "courier_id" UUID NOT NULL,
+    "sent_by_id" UUID,
+    "mode" "OfferMode" NOT NULL,
+    "response" "OfferResponse" NOT NULL DEFAULT 'PENDING',
+    "expires_at" TIMESTAMP(3) NOT NULL,
+    "responded_at" TIMESTAMP(3),
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "order_offers_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "operating_hours" (
+    "id" UUID NOT NULL,
+    "day_of_week" INTEGER NOT NULL,
+    "opens_at" TEXT NOT NULL,
+    "closes_at" TEXT NOT NULL,
+
+    CONSTRAINT "operating_hours_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "app_settings" (
+    "key" TEXT NOT NULL,
+    "value" JSONB NOT NULL,
+    "description" TEXT,
+    "updated_by_id" UUID,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "app_settings_pkey" PRIMARY KEY ("key")
+);
+
+-- CreateTable
+CREATE TABLE "exchange_rates" (
+    "currency" TEXT NOT NULL,
+    "cop_per_unit" DECIMAL(12,4) NOT NULL,
+    "source" TEXT NOT NULL,
+    "fetched_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "exchange_rates_pkey" PRIMARY KEY ("currency")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_phone_key" ON "users"("phone");
 
@@ -284,6 +346,9 @@ CREATE INDEX "establishments_category_idx" ON "establishments"("category");
 
 -- CreateIndex
 CREATE INDEX "products_establishment_id_idx" ON "products"("establishment_id");
+
+-- CreateIndex
+CREATE INDEX "delivery_zones_area_idx" ON "delivery_zones" USING GIST ("area");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "orders_code_key" ON "orders"("code");
@@ -315,6 +380,15 @@ CREATE INDEX "cash_movements_cash_box_id_idx" ON "cash_movements"("cash_box_id")
 -- CreateIndex
 CREATE UNIQUE INDEX "device_tokens_token_key" ON "device_tokens"("token");
 
+-- CreateIndex
+CREATE INDEX "order_offers_order_id_idx" ON "order_offers"("order_id");
+
+-- CreateIndex
+CREATE INDEX "order_offers_courier_id_response_idx" ON "order_offers"("courier_id", "response");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "operating_hours_day_of_week_opens_at_key" ON "operating_hours"("day_of_week", "opens_at");
+
 -- AddForeignKey
 ALTER TABLE "addresses" ADD CONSTRAINT "addresses_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -323,9 +397,6 @@ ALTER TABLE "courier_profiles" ADD CONSTRAINT "courier_profiles_user_id_fkey" FO
 
 -- AddForeignKey
 ALTER TABLE "products" ADD CONSTRAINT "products_establishment_id_fkey" FOREIGN KEY ("establishment_id") REFERENCES "establishments"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "delivery_fee_rules" ADD CONSTRAINT "delivery_fee_rules_establishment_id_fkey" FOREIGN KEY ("establishment_id") REFERENCES "establishments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "orders" ADD CONSTRAINT "orders_customer_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -338,6 +409,9 @@ ALTER TABLE "orders" ADD CONSTRAINT "orders_courier_id_fkey" FOREIGN KEY ("couri
 
 -- AddForeignKey
 ALTER TABLE "orders" ADD CONSTRAINT "orders_address_id_fkey" FOREIGN KEY ("address_id") REFERENCES "addresses"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "orders" ADD CONSTRAINT "orders_delivery_zone_id_fkey" FOREIGN KEY ("delivery_zone_id") REFERENCES "delivery_zones"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "order_items" ADD CONSTRAINT "order_items_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "orders"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -371,4 +445,7 @@ ALTER TABLE "cash_movements" ADD CONSTRAINT "cash_movements_order_id_fkey" FOREI
 
 -- AddForeignKey
 ALTER TABLE "device_tokens" ADD CONSTRAINT "device_tokens_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "order_offers" ADD CONSTRAINT "order_offers_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "orders"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
