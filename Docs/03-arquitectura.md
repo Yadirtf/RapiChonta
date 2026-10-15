@@ -9,7 +9,7 @@ flowchart LR
     WEB[Web Next.js<br/>cliente, operador, admin]
   end
   subgraph SnapDeploy
-    API[API NestJS<br/>/api/v1]
+    API[API NestJS<br/>/api/v1<br/>mismo contenedor que la web]
     REDIS[(Redis<br/>fase 3)]
   end
   subgraph Neon
@@ -36,11 +36,12 @@ RapiChonta/
 ├── web/          # Next.js
 ├── app/          # Flutter
 ├── Docs/         # Esta documentación
-├── .github/workflows/snapdeploy-sync.yml  # Copia develop a las ramas deploy/* que despliega SnapDeploy
+├── Dockerfile    # Contenedor único (API + web) para SnapDeploy
+├── start.sh      # Arranque de ese contenedor
 └── render.yaml   # Alternativa: infraestructura en Render
 ```
 
-Cada carpeta es un proyecto independiente con sus propias dependencias. `api/` y `web/` tienen su `Dockerfile`; el workflow de sincronización solo actualiza la rama `deploy/*` del servicio cuya carpeta cambió, y SnapDeploy reconstruye solo ese contenedor ([guía](11-despliegue-snapdeploy.md)).
+Cada carpeta es un proyecto independiente con sus propias dependencias. En pruebas, el `Dockerfile` de la raíz construye la API y la web en un solo contenedor: la web atiende el puerto público y reenvía `/api/*` a la API interna ([guía](11-despliegue-snapdeploy.md)). `api/` y `web/` conservan su propio `Dockerfile` para desplegarlos por separado cuando haga falta escalar.
 
 ## Arquitectura limpia
 
