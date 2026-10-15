@@ -1,0 +1,15 @@
+{
+  "@@locale": "en",
+  "appTitle": "RapiChonta",
+  "menuMyOrders": "My orders",
+  "menuMyAccount": "My account",
+  "categoryFastFood": "Fast food",
+  "categoryRestaurant": "Restaurants",
+  "categorySupermarket": "Supermarkets",
+  "categoryStore": "Stores",
+  "categoryPharmacy": "Pharmacies",
+  "locationError": "We couldn't get your location",
+  "nearbyError": "We couldn't load nearby places.",
+  "orderHere": "Order here",
+  "courierBuysForYou": "A RapiChonta courier buys it for you."
+}

@@ -29,3 +29,7 @@ app/pubspec.lock.bak
 .DS_Store
 Thumbs.db
 *.log
+*.tsbuildinfo
+
+# Código generado por flutter gen-l10n desde lib/l10n/*.arb
+app/lib/l10n/app_localizations*.dart

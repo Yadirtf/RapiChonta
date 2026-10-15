@@ -1,0 +1,32 @@
+{
+  "app": {
+    "description": "Order fast food, groceries and whatever you need in Villagarzón. We buy it and bring it to you."
+  },
+  "menu": {
+    "explore": "Explore",
+    "myOrders": "My orders",
+    "myAccount": "My account",
+    "language": "Language"
+  },
+  "categories": {
+    "FAST_FOOD": "Fast food",
+    "RESTAURANT": "Restaurants",
+    "SUPERMARKET": "Supermarkets",
+    "STORE": "Stores",
+    "PHARMACY": "Pharmacies"
+  },
+  "map": {
+    "nearYou": "Near you",
+    "enableLocation": "Turn on your location to see what's nearby",
+    "searching": "searching…",
+    "places": "{count, plural, =0 {no places} one {# place} other {# places}}"
+  },
+  "establishment": {
+    "orderHere": "Order here",
+    "courierBuysForYou": "A RapiChonta courier buys it for you.",
+    "close": "Close"
+  },
+  "errors": {
+    "NEARBY_FAILED": "We couldn't load nearby places."
+  }
+}

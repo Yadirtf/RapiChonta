@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+/* Tokens de marca. Ver Docs/05-flujos-y-ux.md (sistema visual). */
+@theme {
+  --color-brand: #ffc531;
+  --color-brand-strong: #e08a00;
+  --color-ink: #14121f;
+  --color-surface: #f4f2ee;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+.user-pin {
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: #2563eb;
+  border: 3px solid white;
+  box-shadow: 0 0 0 8px rgb(37 99 235 / 0.2);
+}
+
+.place-pin {
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px 9999px 9999px 4px;
+  transform: rotate(-45deg);
+  background: var(--color-ink);
+  color: var(--color-brand);
+  font-weight: 800;
+  border: 2px solid var(--color-brand);
+  cursor: pointer;
+  transition: transform 150ms ease;
+}
+
+.place-pin:hover {
+  transform: rotate(-45deg) scale(1.15);
+}

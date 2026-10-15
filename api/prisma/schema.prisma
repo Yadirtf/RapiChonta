@@ -1,0 +1,476 @@
+// Esquema inicial del MVP. Ver Docs/04-modelo-de-datos.md
+// Las columnas geográficas usan PostGIS (geography(Point,4326)); Prisma las trata como Unsupported
+// y se consultan con SQL crudo desde los repositorios de infraestructura.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis]
+}
+
+/// Los domiciliarios los registra un administrador. Un COURIER puede cambiar a "modo cliente" en la app;
+/// los clientes nunca ven la opción de domiciliario.
+enum UserRole {
+  CUSTOMER
+  COURIER
+  OPERATOR
+  ADMIN
+}
+
+enum EstablishmentCategory {
+  FAST_FOOD
+  RESTAURANT
+  SUPERMARKET
+  STORE
+  PHARMACY
+}
+
+enum OrderStatus {
+  PENDING_ASSIGNMENT
+  OFFERED
+  ACCEPTED
+  AT_ESTABLISHMENT
+  AWAITING_CUSTOMER
+  PREPARING
+  ON_THE_WAY
+  ARRIVING
+  PENDING_REVIEW
+  DELIVERED
+  DISPUTED
+  CANCELLED
+}
+
+enum FulfillmentMode {
+  COURIER_PURCHASE
+  MERCHANT_DIRECT
+}
+
+/// Pago contra entrega: el cliente paga al domiciliario cuando llega.
+enum PaymentMethod {
+  CASH
+  NEQUI
+  DAVIPLATA
+  BANK_TRANSFER
+}
+
+/// Cómo financia el domiciliario las compras.
+enum CourierFundingMode {
+  CASH_BOX // RapiChonta le entrega una base diaria (caja)
+  OWN_FUNDS // compra con su propio dinero y solo rinde cuentas de los domicilios
+}
+
+enum CashBoxStatus {
+  OPEN
+  CLOSED
+}
+
+enum MoneyTransferMethod {
+  CASH
+  BANK_TRANSFER
+}
+
+enum CashMovementType {
+  OPENING // base entregada por RapiChonta
+  PURCHASE // compra en un establecimiento
+  COLLECTION // cobro al cliente (compra + domicilio), recibido en la cuenta del domiciliario en el MVP
+  COMMISSION // porcentaje del domicilio que el domiciliario paga a RapiChonta
+  DELIVERY_FEE // valor del domicilio a rendir
+  RETURN // devolución de dinero a RapiChonta al cierre
+  ADJUSTMENT
+}
+
+enum AdjustmentReason {
+  UNAVAILABLE
+  PRICE_CHANGED
+}
+
+enum AdjustmentDecision {
+  PENDING
+  SUBSTITUTE
+  REMOVE_ITEM
+  ACCEPT_PRICE
+  CANCEL_ORDER
+  EXPIRED
+}
+
+enum IncidentType {
+  NOT_RECEIVED
+  WRONG_ORDER
+  OTHER
+}
+
+enum IncidentStatus {
+  OPEN
+  RESOLVED
+}
+
+/// Barrios del casco urbano o veredas/lugares aledaños: cada zona tiene su tarifa fija.
+enum ZoneKind {
+  URBAN
+  RURAL
+}
+
+enum OfferMode {
+  SPECIFIC // el operador eligió un domiciliario
+  BROADCAST // enviado a todos los disponibles; el primero que acepta lo toma
+}
+
+enum OfferResponse {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  TAKEN_BY_OTHER
+}
+
+enum PushProvider {
+  FCM // Android con Google e iOS
+  HMS // Huawei Push Kit
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  role         UserRole @default(CUSTOMER)
+  fullName     String   @map("full_name")
+  phone        String   @unique
+  email        String?  @unique
+  passwordHash String?  @map("password_hash")
+  locale       String   @default("es")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  addresses      Address[]
+  courierProfile CourierProfile?
+  ordersAsClient Order[]         @relation("CustomerOrders")
+  devices        DeviceToken[]
+
+  @@map("users")
+}
+
+model Address {
+  id             String                                @id @default(uuid()) @db.Uuid
+  userId         String                                @map("user_id") @db.Uuid
+  label          String
+  line           String
+  reference      String?
+  // El pedido puede ser para otra persona (amigo, familiar)
+  recipientName  String?                               @map("recipient_name")
+  recipientPhone String?                               @map("recipient_phone")
+  location       Unsupported("geography(Point, 4326)")
+  isDefault      Boolean                               @default(false) @map("is_default")
+  createdAt      DateTime                              @default(now()) @map("created_at")
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@index([location], type: Gist)
+  @@map("addresses")
+}
+
+model CourierProfile {
+  userId       String                                 @id @map("user_id") @db.Uuid
+  vehicleType  String                                 @map("vehicle_type")
+  vehiclePlate String?                                @map("vehicle_plate")
+  documentId   String                                 @map("document_id")
+  isVerified   Boolean                                @default(false) @map("is_verified")
+  fundingMode  CourierFundingMode                     @default(CASH_BOX) @map("funding_mode")
+  isAvailable  Boolean                                @default(false) @map("is_available")
+  lastLocation Unsupported("geography(Point, 4326)")? @map("last_location")
+  lastSeenAt   DateTime?                              @map("last_seen_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders    Order[]
+  cashBoxes CashBox[]
+
+  @@index([lastLocation], type: Gist)
+  @@map("courier_profiles")
+}
+
+model Establishment {
+  id        String                                @id @default(uuid()) @db.Uuid
+  name      String
+  category  EstablishmentCategory
+  address   String
+  phone     String?
+  logoUrl   String?                               @map("logo_url")
+  location  Unsupported("geography(Point, 4326)")
+  isActive  Boolean                               @default(true) @map("is_active")
+  isPartner Boolean                               @default(false) @map("is_partner")
+  createdAt DateTime                              @default(now()) @map("created_at")
+  updatedAt DateTime                              @updatedAt @map("updated_at")
+
+  orders   Order[]
+  products Product[]
+
+  @@index([location], type: Gist)
+  @@index([category])
+  @@map("establishments")
+}
+
+/// Menú administrado por RapiChonta (los comercios aún no están integrados).
+model Product {
+  id              String   @id @default(uuid()) @db.Uuid
+  establishmentId String   @map("establishment_id") @db.Uuid
+  name            String
+  description     String?
+  price           Decimal  @db.Decimal(12, 2)
+  prepMinutes     Int      @map("prep_minutes")
+  imageUrl        String?  @map("image_url")
+  isAvailable     Boolean  @default(true) @map("is_available")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  establishment Establishment     @relation(fields: [establishmentId], references: [id])
+  orderItems    OrderItem[]
+  substitutions OrderAdjustment[]
+
+  @@index([establishmentId])
+  @@map("products")
+}
+
+/// Zonas de cobertura dibujadas en el panel. La tarifa del pedido es la de la zona donde cae la dirección.
+model DeliveryZone {
+  id        String                                  @id @default(uuid()) @db.Uuid
+  name      String
+  kind      ZoneKind
+  area      Unsupported("geography(Polygon, 4326)")
+  fee       Decimal                                 @db.Decimal(12, 2)
+  sortOrder Int                                     @default(0) @map("sort_order")
+  isActive  Boolean                                 @default(true) @map("is_active")
+  createdAt DateTime                                @default(now()) @map("created_at")
+  updatedAt DateTime                                @updatedAt @map("updated_at")
+
+  orders Order[]
+
+  @@index([area], type: Gist)
+  @@map("delivery_zones")
+}
+
+model Order {
+  id               String          @id @default(uuid()) @db.Uuid
+  code             String          @unique // código corto legible, ej. RC-7F3K
+  customerId       String          @map("customer_id") @db.Uuid
+  establishmentId  String          @map("establishment_id") @db.Uuid
+  courierId        String?         @map("courier_id") @db.Uuid
+  addressId        String          @map("address_id") @db.Uuid
+  deliveryZoneId   String          @map("delivery_zone_id") @db.Uuid
+  status           OrderStatus     @default(PENDING_ASSIGNMENT)
+  fulfillmentMode  FulfillmentMode @default(COURIER_PURCHASE) @map("fulfillment_mode")
+  paymentMethod    PaymentMethod   @default(CASH) @map("payment_method")
+  itemsTotal       Decimal         @map("items_total") @db.Decimal(12, 2)
+  purchaseTotal    Decimal?        @map("purchase_total") @db.Decimal(12, 2)
+  deliveryFee      Decimal         @map("delivery_fee") @db.Decimal(12, 2)
+  estimatedReadyAt DateTime?       @map("estimated_ready_at")
+  prepDelayed      Boolean         @default(false) @map("prep_delayed")
+  /// Porcentaje vigente al crear el pedido (0.1500 = 15 %) y valor que el domiciliario paga a RapiChonta.
+  commissionRate   Decimal         @map("commission_rate") @db.Decimal(5, 4)
+  commissionAmount Decimal         @map("commission_amount") @db.Decimal(12, 2)
+  deliveryProofUrl String?         @map("delivery_proof_url")
+  receiptUrl       String?         @map("receipt_url")
+  customerNotes    String?         @map("customer_notes")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  customer      User               @relation("CustomerOrders", fields: [customerId], references: [id])
+  establishment Establishment      @relation(fields: [establishmentId], references: [id])
+  courier       CourierProfile?    @relation(fields: [courierId], references: [userId])
+  address       Address            @relation(fields: [addressId], references: [id])
+  deliveryZone  DeliveryZone       @relation(fields: [deliveryZoneId], references: [id])
+  offers        OrderOffer[]
+  items         OrderItem[]
+  events        OrderStatusEvent[]
+  adjustments   OrderAdjustment[]
+  incidents     Incident[]
+  cashMovements CashMovement[]
+
+  @@index([status])
+  @@index([customerId])
+  @@index([courierId])
+  @@map("orders")
+}
+
+/// Copia el nombre, precio y tiempo del producto al momento del pedido (el menú puede cambiar después).
+model OrderItem {
+  id          String  @id @default(uuid()) @db.Uuid
+  orderId     String  @map("order_id") @db.Uuid
+  productId   String  @map("product_id") @db.Uuid
+  name        String
+  quantity    Int
+  unitPrice   Decimal @map("unit_price") @db.Decimal(12, 2)
+  prepMinutes Int     @map("prep_minutes")
+  notes       String?
+
+  order       Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product           @relation(fields: [productId], references: [id])
+  adjustments OrderAdjustment[]
+
+  @@map("order_items")
+}
+
+/// Bitácora inmutable de cambios de estado: auditoría y línea de tiempo para el cliente.
+model OrderStatusEvent {
+  id        String      @id @default(uuid()) @db.Uuid
+  orderId   String      @map("order_id") @db.Uuid
+  status    OrderStatus
+  actorId   String?     @map("actor_id") @db.Uuid
+  note      String?
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_status_events")
+}
+
+/// "Chat estratégico": el domiciliario reporta un problema con un producto y el cliente elige
+/// entre opciones cerradas (sustituir, quitar, aceptar precio, cancelar) antes de que venza el tiempo.
+model OrderAdjustment {
+  id                  String             @id @default(uuid()) @db.Uuid
+  orderId             String             @map("order_id") @db.Uuid
+  orderItemId         String             @map("order_item_id") @db.Uuid
+  reason              AdjustmentReason
+  newPrice            Decimal?           @map("new_price") @db.Decimal(12, 2)
+  substituteProductId String?            @map("substitute_product_id") @db.Uuid
+  decision            AdjustmentDecision @default(PENDING)
+  expiresAt           DateTime           @map("expires_at")
+  decidedAt           DateTime?          @map("decided_at")
+  createdAt           DateTime           @default(now()) @map("created_at")
+
+  order             Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem         OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  substituteProduct Product?  @relation(fields: [substituteProductId], references: [id])
+
+  @@index([orderId])
+  @@map("order_adjustments")
+}
+
+/// Reporte del cliente (p. ej. no recibió el pedido). RapiChonta decide y notifica al domiciliario.
+model Incident {
+  id           String         @id @default(uuid()) @db.Uuid
+  orderId      String         @map("order_id") @db.Uuid
+  reportedById String         @map("reported_by_id") @db.Uuid
+  type         IncidentType
+  description  String?
+  status       IncidentStatus @default(OPEN)
+  resolution   String?
+  resolvedById String?        @map("resolved_by_id") @db.Uuid
+  createdAt    DateTime       @default(now()) @map("created_at")
+  resolvedAt   DateTime?      @map("resolved_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("incidents")
+}
+
+/// Caja diaria de cada domiciliario: la abre un administrador y se cierra con cuentas claras al final del día.
+model CashBox {
+  id            String              @id @default(uuid()) @db.Uuid
+  courierId     String              @map("courier_id") @db.Uuid
+  businessDate  DateTime            @map("business_date") @db.Date
+  status        CashBoxStatus       @default(OPEN)
+  openingAmount Decimal             @map("opening_amount") @db.Decimal(12, 2)
+  openingMethod MoneyTransferMethod @map("opening_method")
+  openedById    String              @map("opened_by_id") @db.Uuid
+  closedById    String?             @map("closed_by_id") @db.Uuid
+  closingNotes  String?             @map("closing_notes")
+  openedAt      DateTime            @default(now()) @map("opened_at")
+  closedAt      DateTime?           @map("closed_at")
+
+  courier   CourierProfile @relation(fields: [courierId], references: [userId])
+  movements CashMovement[]
+
+  @@unique([courierId, businessDate])
+  @@map("cash_boxes")
+}
+
+/// Movimiento inmutable de dinero: cada peso entregado, gastado o cobrado queda registrado.
+model CashMovement {
+  id          String           @id @default(uuid()) @db.Uuid
+  cashBoxId   String           @map("cash_box_id") @db.Uuid
+  orderId     String?          @map("order_id") @db.Uuid
+  type        CashMovementType
+  amount      Decimal          @db.Decimal(12, 2)
+  method      String? // efectivo, Nequi, Daviplata, transferencia
+  createdById String           @map("created_by_id") @db.Uuid
+  note        String?
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  cashBox CashBox @relation(fields: [cashBoxId], references: [id], onDelete: Cascade)
+  order   Order?  @relation(fields: [orderId], references: [id])
+
+  @@index([cashBoxId])
+  @@map("cash_movements")
+}
+
+/// Token de notificaciones push por dispositivo (FCM o Huawei Push Kit).
+model DeviceToken {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String       @map("user_id") @db.Uuid
+  token     String       @unique
+  provider  PushProvider
+  platform  String
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("device_tokens")
+}
+
+/// Cada notificación de un pedido a un domiciliario y su respuesta (trazabilidad de la asignación).
+model OrderOffer {
+  id          String        @id @default(uuid()) @db.Uuid
+  orderId     String        @map("order_id") @db.Uuid
+  courierId   String        @map("courier_id") @db.Uuid
+  sentById    String?       @map("sent_by_id") @db.Uuid // operador o administrador; vacío si lo envió el sistema
+  mode        OfferMode
+  response    OfferResponse @default(PENDING)
+  expiresAt   DateTime      @map("expires_at")
+  respondedAt DateTime?     @map("responded_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([courierId, response])
+  @@map("order_offers")
+}
+
+/// Horario de operación de RapiChonta. Fuera de horario se ve el mapa pero no se puede pedir.
+model OperatingHours {
+  id        String @id @default(uuid()) @db.Uuid
+  dayOfWeek Int    @map("day_of_week") // 0 = domingo ... 6 = sábado
+  opensAt   String @map("opens_at") // "08:00", hora de Colombia
+  closesAt  String @map("closes_at") // "22:00"
+
+  @@unique([dayOfWeek, opensAt])
+  @@map("operating_hours")
+}
+
+/// Parámetros que el administrador cambia sin desplegar: porcentaje de comisión, tope de clientes nuevos,
+/// tiempos límite, umbral de "llegando". Ver Docs/04-modelo-de-datos.md.
+model AppSetting {
+  key         String   @id
+  value       Json
+  description String?
+  updatedById String?  @map("updated_by_id") @db.Uuid
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+}
+
+/// Tasa de cambio aproximada para mostrar precios en otras monedas (referencia, no se cobra en ellas).
+model ExchangeRate {
+  currency   String   @id // USD, EUR
+  copPerUnit Decimal  @map("cop_per_unit") @db.Decimal(12, 4)
+  source     String
+  fetchedAt  DateTime @map("fetched_at")
+
+  @@map("exchange_rates")
+}
