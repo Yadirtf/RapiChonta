@@ -55,7 +55,7 @@ El lanzamiento es en Colombia, así que aplica la **Ley 1581 de 2012** (habeas d
 
 ## Secretos e infraestructura
 
-- Ningún secreto en el repositorio: solo `.env.example`. En Render, variables de entorno (`JWT_SECRET` se genera automáticamente).
-- HTTPS en todos los servicios (Render lo da por defecto).
-- Copias de seguridad diarias de la base de datos en producción (plan pago de Render).
+- Ningún secreto en el repositorio: solo `.env.example`. En SnapDeploy, variables de entorno del contenedor (`JWT_SECRET` se genera con `openssl rand -hex 32`); nunca secretos en variables `NEXT_PUBLIC_*`.
+- HTTPS en todos los servicios (SnapDeploy lo da por defecto; la conexión a Neon exige `sslmode=require`).
+- Copias de seguridad diarias de la base de datos en producción (Neon guarda historial de restauración; para producción, plan pago o complemento de base de datos de SnapDeploy con copias diarias).
 - Dependencias revisadas con Dependabot y `npm audit` en CI.

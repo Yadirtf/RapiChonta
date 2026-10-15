@@ -1,4 +1,6 @@
-# 08 · Despliegue en Render (entorno de pruebas)
+# 08 · Despliegue en Render (alternativa)
+
+> El entorno de pruebas actual está en SnapDeploy: ver [11 · Despliegue en SnapDeploy](11-despliegue-snapdeploy.md). Esta guía se conserva por si se vuelve a Render.
 
 El archivo [`render.yaml`](../render.yaml) en la raíz describe toda la infraestructura de pruebas:
 

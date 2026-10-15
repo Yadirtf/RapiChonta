@@ -5,7 +5,7 @@
 | Rama | Para qué | Se despliega en |
 | --- | --- | --- |
 | `main` | Lo que está en producción. Solo recibe merges desde `develop` (o `hotfix/*`). | Producción (cuando exista) |
-| `develop` | Integración de lo terminado. | Render (pruebas) |
+| `develop` | Integración de lo terminado. | SnapDeploy (pruebas) |
 | `feature/<tema>` | Una funcionalidad, sale de `develop` y vuelve por PR. | — |
 | `hotfix/<tema>` | Corrección urgente, sale de `main` y vuelve a `main` y `develop`. | — |
 

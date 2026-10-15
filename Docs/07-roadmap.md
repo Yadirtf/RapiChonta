@@ -1,6 +1,6 @@
 # 07 · Roadmap por fases
 
-Cada fase termina con algo usable y desplegado en Render. Una fase no empieza hasta que la anterior cumple su criterio de terminado.
+Cada fase termina con algo usable y desplegado en el entorno de pruebas (SnapDeploy). Una fase no empieza hasta que la anterior cumple su criterio de terminado.
 
 ## Fase 0 · Base del proyecto ✅
 
@@ -10,7 +10,7 @@ Cada fase termina con algo usable y desplegado en Render. Una fase no empieza ha
 - Español e inglés con archivos JSON en web y app, con cambio de idioma en el menú.
 - `render.yaml` y documentación.
 
-**Terminado cuando:** el blueprint se despliega en Render y la web muestra el mapa con datos de la base.
+**Terminado cuando:** la API y la web se despliegan en SnapDeploy con la base en Neon y la web muestra el mapa con datos de la base.
 
 ## Fase 1 · Catálogo y pedido del cliente
 

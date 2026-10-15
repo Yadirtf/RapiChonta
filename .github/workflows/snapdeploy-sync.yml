@@ -1,0 +1,64 @@
+# Mantiene las ramas que despliega SnapDeploy al día con develop.
+# SnapDeploy enlaza un contenedor a una rama y redespliega en cada push a esa rama, sin filtrar
+# por carpeta. Con una rama por servicio, un cambio solo en web/ no gasta un despliegue de la API
+# (el plan gratuito permite 10 despliegues al día). Guía: Docs/11-despliegue-snapdeploy.md
+name: Sincronizar ramas de SnapDeploy
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      service:
+        description: Servicio a redesplegar
+        type: choice
+        options: [ambos, api, web]
+        default: ambos
+
+permissions:
+  contents: write
+
+concurrency:
+  group: snapdeploy-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detectar qué servicio cambió
+        id: changes
+        env:
+          EVENT: ${{ github.event_name }}
+          SERVICE: ${{ inputs.service }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            [ "$SERVICE" != "web" ] && echo "api=true" >> "$GITHUB_OUTPUT"
+            [ "$SERVICE" != "api" ] && echo "web=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Primer push o historial reescrito: desplegar ambos.
+          if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "api=true" >> "$GITHUB_OUTPUT"
+            echo "web=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only "$BEFORE" "$GITHUB_SHA")
+          echo "$changed"
+          echo "$changed" | grep -q '^api/' && echo "api=true" >> "$GITHUB_OUTPUT"
+          echo "$changed" | grep -q '^web/' && echo "web=true" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      # Las ramas deploy/* son espejos de develop: se sobrescriben, nunca se trabaja en ellas.
+      - name: Actualizar deploy/api
+        if: steps.changes.outputs.api == 'true'
+        run: git push --force origin "$GITHUB_SHA:refs/heads/deploy/api"
+
+      - name: Actualizar deploy/web
+        if: steps.changes.outputs.web == 'true'
+        run: git push --force origin "$GITHUB_SHA:refs/heads/deploy/web"
