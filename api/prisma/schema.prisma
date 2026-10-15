@@ -1,0 +1,181 @@
+// Esquema inicial del MVP. Ver Docs/04-modelo-de-datos.md
+// Las columnas geográficas usan PostGIS (geography(Point,4326)); Prisma las trata como Unsupported
+// y se consultan con SQL crudo desde los repositorios de infraestructura.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis]
+}
+
+enum UserRole {
+  CUSTOMER
+  COURIER
+  OPERATOR
+  ADMIN
+}
+
+enum EstablishmentCategory {
+  FAST_FOOD
+  RESTAURANT
+  SUPERMARKET
+  STORE
+  PHARMACY
+}
+
+enum OrderStatus {
+  PENDING_ASSIGNMENT
+  ASSIGNED
+  PURCHASING
+  PURCHASED
+  ON_THE_WAY
+  DELIVERED
+  CANCELLED
+}
+
+enum FulfillmentMode {
+  COURIER_PURCHASE
+  MERCHANT_DIRECT
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  CARD
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  role         UserRole @default(CUSTOMER)
+  fullName     String   @map("full_name")
+  phone        String   @unique
+  email        String?  @unique
+  passwordHash String?  @map("password_hash")
+  locale       String   @default("es")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  addresses      Address[]
+  courierProfile CourierProfile?
+  ordersAsClient Order[]         @relation("CustomerOrders")
+
+  @@map("users")
+}
+
+model Address {
+  id         String                                 @id @default(uuid()) @db.Uuid
+  userId     String                                 @map("user_id") @db.Uuid
+  label      String
+  line       String
+  reference  String?
+  location   Unsupported("geography(Point, 4326)")
+  isDefault  Boolean                                @default(false) @map("is_default")
+  createdAt  DateTime                               @default(now()) @map("created_at")
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@index([location], type: Gist)
+  @@map("addresses")
+}
+
+model CourierProfile {
+  userId         String                                  @id @map("user_id") @db.Uuid
+  vehicleType    String                                  @map("vehicle_type")
+  vehiclePlate   String?                                 @map("vehicle_plate")
+  documentId     String                                  @map("document_id")
+  isAvailable    Boolean                                 @default(false) @map("is_available")
+  lastLocation   Unsupported("geography(Point, 4326)")?  @map("last_location")
+  lastSeenAt     DateTime?                               @map("last_seen_at")
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@index([lastLocation], type: Gist)
+  @@map("courier_profiles")
+}
+
+model Establishment {
+  id        String                                 @id @default(uuid()) @db.Uuid
+  name      String
+  category  EstablishmentCategory
+  address   String
+  phone     String?
+  logoUrl   String?                                @map("logo_url")
+  location  Unsupported("geography(Point, 4326)")
+  isActive  Boolean                                @default(true) @map("is_active")
+  isPartner Boolean                                @default(false) @map("is_partner")
+  createdAt DateTime                               @default(now()) @map("created_at")
+  updatedAt DateTime                               @updatedAt @map("updated_at")
+
+  orders Order[]
+
+  @@index([location], type: Gist)
+  @@index([category])
+  @@map("establishments")
+}
+
+model Order {
+  id              String          @id @default(uuid()) @db.Uuid
+  code            String          @unique // código corto legible, ej. RC-7F3K
+  customerId      String          @map("customer_id") @db.Uuid
+  establishmentId String          @map("establishment_id") @db.Uuid
+  courierId       String?         @map("courier_id") @db.Uuid
+  addressId       String          @map("address_id") @db.Uuid
+  status          OrderStatus     @default(PENDING_ASSIGNMENT)
+  fulfillmentMode FulfillmentMode @default(COURIER_PURCHASE) @map("fulfillment_mode")
+  paymentMethod   PaymentMethod   @default(CASH) @map("payment_method")
+  estimatedTotal  Decimal?        @map("estimated_total") @db.Decimal(12, 2)
+  purchaseTotal   Decimal?        @map("purchase_total") @db.Decimal(12, 2)
+  deliveryFee     Decimal         @map("delivery_fee") @db.Decimal(12, 2)
+  receiptUrl      String?         @map("receipt_url")
+  customerNotes   String?         @map("customer_notes")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  customer      User              @relation("CustomerOrders", fields: [customerId], references: [id])
+  establishment Establishment     @relation(fields: [establishmentId], references: [id])
+  courier       CourierProfile?   @relation(fields: [courierId], references: [userId])
+  address       Address           @relation(fields: [addressId], references: [id])
+  items         OrderItem[]
+  events        OrderStatusEvent[]
+
+  @@index([status])
+  @@index([customerId])
+  @@index([courierId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                 String   @id @default(uuid()) @db.Uuid
+  orderId            String   @map("order_id") @db.Uuid
+  description        String
+  quantity           Int
+  notes              String?
+  estimatedUnitPrice Decimal? @map("estimated_unit_price") @db.Decimal(12, 2)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+/// Bitácora inmutable de cambios de estado: auditoría y línea de tiempo para el cliente.
+model OrderStatusEvent {
+  id        String      @id @default(uuid()) @db.Uuid
+  orderId   String      @map("order_id") @db.Uuid
+  status    OrderStatus
+  actorId   String?     @map("actor_id") @db.Uuid
+  note      String?
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_status_events")
+}

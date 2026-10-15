@@ -1,0 +1,90 @@
+# 03 · Arquitectura
+
+## Vista general
+
+```mermaid
+flowchart LR
+  subgraph Clientes
+    APP[App Flutter<br/>cliente y domiciliario]
+    WEB[Web Next.js<br/>cliente, operador, admin]
+  end
+  subgraph Render
+    API[API NestJS<br/>/api/v1]
+    DB[(PostgreSQL + PostGIS)]
+    REDIS[(Redis<br/>fase 3)]
+  end
+  EXT[Servicios externos<br/>SMS, mapas, archivos, push]
+
+  APP -- HTTPS / JSON --> API
+  WEB -- HTTPS / JSON --> API
+  APP -. WebSocket fase 3 .-> API
+  WEB -. WebSocket fase 3 .-> API
+  API --> DB
+  API -.-> REDIS
+  API --> EXT
+```
+
+Un solo backend sirve a todos los clientes. La web y la app nunca hablan con la base de datos ni entre sí.
+
+## Monorepo
+
+```
+RapiChonta/
+├── api/          # Backend NestJS
+├── web/          # Next.js
+├── app/          # Flutter
+├── Docs/         # Esta documentación
+└── render.yaml   # Infraestructura de pruebas como código
+```
+
+Cada carpeta es un proyecto independiente con sus propias dependencias. Render solo reconstruye el servicio cuya carpeta cambió (`buildFilter`).
+
+## Arquitectura limpia
+
+Los tres proyectos siguen la misma idea: **el negocio en el centro, los detalles técnicos afuera, y las dependencias apuntan hacia adentro.**
+
+```mermaid
+flowchart TB
+  P[Presentación<br/>controladores, pantallas, widgets] --> A[Aplicación<br/>casos de uso]
+  A --> D[Dominio<br/>entidades, reglas, puertos]
+  I[Infraestructura<br/>Prisma, HTTP, mapas, SMS] --> D
+```
+
+- **Dominio:** entidades (`Order`, `Establishment`), value objects (`GeoPoint`) y puertos (interfaces de repositorio). No conoce frameworks. Aquí vive, por ejemplo, la máquina de estados del pedido.
+- **Aplicación:** casos de uso (`FindNearbyEstablishments`, `CreateOrder`, `AssignCourier`). Orquestan el dominio a través de los puertos.
+- **Infraestructura:** implementaciones concretas de los puertos (Prisma/PostGIS, cliente HTTP, proveedor de SMS).
+- **Presentación:** cómo entra y sale la información (controladores REST, pantallas, widgets).
+
+Beneficio práctico: cambiar Prisma por otro ORM, OpenStreetMap por Google, o efectivo por una pasarela de pagos solo toca infraestructura.
+
+### API (`api/src`)
+
+Organizada por **módulos de negocio**, cada uno con sus cuatro capas:
+
+| Módulo | Responsabilidad | Fase |
+| --- | --- | --- |
+| `health` | Estado del servicio | 0 ✅ |
+| `establishments` | Catálogo y búsqueda geográfica | 0 ✅ / 1 |
+| `identity` | Registro, OTP, sesiones, roles | 1 |
+| `orders` | Creación, estados, historial | 1 (dominio ✅) |
+| `dispatch` | Disponibilidad y ubicación de domiciliarios, asignación | 2 |
+| `payments` | Cobro, liquidación con domiciliarios | 2 |
+| `notifications` | Push, SMS, WhatsApp | 3 |
+
+Si un módulo necesita escalar por separado (por ejemplo `dispatch`), se extrae como servicio aparte sin tocar los demás, porque ya está aislado.
+
+Convenciones de la API: prefijo `/api`, versión en la URL (`/v1`), validación estricta de entrada (rechaza campos desconocidos), errores de negocio como `422` y errores de validación como `400`.
+
+### Web (`web/src`)
+
+`app/` (rutas) → `presentation/` (vistas, componentes, hooks) → `core/application` (casos de uso) → `core/domain`. La infraestructura (`infrastructure/http`, `repositories`) implementa los puertos y `infrastructure/di/container.ts` los conecta. Los componentes nunca llaman `fetch` directamente.
+
+Rutas previstas: `/` (mapa), `/pedido/[id]` (seguimiento), `/operador` (panel de despacho), `/admin` (catálogo y domiciliarios).
+
+### App (`app/lib`)
+
+*Feature-first*: cada funcionalidad (`establishments`, `orders`, `auth`, `courier`) tiene `domain/`, `data/` y `presentation/`. Riverpod hace de contenedor de dependencias. El mismo binario sirve para cliente y domiciliario: la navegación cambia según el rol del usuario autenticado.
+
+## Tiempo real (fase 3)
+
+Estados del pedido y ubicación del domiciliario se envían por WebSocket (Socket.IO). Con varias instancias de la API, Redis distribuye los eventos entre ellas. Mientras tanto (fases 1 y 2) los clientes consultan el estado cada pocos segundos, que es suficiente con poco volumen.

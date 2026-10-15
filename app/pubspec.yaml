@@ -1,0 +1,35 @@
+name: rapichonta
+description: App móvil de RapiChonta (Android, iOS, Huawei/HarmonyOS vía AppGallery y web).
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+  flutter: ">=3.35.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  # Estado e inyección de dependencias
+  flutter_riverpod: ^3.4.3
+  # Navegación declarativa
+  go_router: ^18.1.0
+  # HTTP
+  dio: ^5.7.0
+  # Mapa con OpenStreetMap: no depende de Google Play Services (clave para Huawei)
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
+  # Ubicación (usa LocationManager de Android cuando no hay GMS)
+  geolocator: ^14.1.1
+  equatable: ^3.0.0
+  intl: any
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
