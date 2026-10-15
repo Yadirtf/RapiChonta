@@ -4,9 +4,9 @@ const prisma = new PrismaClient();
 
 // Datos de ejemplo para probar el mapa. Reemplazar por el catálogo real de la ciudad de lanzamiento.
 const establishments = [
-  { name: 'Burger Demo', category: 'FAST_FOOD', address: 'Dirección de ejemplo 1', lat: 4.6097, lng: -74.0817 },
-  { name: 'Pizza Demo', category: 'FAST_FOOD', address: 'Dirección de ejemplo 2', lat: 4.6125, lng: -74.0785 },
-  { name: 'Súper Demo', category: 'SUPERMARKET', address: 'Dirección de ejemplo 3', lat: 4.6062, lng: -74.0851 },
+  { name: 'Burger Demo', category: 'FAST_FOOD', address: 'Dirección de ejemplo 1', lat: 1.0294, lng: -76.6165 },
+  { name: 'Pizza Demo', category: 'FAST_FOOD', address: 'Dirección de ejemplo 2', lat: 1.0322, lng: -76.6133 },
+  { name: 'Súper Demo', category: 'SUPERMARKET', address: 'Dirección de ejemplo 3', lat: 1.0259, lng: -76.6199 },
 ];
 
 async function main() {

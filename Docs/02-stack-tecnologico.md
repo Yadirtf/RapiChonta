@@ -61,8 +61,9 @@ Criterios usados para elegir: escalar sin reescribir, comunidad grande (fácil c
 | Necesidad | MVP | Cuando crezca |
 | --- | --- | --- |
 | Teselas de mapa | OpenFreeMap (gratis) / OSM | MapTiler o Stadia (plan pago, estilo propio) |
-| Geocodificación de direcciones | Nominatim (OSM) con caché | Google Geocoding o Mapbox (mejor precisión en Colombia) |
+| Dirección de entrega | Punto elegido en el mapa + referencia escrita (en Villagarzón las direcciones escritas son poco precisas) | Geocodificación si se expande a otras ciudades |
 | SMS / WhatsApp OTP | Twilio Verify o proveedor local | Mismo |
 | Archivos (fotos de factura) | Cloudflare R2 o S3 | Mismo |
-| Notificaciones push | FCM (Android/iOS) + Huawei Push Kit | Mismo |
+| Notificaciones push (**necesarias desde el MVP**: el domiciliario recibe los pedidos por push) | FCM (Android/iOS) + Huawei Push Kit | Mismo |
+| Ubicación en segundo plano del domiciliario | `geolocator` + servicio en primer plano en Android | Mismo |
 | Errores y métricas | Sentry (plan gratis) | Sentry + Grafana |

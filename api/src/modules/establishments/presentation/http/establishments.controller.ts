@@ -6,7 +6,7 @@ import { FindNearbyQueryDto } from './dto/find-nearby.query.dto';
 export class EstablishmentsController {
   constructor(private readonly findNearby: FindNearbyEstablishmentsUseCase) {}
 
-  /** GET /api/v1/establishments/nearby?lat=4.61&lng=-74.08&radius=3000&categories=FAST_FOOD */
+  /** GET /api/v1/establishments/nearby?lat=1.03&lng=-76.62&radius=3000&categories=FAST_FOOD */
   @Get('nearby')
   async nearby(@Query() query: FindNearbyQueryDto) {
     const results = await this.findNearby.execute({

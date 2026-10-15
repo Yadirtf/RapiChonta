@@ -13,11 +13,13 @@ Esta carpeta es la fuente de verdad del proyecto: qué se construye, con qué, c
 | 07 | [Roadmap por fases](07-roadmap.md) | Orden de implementación y criterio de "terminado" de cada fase |
 | 08 | [Despliegue en Render](08-despliegue-render.md) | Cómo levantar el entorno de pruebas con `render.yaml` |
 | 09 | [Convenciones de trabajo](09-convenciones.md) | Ramas, commits, PRs, pruebas y estilo |
-| 10 | [Aspectos adicionales](10-aspectos-adicionales.md) | Temas que el negocio necesita y no estaban en la idea inicial |
+| 10 | [Decisiones y preguntas abiertas](10-aspectos-adicionales.md) | Decisiones del negocio ya tomadas y lo que falta por definir |
 
 ## Resumen de decisiones
 
-- **Modelo MVP:** el cliente pide a RapiChonta, un operador asigna manualmente al domiciliario disponible más cercano, el domiciliario compra en el establecimiento y entrega. RapiChonta es intermediaria; los comercios no están integrados todavía.
+- **Lanzamiento:** Villagarzón, Putumayo, con 2 operadores y 2 domiciliarios.
+- **Modelo MVP:** el cliente pide de los menús que administra RapiChonta, un domiciliario verificado recibe la notificación y acepta, compra en el establecimiento y entrega. El cliente ve estados (no la ubicación del domiciliario), confirma la entrega y paga contra entrega. RapiChonta es intermediaria; los comercios no están integrados todavía.
+- **Dinero:** caja diaria por domiciliario con trazabilidad, o domiciliario que compra con dinero propio. Tarifas fijas configuradas en el panel.
 - **Monorepo** con tres proyectos independientes: `api/`, `web/`, `app/`, y `render.yaml` en la raíz.
 - **API:** NestJS + TypeScript, PostgreSQL 16 + PostGIS, Prisma.
 - **Web:** Next.js + React + Tailwind CSS + Framer Motion + MapLibre.
@@ -27,4 +29,4 @@ Esta carpeta es la fuente de verdad del proyecto: qué se construye, con qué, c
 
 ## Estado actual del código
 
-La estructura base ya compila y funciona de punta a punta: la API expone `GET /api/health` y `GET /api/v1/establishments/nearby`, la web muestra el menú lateral con el mapa y los establecimientos cercanos, y la app Flutter tiene la misma pantalla con menú lateral (drawer en teléfono, fijo en tableta).
+La estructura base ya compila y funciona de punta a punta: la API expone `GET /api/health` y `GET /api/v1/establishments/nearby`, la web muestra el menú lateral con el mapa centrado en Villagarzón y los establecimientos cercanos, y la app Flutter tiene la misma pantalla con menú lateral (drawer en teléfono, fijo en tableta). El esquema de datos y la máquina de estados del pedido ya reflejan las decisiones del negocio.

@@ -20,7 +20,7 @@ class HomePage extends ConsumerWidget {
 
     final map = location.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, __) => const Center(child: Text('No pudimos obtener tu ubicación')),
+      error: (_, _) => const Center(child: Text('No pudimos obtener tu ubicación')),
       data: (center) => NearbyMap(
         center: center,
         establishments: nearby.value ?? const [],

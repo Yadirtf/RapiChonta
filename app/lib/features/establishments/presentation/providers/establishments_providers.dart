@@ -8,8 +8,8 @@ import '../../domain/entities/establishment.dart';
 import '../../domain/repositories/establishment_repository.dart';
 import '../../domain/usecases/get_nearby_establishments.dart';
 
-/// Centro por defecto si no hay permiso de ubicación. Ajustar a la ciudad de lanzamiento.
-const defaultCenter = GeoPoint(4.6097, -74.0817);
+/// Centro de Villagarzón (Putumayo), ciudad de lanzamiento del MVP. Se usa sin permiso de ubicación.
+const defaultCenter = GeoPoint(1.0294, -76.6165);
 
 // Inyección de dependencias: aquí se conectan los adaptadores con los casos de uso.
 final establishmentRepositoryProvider = Provider<EstablishmentRepository>(

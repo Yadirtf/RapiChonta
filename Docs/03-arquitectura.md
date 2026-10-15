@@ -64,12 +64,14 @@ Organizada por **módulos de negocio**, cada uno con sus cuatro capas:
 | Módulo | Responsabilidad | Fase |
 | --- | --- | --- |
 | `health` | Estado del servicio | 0 ✅ |
-| `establishments` | Catálogo y búsqueda geográfica | 0 ✅ / 1 |
-| `identity` | Registro, OTP, sesiones, roles | 1 |
-| `orders` | Creación, estados, historial | 1 (dominio ✅) |
-| `dispatch` | Disponibilidad y ubicación de domiciliarios, asignación | 2 |
-| `payments` | Cobro, liquidación con domiciliarios | 2 |
-| `notifications` | Push, SMS, WhatsApp | 3 |
+| `establishments` | Establecimientos, área del local y búsqueda geográfica | 0 ✅ / 1 |
+| `catalog` | Menús: productos, precios, tiempos de preparación | 1 |
+| `identity` | Registro, OTP, sesiones, roles, modo cliente del domiciliario | 1 |
+| `orders` | Creación, estados, ajustes por producto faltante, incidencias | 1 (dominio ✅) |
+| `dispatch` | Disponibilidad, ofertas al domiciliario, geocercas | 2 |
+| `cash` | Cajas diarias, movimientos, cierre de cuentas | 2 |
+| `fees` | Tarifas fijas de domicilio | 1 |
+| `notifications` | Push (FCM y Huawei Push Kit), SMS | 2 |
 
 Si un módulo necesita escalar por separado (por ejemplo `dispatch`), se extrae como servicio aparte sin tocar los demás, porque ya está aislado.
 
@@ -85,6 +87,8 @@ Rutas previstas: `/` (mapa), `/pedido/[id]` (seguimiento), `/operador` (panel de
 
 *Feature-first*: cada funcionalidad (`establishments`, `orders`, `auth`, `courier`) tiene `domain/`, `data/` y `presentation/`. Riverpod hace de contenedor de dependencias. El mismo binario sirve para cliente y domiciliario: la navegación cambia según el rol del usuario autenticado.
 
-## Tiempo real (fase 3)
+## Tiempo real
 
-Estados del pedido y ubicación del domiciliario se envían por WebSocket (Socket.IO). Con varias instancias de la API, Redis distribuye los eventos entre ellas. Mientras tanto (fases 1 y 2) los clientes consultan el estado cada pocos segundos, que es suficiente con poco volumen.
+- **Notificaciones push** (fase 2): oferta al domiciliario, cambios de estado al cliente, aviso de tiempo de preparación cumplido, decisión por producto faltante, "tu pedido está llegando".
+- **Ubicación del domiciliario → API** (fase 2): la app la envía cada pocos segundos mientras tiene un pedido activo; la API evalúa las geocercas. No se reenvía al cliente.
+- **Estado en pantalla** (fase 2): las pantallas abiertas consultan el estado cada pocos segundos, suficiente con 2 domiciliarios. En la fase 3 se cambia a WebSocket (Socket.IO + Redis) cuando el volumen lo pida.

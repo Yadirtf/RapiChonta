@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import type { GeoPoint } from "@/core/domain/entities/establishment";
 
-/** Centro por defecto si el usuario no comparte ubicación. Ajustar a la ciudad de lanzamiento. */
-export const DEFAULT_CENTER: GeoPoint = { lat: 4.6097, lng: -74.0817 };
+/** Centro de Villagarzón (Putumayo), ciudad de lanzamiento del MVP. Se usa si el usuario no comparte ubicación. */
+export const DEFAULT_CENTER: GeoPoint = { lat: 1.0294, lng: -76.6165 };
 
 type GeoState = { position: GeoPoint; status: "loading" | "granted" | "denied" };
 

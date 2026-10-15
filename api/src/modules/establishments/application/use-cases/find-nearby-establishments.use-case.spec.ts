@@ -5,7 +5,7 @@ describe('FindNearbyEstablishmentsUseCase', () => {
   const useCase = new FindNearbyEstablishmentsUseCase(new InMemoryEstablishmentRepository());
 
   it('devuelve establecimientos ordenados por distancia', async () => {
-    const results = await useCase.execute({ latitude: 4.6097, longitude: -74.0817 });
+    const results = await useCase.execute({ latitude: 1.0294, longitude: -76.6165 });
     expect(results.length).toBeGreaterThan(0);
     const distances = results.map((r) => r.distanceMeters);
     expect(distances).toEqual([...distances].sort((a, b) => a - b));

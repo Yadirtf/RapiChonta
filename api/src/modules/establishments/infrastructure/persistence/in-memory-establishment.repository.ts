@@ -13,7 +13,7 @@ export class InMemoryEstablishmentRepository extends EstablishmentRepository {
     Establishment.create('demo-1', {
       name: 'Burger Demo',
       category: EstablishmentCategory.FAST_FOOD,
-      location: GeoPoint.create(4.6097, -74.0817),
+      location: GeoPoint.create(1.0294, -76.6165),
       address: 'Dirección de ejemplo 1',
       isActive: true,
       isPartner: false,
@@ -21,7 +21,7 @@ export class InMemoryEstablishmentRepository extends EstablishmentRepository {
     Establishment.create('demo-2', {
       name: 'Pizza Demo',
       category: EstablishmentCategory.FAST_FOOD,
-      location: GeoPoint.create(4.6125, -74.0785),
+      location: GeoPoint.create(1.0322, -76.6133),
       address: 'Dirección de ejemplo 2',
       isActive: true,
       isPartner: false,
@@ -29,7 +29,7 @@ export class InMemoryEstablishmentRepository extends EstablishmentRepository {
     Establishment.create('demo-3', {
       name: 'Súper Demo',
       category: EstablishmentCategory.SUPERMARKET,
-      location: GeoPoint.create(4.6062, -74.0851),
+      location: GeoPoint.create(1.0259, -76.6199),
       address: 'Dirección de ejemplo 3',
       isActive: true,
       isPartner: false,
