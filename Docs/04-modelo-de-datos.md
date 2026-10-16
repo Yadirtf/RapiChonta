@@ -1,8 +1,7 @@
 # 04 · Modelo de datos
 
-> **Esquema provisional.** Este documento describe el esquema que hoy está en `api/prisma/schema.prisma`. El diseño normalizado que lo reemplaza a partir de E01 está en [14 · Base de datos normalizada](14-base-de-datos/README.md); ante cualquier diferencia, manda el 14.
+> **Vista general del dominio.** Las decisiones de negocio de abajo siguen vigentes, pero el esquema real es el diseño normalizado de [14 · Base de datos](14-base-de-datos/README.md), implementado en `api/prisma/schema.prisma` desde E01: `users` solo guarda el acceso, los datos personales están en `people` y cada estado es una tabla catálogo (los `enum` del diagrama son ilustrativos). Ante cualquier diferencia, manda el 14.
 
-El esquema vive en [`api/prisma/schema.prisma`](../api/prisma/schema.prisma) y la migración inicial en `api/prisma/migrations/`.
 
 ```mermaid
 erDiagram
@@ -38,7 +37,7 @@ erDiagram
 
 ## Decisiones
 
-- **Un solo `User` con rol** (`CUSTOMER`, `COURIER`, `OPERATOR`, `ADMIN`). Los domiciliarios los crea un administrador con sus datos personales (`CourierProfile`, `isVerified`). Un `COURIER` puede usar la app en modo cliente; un `CUSTOMER` nunca puede pasar a domiciliario por su cuenta.
+- **Una cuenta con uno o varios roles** (`CUSTOMER`, `COURIER`, `OPERATOR`, `ADMIN`; ver [E01](14-base-de-datos/E01-identidad-y-acceso.md)). Los domiciliarios los crea un administrador con sus datos personales y quedan sin recibir pedidos hasta que se verifican. Un `COURIER` puede usar la app en modo cliente; un `CUSTOMER` nunca puede pasar a domiciliario por su cuenta.
 - **El teléfono es el identificador principal** (único). El correo es opcional.
 - **Establecimiento con punto y área:** `location` (punto, para el mapa y las distancias) y `area` (polígono dibujado a mano, para detectar que el domiciliario llegó). Ambos `geography` con índice GIST.
 - **Menú administrado por RapiChonta (`Product`)** con precio, detalle, foto y tiempo de preparación. Solo se piden productos del menú.

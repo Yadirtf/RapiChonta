@@ -4,13 +4,18 @@ RapiChonta maneja tres cosas sensibles: **datos personales** (teléfono, direcci
 
 ## Autenticación
 
-- **Clientes:** número de celular + código de un solo uso (OTP) por SMS o WhatsApp. Sin contraseñas que olvidar ni filtrar. Código de 6 dígitos, vence en 5 minutos, máximo 5 intentos, máximo 3 envíos por hora por número.
-- **Domiciliarios, operadores y administradores:** OTP + contraseña (o segundo factor) porque tienen más permisos. Las cuentas de domiciliario las crea un administrador con sus datos personales y tras verificar documentos; no hay registro abierto ni forma de que un cliente se convierta en domiciliario.
-- **Sesiones:** token de acceso JWT de corta vida (15 min) + token de refresco rotativo (30 días) guardado en base de datos, revocable. En la web, el refresh va en cookie `HttpOnly`, `Secure`, `SameSite=Strict`; en la app, en el almacenamiento seguro del sistema (Keychain / Keystore).
+Implementada en E01 (detalle de tablas y rutas en [14 · E01](14-base-de-datos/E01-identidad-y-acceso.md)).
+
+- **Clientes:** número de celular + código de un solo uso (OTP) por SMS o WhatsApp. Sin contraseñas que olvidar ni filtrar. Código de 6 dígitos, vence en 5 minutos, máximo 5 intentos, máximo 3 envíos por hora por número. El código se guarda solo como hash con secreto (`OTP_PEPPER`), nunca en claro. El cliente navega sin cuenta; el ingreso se pide al confirmar el pedido.
+- **Domiciliarios, operadores y administradores:** contraseña (argon2id) y además código al celular, porque tienen más permisos. Varios intentos fallidos de contraseña bloquean el ingreso unos minutos. Las cuentas de domiciliario las crea un administrador con sus datos personales; no reciben pedidos hasta que se verifican. No hay registro abierto ni forma de que un cliente se convierta en domiciliario por su cuenta. Los operadores y administradores también los crea solo un administrador.
+- **Sesiones:** token de acceso JWT de corta vida (15 min) + token de refresco rotativo (30 días) guardado en base de datos solo como hash. Cada renovación entrega uno nuevo; presentar uno ya usado se trata como robo y cierra la sesión. Cerrar sesión, desactivar la cuenta, cambiar la contraseña (cierra las demás) o borrar los datos revocan las sesiones.
+  - **Web:** el token de acceso vive solo en memoria; el de refresco va en la cookie `rc_refresh` (`HttpOnly`, `Secure`, `SameSite=Strict`, ruta `/api/v1/auth`), que JavaScript no puede leer. Las pestañas se coordinan para renovar una sola vez.
+  - **App:** el refresco va en el almacenamiento seguro del sistema (Keystore en Android y Huawei, Keychain en iOS); el acceso, en memoria.
+- **Consentimientos:** al registrarse se aceptan los términos y la política de datos vigentes; si se publica una versión nueva, la siguiente apertura pide aceptarla antes de seguir.
 
 ## Autorización
 
-Control por rol (RBAC) en cada endpoint con guards de NestJS, más validación de propiedad: un cliente solo ve sus pedidos; un domiciliario solo ve los pedidos que se le ofrecieron o que aceptó, y solo mientras están activos; la dirección exacta del cliente y el teléfono de quien recibe se muestran al domiciliario solo desde `ON_THE_WAY`.
+Control por rol y permiso (RBAC) en cada endpoint con un guard global de NestJS: todo exige sesión salvo lo marcado como público, y las opciones de administrador se ocultan en la interfaz y además las rechaza la API. Un recurso de otra persona responde 404, para no revelar que existe. Validación de propiedad: un cliente solo ve sus pedidos; un domiciliario solo ve los pedidos que se le ofrecieron o que aceptó, y solo mientras están activos; la dirección exacta del cliente y el teléfono de quien recibe se muestran al domiciliario solo desde `ON_THE_WAY`.
 
 Un domiciliario en **modo cliente** usa los mismos permisos de cliente para sus propios pedidos; el cambio de modo no le da acceso a pedidos de otros clientes.
 
@@ -24,7 +29,7 @@ Un domiciliario en **modo cliente** usa los mismos permisos de cliente para sus 
 
 ## Pendiente por fase
 
-- Registro de auditoría de acciones del operador y del administrador (quién asignó, quién canceló).
+- Registro de auditoría de acciones del operador y del administrador (quién asignó, quién canceló). E01 ya guarda quién creó, verificó, activó o desactivó cada cuenta.
 - Subida de fotos de factura con URL firmada y vencimiento; validación de tipo y tamaño.
 - Ubicación del domiciliario: solo se guarda mientras está "disponible" o con un pedido activo, se usa en el servidor para las geocercas y **nunca se envía al cliente**. Se informa al domiciliario y se pide su autorización expresa.
 - Los cambios de estado automáticos (llegada al local, llegada al cliente) se validan en el servidor con varias lecturas para evitar ubicaciones falsas (apps de GPS simulado).

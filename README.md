@@ -15,6 +15,10 @@ La documentación del proyecto vive en [`Docs/`](Docs/README.md).
 | `Dockerfile`, `start.sh` | Contenedor único (API + web) del entorno de pruebas en SnapDeploy ([guía](Docs/11-despliegue-snapdeploy.md)) | Docker |
 | `render.yaml` | Alternativa: infraestructura en Render | Blueprint |
 
+## Identidad y acceso
+
+Clientes ingresan con su celular y un código; domiciliarios, operadores y administradores con contraseña y código. El primer administrador sale de las variables `SEED_ADMIN_*` y los demás se crean desde `/panel`. Ver [seguridad](Docs/06-seguridad.md) y [variables del despliegue](Docs/11-despliegue-snapdeploy.md).
+
 ## Ramas
 
 `main` es producción, `develop` es integración y se despliega en SnapDeploy. El trabajo se hace en ramas `feature/*` que entran a `develop` por pull request. Ver [convenciones](Docs/09-convenciones.md).

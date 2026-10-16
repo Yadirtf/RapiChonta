@@ -9,7 +9,7 @@ class EstablishmentModel {
       name: json['name'] as String,
       category: EstablishmentCategoryX.fromApi(json['category'] as String),
       address: json['address'] as String,
-      isPartner: json['isPartner'] as bool? ?? false,
+      acceptsOrders: json['acceptsOrders'] as bool? ?? false,
       logoUrl: json['logoUrl'] as String?,
       location: GeoPoint((location['lat'] as num).toDouble(), (location['lng'] as num).toDouble()),
       distanceMeters: (json['distanceMeters'] as num).round(),

@@ -10,7 +10,8 @@ export interface Establishment {
   name: string;
   category: EstablishmentCategory;
   address: string;
-  isPartner: boolean;
+  /** Solo los establecimientos registrados y activos reciben pedidos (MVP). */
+  acceptsOrders: boolean;
   logoUrl: string | null;
   location: GeoPoint;
   distanceMeters: number;

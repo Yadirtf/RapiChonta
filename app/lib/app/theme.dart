@@ -18,6 +18,34 @@ class AppTheme {
           surface: AppColors.surface,
         ),
         scaffoldBackgroundColor: AppColors.surface,
+        appBarTheme: const AppBarTheme(backgroundColor: AppColors.surface, foregroundColor: AppColors.ink, elevation: 0, scrolledUnderElevation: 0),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: AppColors.ink.withValues(alpha: 0.12))),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: AppColors.ink.withValues(alpha: 0.12))),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.ink, width: 1.5)),
+          floatingLabelStyle: const TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600),
+        ),
+        segmentedButtonTheme: SegmentedButtonThemeData(
+          style: SegmentedButton.styleFrom(
+            selectedBackgroundColor: AppColors.ink,
+            selectedForegroundColor: Colors.white,
+            backgroundColor: Colors.white,
+            foregroundColor: AppColors.ink,
+            minimumSize: const Size.fromHeight(46),
+            textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.ink,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(foregroundColor: AppColors.ink, textStyle: const TextStyle(fontWeight: FontWeight.w700))),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.brand,

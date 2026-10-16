@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/establishment.dart';
 import '../providers/establishments_providers.dart';
@@ -23,6 +25,7 @@ class SideMenu extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selected = ref.watch(selectedCategoriesProvider);
     final l10n = AppLocalizations.of(context);
+    final account = ref.watch(sessionProvider).value;
 
     return Container(
       width: 280,
@@ -51,7 +54,14 @@ class SideMenu extends ConsumerWidget {
             const Spacer(),
             const Divider(color: Colors.white12),
             _MenuItem(icon: Icons.delivery_dining_rounded, label: l10n.menuMyOrders, onTap: () {}),
-            _MenuItem(icon: Icons.person_rounded, label: l10n.menuMyAccount, onTap: () {}),
+            _MenuItem(
+              icon: Icons.person_rounded,
+              label: account?.givenNames ?? l10n.menuMyAccount,
+              onTap: () {
+                Scaffold.maybeOf(context)?.closeDrawer();
+                context.push('/cuenta');
+              },
+            ),
             const SizedBox(height: 12),
           ],
         ),

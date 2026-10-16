@@ -33,7 +33,7 @@ class Establishment extends Equatable {
     required this.address,
     required this.location,
     required this.distanceMeters,
-    this.isPartner = false,
+    this.acceptsOrders = false,
     this.logoUrl,
   });
 
@@ -43,7 +43,8 @@ class Establishment extends Equatable {
   final String address;
   final GeoPoint location;
   final int distanceMeters;
-  final bool isPartner;
+  /// Solo los establecimientos registrados y activos reciben pedidos (MVP).
+  final bool acceptsOrders;
   final String? logoUrl;
 
   @override

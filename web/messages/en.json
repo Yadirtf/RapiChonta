@@ -6,7 +6,9 @@
     "explore": "Explore",
     "myOrders": "My orders",
     "myAccount": "My account",
-    "language": "Language"
+    "language": "Language",
+    "panel": "Panel",
+    "dataPolicy": "Data policy"
   },
   "categories": {
     "FAST_FOOD": "Fast food",
@@ -27,6 +29,493 @@
     "close": "Close"
   },
   "errors": {
-    "NEARBY_FAILED": "We couldn't load nearby places."
+    "NEARBY_FAILED": "We couldn't load nearby places.",
+    "UNKNOWN": "Something went wrong. Please try again.",
+    "NETWORK_ERROR": "You're offline. Check your connection and try again.",
+    "SERVER_ERROR": "We had a problem on our side. Try again in a moment.",
+    "INTERNAL_ERROR": "We had a problem on our side. Try again in a moment.",
+    "VALIDATION_FAILED": "Please check the form: some fields are missing or invalid.",
+    "TOO_MANY_REQUESTS": "Too many attempts in a row. Please wait a moment.",
+    "REQUEST_FAILED": "The request couldn't be completed.",
+    "NOT_FOUND": "We couldn't find what you're looking for.",
+    "PERMISSION_DENIED": "You don't have permission to do this.",
+    "ROLE_NOT_ALLOWED": "Your role can't access this section.",
+    "UNAUTHENTICATED": "Your session ended. Please sign in again.",
+    "SESSION_INVALID": "Your session ended. Please sign in again.",
+    "REFRESH_REUSED": "We signed you out for security. Please sign in again.",
+    "INVALID_PHONE": "That doesn't look like a valid mobile number.",
+    "OTP_SEND_LIMIT": "We've already sent several codes to this number. You can request another in {minutes, plural, one {# minute} other {# minutes}}.",
+    "OTP_INVALID": "Wrong code. {remaining, plural, =0 {No attempts left: request a new code.} one {# attempt left.} other {# attempts left.}}",
+    "OTP_EXPIRED": "The code expired. Request a new one.",
+    "OTP_LOCKED": "Too many attempts with this code. Request a new one.",
+    "OTP_NOT_FOUND": "That code is no longer valid. Request a new one.",
+    "OTP_PROVIDER_UNAVAILABLE": "We couldn't send the SMS right now. Try again in a few minutes.",
+    "INVALID_CREDENTIALS": "The number or password is incorrect.",
+    "PASSWORD_LOCKED": "Too many failed attempts. Try again in {minutes, plural, one {# minute} other {# minutes}}.",
+    "WEAK_PASSWORD": "The password needs at least 10 characters and can't be that obvious.",
+    "ACCOUNT_DISABLED": "This account is disabled. Please contact RapiChonta.",
+    "REGISTRATION_EXPIRED": "Too much time passed. Request a new code to finish signing up.",
+    "CONSENT_REQUIRED": "You need to accept the documents to continue.",
+    "PHONE_ALREADY_REGISTERED": "That number belongs to another account.",
+    "DOCUMENT_ALREADY_REGISTERED": "That ID document is already registered.",
+    "ROLE_ALREADY_GRANTED": "That person already has that role.",
+    "ROLE_NOT_GRANTED": "Your account doesn't have that role.",
+    "PASSWORD_REQUIRED": "Enter your password to continue.",
+    "USER_NOT_FOUND": "We couldn't find that user.",
+    "COURIER_NOT_FOUND": "We couldn't find that courier.",
+    "INVALID_STATUS_TRANSITION": "That status change isn't allowed.",
+    "STATUS_CONFLICT": "Someone else changed this record at the same time. Reload and try again.",
+    "CANNOT_CHANGE_OWN_STATUS": "You can't change the status of your own account.",
+    "MUNICIPALITY_REQUIRED": "Choose the town where they'll work.",
+    "INVALID_OPTION": "One of the selected options is no longer valid. Reload the page.",
+    "PASSWORD_NOT_SET": "Your account doesn't use a password.",
+    "SAME_PHONE": "That's already your current number.",
+    "ALREADY_EXISTS": "{field, select, plate {That plate is already registered to another vehicle.} document {That ID document is already registered.} phone {That number belongs to another account.} accountNumber {That account is already registered.} other {A record with that data already exists.}}",
+    "CONSTRAINT_VIOLATION": "The data doesn't meet the system rules. Please review it.",
+    "BUSINESS_RULE_VIOLATED": "This can't be done right now."
+  },
+  "auth": {
+    "signInTitle": "Sign in with your phone",
+    "signInSubtitle": "We'll text you a code. No passwords.",
+    "phoneLabel": "Mobile number",
+    "phoneHint": "We only use it for your orders and delivery updates.",
+    "phoneInvalid": "Enter a 10-digit Colombian mobile number (starts with 3).",
+    "sendCode": "Send code",
+    "noPassword": "Your code expires in 5 minutes and works only once.",
+    "codeTitle": "Enter the code",
+    "codeSentTo": "We sent it to <b>{phone}</b>.",
+    "changeNumber": "Change",
+    "devCode": "Test environment, code:",
+    "codeLabel": "Verification code",
+    "verify": "Verify",
+    "expiresIn": "Expires in {time}",
+    "codeExpired": "The code expired",
+    "resendIn": "Resend in {seconds}s",
+    "resend": "Resend code",
+    "profileTitle": "Welcome to RapiChonta!",
+    "profileSubtitle": "Just your name, so the courier knows who to deliver to.",
+    "givenNames": "First name",
+    "familyNames": "Last name",
+    "optional": "Optional",
+    "createAccount": "Create my account",
+    "close": "Close"
+  },
+  "consents": {
+    "accept": "I have read and accept the <link>{document}</link>",
+    "version": "version {version}",
+    "documents": {
+      "TERMS_OF_SERVICE": "Terms and conditions",
+      "DATA_PROCESSING_POLICY": "Data processing policy",
+      "COURIER_LOCATION_AUTHORIZATION": "On-shift location authorization"
+    },
+    "gateTitle": "Hi, {name}",
+    "gateSubtitle": "We updated these documents. To keep using RapiChonta, please review and accept them.",
+    "continue": "Accept and continue",
+    "signOutInstead": "Not now, sign out"
+  },
+  "account": {
+    "title": "My account",
+    "backToMap": "Back to map",
+    "signedOutTitle": "Your account, one tap away",
+    "signedOutBody": "Sign in with your phone to see your orders, save your details and choose your language.",
+    "signIn": "Sign in with my phone",
+    "signedOutLegal": "By signing in you accept the terms and the <link>data processing policy</link>.",
+    "deleted": "Your personal data was deleted and your account was closed.",
+    "profileSaved": "Your changes were saved.",
+    "phoneChanged": "Your mobile number was updated.",
+    "passwordChanged": "Your password was updated.",
+    "personalData": "Personal details",
+    "phone": "Mobile number",
+    "phoneHint": "To change it we'll send a code to the new number.",
+    "change": "Change",
+    "security": "Security",
+    "password": "Password",
+    "passwordHint": "You use it to sign in to the panel or the courier app.",
+    "privacy": "Privacy and documents",
+    "legal": {
+      "TERMS_OF_SERVICE": "Terms and conditions",
+      "DATA_PROCESSING_POLICY": "Data processing policy",
+      "COURIER_LOCATION_AUTHORIZATION": "On-shift location authorization"
+    },
+    "signOut": "Sign out",
+    "deleteData": "Delete my data",
+    "cancel": "Cancel",
+    "save": "Save",
+    "language": "Language",
+    "languages": {
+      "es": "Español",
+      "en": "English"
+    },
+    "languageHint": "We remember it in your account, in the app too.",
+    "changePhoneTitle": "Change mobile number",
+    "changePhoneSubtitle": "We'll send a code to the new number to confirm it.",
+    "newPhone": "New mobile number",
+    "changePasswordTitle": "Change password",
+    "changePasswordSubtitle": "For security, we'll sign out your other open sessions.",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Repeat the new password",
+    "passwordPolicy": "At least {min} characters. An easy-to-remember phrase works well.",
+    "passwordMismatch": "Passwords don't match.",
+    "savePassword": "Save password",
+    "deleteWord": "DELETE",
+    "deleteTitle": "Delete your data?",
+    "deleteSubtitle": "This can't be undone.",
+    "deleteConsequence1": "We erase your name, phone number, addresses and documents.",
+    "deleteConsequence2": "Your account is closed and all your sessions end.",
+    "deleteConsequence3": "Past orders are kept without anything that identifies you, as accounting law requires.",
+    "deleteConfirmLabel": "Type {word} to confirm",
+    "deleteConfirm": "Delete permanently"
+  },
+  "roles": {
+    "CUSTOMER": "Customer",
+    "COURIER": "Courier",
+    "OPERATOR": "Operator",
+    "ADMIN": "Administrator"
+  },
+  "panelSignIn": {
+    "title": "Staff sign in",
+    "subtitle": "With your phone and password. Then confirm with a code.",
+    "codeSubtitle": "Last step: confirm it's you.",
+    "eyebrow": "RapiChonta panel",
+    "headline": "Every order, every courier, in one place.",
+    "body": "Restricted to operators and administrators. Every action is logged.",
+    "backToSite": "Go to site",
+    "password": "Password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "notStaff": "This account can't access the panel. Couriers use the RapiChonta app.",
+    "continue": "Continue",
+    "twoSteps": "Two-step verification: password and SMS code."
+  },
+  "panel": {
+    "navigation": "Panel sections",
+    "nav": {
+      "home": "Home",
+      "couriers": "Couriers",
+      "staff": "Staff"
+    },
+    "viewSite": "View site",
+    "signOut": "Sign out",
+    "switchTitle": "Continue as {role}",
+    "switchBody": "Your session is in {role} mode. Confirm your password to open the panel.",
+    "password": "Password",
+    "switchAction": "Open the panel",
+    "restrictedTitle": "Restricted access",
+    "restrictedBody": "The panel is only for RapiChonta operators and administrators.",
+    "useOtherAccount": "Use another account",
+    "reason": "Reason",
+    "reasonHint": "Optional. It's kept in the history.",
+    "cancel": "Cancel"
+  },
+  "panelHome": {
+    "greeting": "RapiChonta panel",
+    "title": "Hi, {name}",
+    "pendingCouriers": "{count, plural, one {courier to verify} other {couriers to verify}}",
+    "staffTitle": "Staff",
+    "staffBody": "Operators and administrators with panel access.",
+    "ordersTitle": "Orders",
+    "ordersBody": "Order operations arrive in an upcoming release."
+  },
+  "verification": {
+    "PENDING": "To verify",
+    "VERIFIED": "Verified",
+    "SUSPENDED": "Suspended",
+    "REJECTED": "Rejected"
+  },
+  "accountStatus": {
+    "ACTIVE": "Active",
+    "SUSPENDED": "Suspended",
+    "DEACTIVATED": "Deactivated",
+    "CLOSED": "Closed"
+  },
+  "people": {
+    "familyNames": "Last name",
+    "documentType": "ID type",
+    "documentNumber": "ID number",
+    "phoneHint": "Sign-in codes are sent to this number.",
+    "initialPassword": "Initial password",
+    "initialPasswordHint": "Hand it over in person. They can change it from My account.",
+    "generatePassword": "Generate another",
+    "showPassword": "Show",
+    "hidePassword": "Hide",
+    "municipality": "Town"
+  },
+  "documentTypes": {
+    "CC": "Citizenship ID (CC)",
+    "CE": "Foreigner ID (CE)",
+    "PASSPORT": "Passport",
+    "PPT": "Temporary protection permit (PPT)",
+    "TI": "Identity card (TI)"
+  },
+  "catalog": {
+    "fundingModes": {
+      "CASH_BOX": "Daily cash box",
+      "OWN_FUNDS": "Own funds"
+    },
+    "fundingModeHints": {
+      "CASH_BOX": "RapiChonta hands them a float to buy with and settles it at the end of the day.",
+      "OWN_FUNDS": "They buy with their own money and get it back when collecting the order."
+    },
+    "vehicleTypes": {
+      "MOTORCYCLE": "Motorcycle",
+      "BICYCLE": "Bicycle",
+      "CAR": "Car",
+      "ON_FOOT": "On foot"
+    },
+    "paymentMethods": {
+      "CASH": "Cash",
+      "NEQUI": "Nequi",
+      "DAVIPLATA": "Daviplata",
+      "BANK_TRANSFER": "Bank transfer"
+    },
+    "bankAccountTypes": {
+      "SAVINGS": "Savings",
+      "CHECKING": "Checking"
+    }
+  },
+  "couriers": {
+    "title": "Couriers",
+    "subtitle": "Register, verify and manage the people who make deliveries.",
+    "new": "New courier",
+    "search": "Search couriers",
+    "searchPlaceholder": "Search by name, phone or ID",
+    "filterLabel": "Filter by verification",
+    "all": "All",
+    "noResults": "No courier matches your search.",
+    "emptyTitle": "No couriers yet",
+    "emptyBody": "Register the first one. They'll stay unverified until you review their details.",
+    "createTitle": "New courier",
+    "createSubtitle": "They'll be unverified: no orders until you verify them.",
+    "phoneInvalid": "Enter a 10-digit Colombian mobile number.",
+    "plateRequired": "This vehicle needs a plate.",
+    "sectionPerson": "Personal details",
+    "sectionOperation": "Operation",
+    "fundingMode": "How they pay for orders",
+    "sectionVehicle": "Vehicle",
+    "vehicleType": "Type",
+    "plate": "Plate",
+    "vehicleDescription": "Description",
+    "vehicleDescriptionPlaceholder": "Brand, color… so customers can recognize it",
+    "sectionAccounts": "Accounts to receive payments",
+    "accountsHint": "Customers pay them by QR to these accounts (Nequi, Daviplata or bank).",
+    "paymentMethod": "Method",
+    "removeAccount": "Remove account",
+    "bank": "Bank",
+    "choose": "Choose…",
+    "bankAccountType": "Account type",
+    "accountNumber": "Number",
+    "holderName": "Account holder",
+    "addAccount": "Add account",
+    "cancel": "Cancel",
+    "create": "Register courier",
+    "detailTitle": "Courier",
+    "loading": "Loading…",
+    "createdNotice": "Registered. Review their details and verify them so they start getting orders.",
+    "pendingNotice": "To verify: they get no order offers until you verify them.",
+    "actions": "Actions",
+    "verificationAction": {
+      "VERIFIED": "Verify",
+      "REJECTED": "Reject",
+      "SUSPENDED": "Suspend verification",
+      "PENDING": "Review again"
+    },
+    "accountAction": {
+      "ACTIVE": "Reactivate account",
+      "SUSPENDED": "Suspend account",
+      "DEACTIVATED": "Deactivate account"
+    },
+    "verificationConfirm": {
+      "VERIFIED": "{name} will get order offers while on shift.",
+      "REJECTED": "{name} won't get orders. You can review them again later.",
+      "SUSPENDED": "{name} will stop getting order offers until you verify them again.",
+      "PENDING": "{name} goes back to pending verification."
+    },
+    "accountConfirm": {
+      "ACTIVE": "{name} will be able to sign in to the app again.",
+      "SUSPENDED": "{name}'s account will be suspended and all their sessions will end.",
+      "DEACTIVATED": "{name}'s account will be deactivated and all their sessions will end."
+    },
+    "confirm": "Confirm",
+    "document": "ID",
+    "municipality": "Town",
+    "createdAt": "Registered",
+    "noAccounts": "No accounts registered: they can only collect cash.",
+    "history": "Verification history",
+    "filters": {
+      "PENDING": "To verify",
+      "VERIFIED": "Verified",
+      "SUSPENDED": "Suspended",
+      "REJECTED": "Rejected"
+    }
+  },
+  "staff": {
+    "title": "Staff",
+    "subtitle": "Operators and administrators with panel access.",
+    "new": "New member",
+    "createdNotice": "Done. Hand over their initial password: they'll sign in with their phone, the password and a code.",
+    "emptyTitle": "No staff registered yet",
+    "you": "(you)",
+    "actions": "Actions",
+    "action": {
+      "ACTIVE": "Reactivate",
+      "SUSPENDED": "Suspend",
+      "DEACTIVATED": "Deactivate"
+    },
+    "confirm": {
+      "ACTIVE": "{name} will be able to sign in to the panel again.",
+      "SUSPENDED": "{name}'s account will be suspended and their sessions will end.",
+      "DEACTIVATED": "{name}'s account will be deactivated and their sessions will end."
+    },
+    "confirmAction": "Confirm",
+    "lastSignIn": "Last sign-in {when}",
+    "neverSignedIn": "Hasn't signed in yet",
+    "forbiddenTitle": "Administrators only",
+    "forbiddenBody": "Your role can't manage staff.",
+    "createTitle": "New staff member",
+    "createSubtitle": "They'll sign in to the panel with their phone, password and an SMS code.",
+    "phoneInvalid": "Enter a 10-digit Colombian mobile number.",
+    "sectionRole": "Role",
+    "roleHint": {
+      "OPERATOR": "Handles orders and assigns couriers in their town.",
+      "ADMIN": "Everything an operator does, plus staff, couriers and settings."
+    },
+    "sectionPerson": "Personal details",
+    "cancel": "Cancel",
+    "create": "Create {role}"
+  },
+  "legalDocs": {
+    "back": "Back",
+    "version": "Version {version}",
+    "otherDocuments": "Other documents",
+    "TERMS_OF_SERVICE": {
+      "title": "Terms and conditions",
+      "version": "2026-10",
+      "intro": "These terms govern the use of RapiChonta, the delivery service of Villagarzón, Putumayo. By creating your account you accept them.",
+      "sections": [
+        {
+          "heading": "What RapiChonta is",
+          "paragraphs": [
+            "RapiChonta connects customers with registered stores and with couriers who buy and deliver the orders. For now the service only runs in Villagarzón and you can only order from registered stores."
+          ]
+        },
+        {
+          "heading": "Your account",
+          "paragraphs": [
+            "You sign in with your mobile number and a code we text you. The code is personal: don't share it with anyone, not even someone claiming to be from RapiChonta.",
+            "You're responsible for keeping your details accurate and for what's done with your account. You can sign out or delete your data at any time from My account."
+          ]
+        },
+        {
+          "heading": "Orders and payments",
+          "paragraphs": [
+            "The order price is what the store charges plus the delivery fee shown before you confirm. You pay on delivery: cash, or Nequi, Daviplata or a transfer to the courier's account.",
+            "If a product isn't available, we tell you before buying it so you can decide. When you receive the order, you confirm the delivery in the app."
+          ]
+        },
+        {
+          "heading": "Fair use",
+          "paragraphs": [
+            "Don't use RapiChonta for fake orders, for products banned by law, or to harass couriers or staff. We may suspend accounts that break these terms."
+          ]
+        },
+        {
+          "heading": "Liability",
+          "paragraphs": [
+            "Products are the responsibility of the store that sells them. RapiChonta is responsible for the purchase and delivery made by its couriers under the conditions shown on each order."
+          ]
+        },
+        {
+          "heading": "Changes",
+          "paragraphs": [
+            "If we change these terms we'll publish a new version and ask you to accept it before you keep using the service."
+          ]
+        }
+      ]
+    },
+    "DATA_PROCESSING_POLICY": {
+      "title": "Personal data processing policy",
+      "version": "2026-10",
+      "intro": "We comply with Colombian Law 1581 of 2012 and Decree 1377 of 2013 (compiled in Decree 1074 of 2015). Here we explain what data we process, why, and how to exercise your rights.",
+      "sections": [
+        {
+          "heading": "Controller",
+          "paragraphs": [
+            "RapiChonta is the controller of the data collected through its website and app. You can reach us through the support channels listed in the app."
+          ]
+        },
+        {
+          "heading": "Data we process",
+          "paragraphs": [
+            "Customers: name, mobile number, delivery addresses, preferred language and order history.",
+            "Couriers and staff: also ID document, vehicle, payout accounts and, for couriers on shift only, their location.",
+            "Technical data: device, IP address and sign-in records, to protect your account."
+          ]
+        },
+        {
+          "heading": "What we use it for",
+          "paragraphs": [
+            "To create and protect your account, take and deliver your orders, contact you about them, handle complaints and meet legal and accounting obligations. We don't sell your data."
+          ]
+        },
+        {
+          "heading": "Who we share it with",
+          "paragraphs": [
+            "The courier carrying your order sees your name, address and a contact number. We use providers to send SMS and host the information, under the same confidentiality obligations."
+          ]
+        },
+        {
+          "heading": "Your rights",
+          "paragraphs": [
+            "You can access, update and correct your data; request proof of your authorization; learn how we use it; revoke the authorization and ask us to delete it; and file complaints with the Superintendency of Industry and Commerce (SIC).",
+            "From My account you can update your name and phone number, and delete your data. We answer queries within 10 business days and complaints within 15 business days."
+          ]
+        },
+        {
+          "heading": "Deletion",
+          "paragraphs": [
+            "When you delete your data we erase your name, phone number, addresses and documents, and close your account. Order records the law requires us to keep remain without anything that identifies you."
+          ]
+        },
+        {
+          "heading": "Security",
+          "paragraphs": [
+            "We protect information with encryption in transit, irreversibly stored passwords and codes, expiring sessions, and audit logs of staff actions."
+          ]
+        }
+      ]
+    },
+    "COURIER_LOCATION_AUTHORIZATION": {
+      "title": "On-shift location authorization",
+      "version": "2026-10",
+      "intro": "RapiChonta couriers accept this authorization. It explains when and why we use your location.",
+      "sections": [
+        {
+          "heading": "When it's used",
+          "paragraphs": [
+            "Only while you're on shift in the courier app. When your shift ends we stop receiving your location."
+          ]
+        },
+        {
+          "heading": "What for",
+          "paragraphs": [
+            "To offer you the nearest orders, know which step each delivery is at (at the store, on the way, delivered) and handle incidents.",
+            "Customers don't see your live location: only their order status."
+          ]
+        },
+        {
+          "heading": "How long it's kept",
+          "paragraphs": [
+            "We keep positions as long as needed for operations and to settle order complaints; then they're deleted or kept without identifying you."
+          ]
+        },
+        {
+          "heading": "Revoking",
+          "paragraphs": [
+            "You can revoke this authorization. Without it you can't receive orders, because assignment depends on proximity."
+          ]
+        }
+      ]
+    }
   }
 }

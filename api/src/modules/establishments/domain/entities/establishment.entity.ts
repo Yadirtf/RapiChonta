@@ -14,9 +14,8 @@ export interface EstablishmentProps {
   category: EstablishmentCategory;
   location: GeoPoint;
   address: string;
-  isActive: boolean;
-  /** En el MVP los comercios no están integrados: RapiChonta compra por el cliente. */
-  isPartner: boolean;
+  /** Visible en el mapa pero sin recibir pedidos cuando está cerrado temporalmente. */
+  acceptsOrders: boolean;
   logoUrl?: string;
 }
 
@@ -29,7 +28,6 @@ export class Establishment extends Entity<EstablishmentProps> {
   get category() { return this.props.category; }
   get location() { return this.props.location; }
   get address() { return this.props.address; }
-  get isActive() { return this.props.isActive; }
-  get isPartner() { return this.props.isPartner; }
+  get acceptsOrders() { return this.props.acceptsOrders; }
   get logoUrl() { return this.props.logoUrl; }
 }

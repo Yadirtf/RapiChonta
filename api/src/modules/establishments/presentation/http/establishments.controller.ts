@@ -1,7 +1,9 @@
 import { Controller, Get, Query } from '@nestjs/common';
+import { Public } from '../../../../shared/presentation/public.decorator';
 import { FindNearbyEstablishmentsUseCase } from '../../application/use-cases/find-nearby-establishments.use-case';
 import { FindNearbyQueryDto } from './dto/find-nearby.query.dto';
 
+@Public()
 @Controller('establishments')
 export class EstablishmentsController {
   constructor(private readonly findNearby: FindNearbyEstablishmentsUseCase) {}
@@ -22,7 +24,7 @@ export class EstablishmentsController {
       name: e.name,
       category: e.category,
       address: e.address,
-      isPartner: e.isPartner,
+      acceptsOrders: e.acceptsOrders,
       logoUrl: e.logoUrl ?? null,
       location: { lat: e.location.latitude, lng: e.location.longitude },
       distanceMeters,

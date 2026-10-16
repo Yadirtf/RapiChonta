@@ -11,5 +11,197 @@
   "locationError": "No pudimos obtener tu ubicación",
   "nearbyError": "No pudimos cargar los establecimientos cercanos.",
   "orderHere": "Pedir aquí",
-  "courierBuysForYou": "Un domiciliario de RapiChonta hace la compra por ti."
+  "courierBuysForYou": "Un domiciliario de RapiChonta hace la compra por ti.",
+  "acceptAndContinue": "Aceptar y continuar",
+  "acceptPrefix": "Leí y acepto {type, select, TERMS_OF_SERVICE{los} other{la}}",
+  "cancel": "Cancelar",
+  "change": "Cambiar",
+  "changePasswordTitle": "Cambiar contraseña",
+  "changePasswordSubtitle": "Por seguridad, cerraremos tus otras sesiones abiertas.",
+  "changePhoneTitle": "Cambiar celular",
+  "changePhoneSubtitle": "Te enviaremos un código al número nuevo para confirmarlo.",
+  "codeExpired": "El código venció",
+  "codeLabel": "Código de verificación",
+  "codeSentTo": "Lo enviamos al {phone}.",
+  "codeSingleUse": "Tu código vence en 5 minutos y solo sirve una vez.",
+  "codeTitle": "Escribe el código",
+  "confirmPassword": "Repite la contraseña nueva",
+  "consentGateTitle": "Hola, {name}",
+  "consentGateSubtitle": "Actualizamos estos documentos. Para seguir usando RapiChonta, revísalos y acéptalos.",
+  "continueLabel": "Continuar",
+  "courierSignInTitle": "Ingreso de domiciliarios",
+  "courierSignInSubtitle": "Con tu celular y la contraseña que te dio RapiChonta. Luego confirmas con un código.",
+  "createAccount": "Crear mi cuenta",
+  "currentPassword": "Contraseña actual",
+  "dataDeleted": "Tus datos personales fueron eliminados y tu cuenta quedó cerrada.",
+  "deleteConfirm": "Eliminar definitivamente",
+  "deleteConfirmLabel": "Escribe {word} para confirmar",
+  "deleteConsequence1": "Borramos tu nombre, celular, direcciones y documentos.",
+  "deleteConsequence2": "Tu cuenta se cierra y salimos de todas tus sesiones.",
+  "deleteConsequence3": "Los pedidos ya hechos se conservan sin datos que te identifiquen, como exige la ley contable.",
+  "deleteData": "Eliminar mis datos",
+  "deleteSubtitle": "Esta acción no se puede deshacer.",
+  "deleteTitle": "¿Eliminar tus datos?",
+  "deleteWord": "ELIMINAR",
+  "devCode": "Entorno de prueba, código:",
+  "errAccountDisabled": "Esta cuenta está desactivada. Comunícate con RapiChonta.",
+  "errConsentRequired": "Debes aceptar los documentos para continuar.",
+  "errInvalidCredentials": "El número o la contraseña no son correctos.",
+  "errInvalidPhone": "Ese número no parece un celular válido.",
+  "errNetwork": "Sin conexión. Revisa tu internet e inténtalo de nuevo.",
+  "errOtpExpired": "El código venció. Pide uno nuevo.",
+  "errOtpInvalid": "Código incorrecto. {remaining, plural, =0{No te quedan intentos: pide otro código.} =1{Te queda 1 intento.} other{Te quedan {remaining} intentos.}}",
+  "errOtpLocked": "Demasiados intentos con este código. Pide uno nuevo.",
+  "errOtpNotFound": "Ese código ya no es válido. Pide uno nuevo.",
+  "errOtpProviderUnavailable": "No pudimos enviar el SMS en este momento. Inténtalo de nuevo en unos minutos.",
+  "errOtpSendLimit": "Ya enviamos varios códigos a este número. Podrás pedir otro en {minutes, plural, =1{1 minuto} other{{minutes} minutos}}.",
+  "errPasswordLocked": "Demasiados intentos fallidos. Inténtalo en {minutes, plural, =1{1 minuto} other{{minutes} minutos}}.",
+  "errPasswordNotSet": "Tu cuenta no usa contraseña.",
+  "errPasswordRequired": "Escribe tu contraseña para continuar.",
+  "errPermissionDenied": "No tienes permiso para hacer esto.",
+  "errPhoneAlreadyRegistered": "Ese número ya pertenece a otra cuenta.",
+  "errRefreshReused": "Cerramos tu sesión por seguridad. Vuelve a entrar.",
+  "errRegistrationExpired": "Pasó mucho tiempo. Pide un código nuevo para terminar tu registro.",
+  "errRoleNotGranted": "Tu cuenta no tiene ese rol.",
+  "errSamePhone": "Ese ya es tu número actual.",
+  "errServer": "Tuvimos un problema de nuestro lado. Inténtalo en un momento.",
+  "errSessionInvalid": "Tu sesión terminó. Vuelve a entrar.",
+  "errTooManyRequests": "Demasiados intentos seguidos. Espera un momento.",
+  "errUnknown": "Algo salió mal. Inténtalo de nuevo.",
+  "errValidation": "Revisa los datos: hay campos incompletos o con formato no válido.",
+  "errWeakPassword": "La contraseña debe tener al menos 10 caracteres y no puede ser tan obvia.",
+  "expiresIn": "Vence en {time}",
+  "familyNames": "Apellidos",
+  "givenNames": "Nombres",
+  "hidePassword": "Ocultar contraseña",
+  "language": "Idioma",
+  "languageHint": "Lo recordamos en tu cuenta, también en la web.",
+  "legalTerms": "Términos y condiciones",
+  "legalDataPolicy": "Política de tratamiento de datos",
+  "legalCourierLocation": "Autorización de ubicación en turno",
+  "legalVersion": "versión {version}",
+  "modeCustomer": "Soy cliente",
+  "modeCourier": "Soy domiciliario",
+  "modeTitle": "Modo de uso",
+  "modeCourierActive": "Modo domiciliario",
+  "modeCustomerActive": "Modo cliente",
+  "modeCourierHint": "Recibes ofertas de pedidos cuando estás en turno.",
+  "modeCustomerHint": "Haces pedidos para ti. No recibes ofertas.",
+  "newPassword": "Contraseña nueva",
+  "newPhone": "Celular nuevo",
+  "optional": "Opcional",
+  "password": "Contraseña",
+  "passwordChanged": "Tu contraseña quedó actualizada.",
+  "passwordHint": "La usas para entrar como domiciliario.",
+  "passwordMismatch": "Las contraseñas no coinciden.",
+  "passwordPolicy": "Mínimo {min} caracteres. Una frase fácil de recordar funciona bien.",
+  "personalData": "Datos personales",
+  "phoneChangeHint": "Para cambiarlo te enviamos un código al número nuevo.",
+  "phoneChanged": "Tu celular quedó actualizado.",
+  "phoneHint": "Lo usamos solo para tus pedidos y para avisarte de tu domicilio.",
+  "phoneInvalid": "Escribe un celular colombiano de 10 dígitos (empieza por 3).",
+  "phoneLabel": "Celular",
+  "privacy": "Privacidad y documentos",
+  "profileSaved": "Guardamos tus cambios.",
+  "profileTitle": "¡Bienvenido a RapiChonta!",
+  "profileSubtitle": "Solo falta tu nombre, así el domiciliario sabe a quién entregar.",
+  "resend": "Reenviar código",
+  "resendIn": "Reenviar en {seconds} s",
+  "roleAdmin": "Administrador",
+  "roleCourier": "Domiciliario",
+  "roleCustomer": "Cliente",
+  "roleOperator": "Operador",
+  "save": "Guardar",
+  "savePassword": "Guardar contraseña",
+  "security": "Seguridad",
+  "sendCode": "Enviar código",
+  "showPassword": "Mostrar contraseña",
+  "signInTitle": "Entra con tu celular",
+  "signInSubtitle": "Te enviamos un código por SMS. Sin contraseñas.",
+  "signOut": "Cerrar sesión",
+  "signOutInstead": "Ahora no, cerrar sesión",
+  "switchToCourier": "Pasar a domiciliario",
+  "switchToCustomer": "Pasar a cliente",
+  "switchToCourierTitle": "Volver a modo domiciliario",
+  "switchToCourierSubtitle": "Confirma tu contraseña para volver a recibir pedidos.",
+  "switchToCourierAction": "Volver a modo domiciliario",
+  "twoSteps": "Verificación en dos pasos: contraseña y código por SMS.",
+  "verify": "Verificar",
+  "@acceptPrefix": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "@codeSentTo": {
+    "placeholders": {
+      "phone": {
+        "type": "String"
+      }
+    }
+  },
+  "@consentGateTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "@deleteConfirmLabel": {
+    "placeholders": {
+      "word": {
+        "type": "String"
+      }
+    }
+  },
+  "@errOtpInvalid": {
+    "placeholders": {
+      "remaining": {
+        "type": "int"
+      }
+    }
+  },
+  "@errOtpSendLimit": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "@errPasswordLocked": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "@expiresIn": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "@legalVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "@passwordPolicy": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "@resendIn": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  }
 }
