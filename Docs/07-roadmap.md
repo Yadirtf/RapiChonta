@@ -2,6 +2,8 @@
 
 Cada fase termina con algo usable y desplegado en el entorno de pruebas (SnapDeploy). Una fase no empieza hasta que la anterior cumple su criterio de terminado.
 
+Cada fase está desglosada en épicas e historias de usuario con sus requerimientos en [13 · Requerimientos y backlog](13-requerimientos.md); su avance se sigue en GitHub como explica [12 · Flujo de trabajo](12-flujo-de-trabajo.md).
+
 ## Fase 0 · Base del proyecto ✅
 
 - Ramas `main` y `develop`, estructura `api/`, `web/`, `app/` con arquitectura limpia.

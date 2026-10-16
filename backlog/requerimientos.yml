@@ -1,0 +1,223 @@
+# Catálogo de requerimientos del producto. Cada historia de backlog/epicas.yml
+# cita los requerimientos que cubre. Docs/13-requerimientos.md se genera desde
+# este archivo con: node .github/scripts/cli.js docs
+#
+# RF = requerimiento funcional, RNF = requerimiento no funcional.
+
+# ── Identidad y acceso ───────────────────────────────────────────────────────
+RF-01:
+  texto: "El cliente se registra e inicia sesión con su número de celular (formato E.164, también internacional) y un código de un solo uso de 6 dígitos que vence en 5 minutos, con máximo 5 intentos y 3 envíos por hora por número."
+  fuente: Docs/06-seguridad.md
+RF-02:
+  texto: "Las sesiones usan un token de acceso JWT de 15 minutos y un token de refresco rotativo de 30 días guardado en base de datos y revocable; en la web el refresco va en cookie HttpOnly, Secure, SameSite=Strict y en la app en el almacenamiento seguro del sistema."
+  fuente: Docs/06-seguridad.md
+RF-03:
+  texto: "Cada endpoint aplica control por rol (CUSTOMER, COURIER, OPERATOR, ADMIN) y validación de propiedad: un cliente solo ve sus pedidos y un domiciliario solo los que se le ofrecieron o aceptó, mientras están activos."
+  fuente: Docs/06-seguridad.md
+RF-04:
+  texto: "Solo el administrador crea cuentas de domiciliario, con datos personales, verificación de documentos, modo de financiación (caja diaria o dinero propio) y cuentas de cobro para el QR. No existe registro abierto de domiciliarios."
+  fuente: Docs/04-modelo-de-datos.md
+RF-05:
+  texto: "Domiciliarios, operadores y administradores inician sesión con código de un solo uso más contraseña (o segundo factor)."
+  fuente: Docs/06-seguridad.md
+RF-06:
+  texto: "Un usuario con rol domiciliario puede cambiar a modo cliente para hacer pedidos propios sin ganar acceso a pedidos de otros clientes; los clientes nunca ven la opción de ser domiciliario."
+  fuente: Docs/05-flujos-y-ux.md
+RF-07:
+  texto: "Al registrarse, el usuario acepta de forma expresa la política de tratamiento de datos (Ley 1581 de 2012) y puede consultar, corregir y eliminar sus datos desde Mi cuenta."
+  fuente: Docs/06-seguridad.md
+
+# ── Catálogo, zonas y configuración ──────────────────────────────────────────
+RF-10:
+  texto: "El administrador registra establecimientos con nombre, categoría, punto en el mapa y un área (polígono) dibujada a mano que cubre el local y su entrada."
+  fuente: Docs/04-modelo-de-datos.md
+RF-11:
+  texto: "Administradores y operadores mantienen el menú de cada establecimiento: productos con nombre, detalle, foto, precio en COP, tiempo estimado de preparación y disponibilidad."
+  fuente: Docs/04-modelo-de-datos.md
+RF-12:
+  texto: "La pantalla principal muestra el mapa centrado en el usuario (o en Villagarzón si no comparte ubicación) con los establecimientos registrados, filtrables por categoría, y una tarjeta con distancia y botón Pedir aquí al tocar un marcador."
+  fuente: Docs/05-flujos-y-ux.md
+RF-13:
+  texto: "La ficha del establecimiento muestra su menú con precio, detalle, foto y tiempo de preparación de cada producto disponible."
+  fuente: Docs/05-flujos-y-ux.md
+RF-14:
+  texto: "El administrador dibuja zonas de entrega con tarifa fija: barrios del casco urbano (URBAN) y rangos de veredas y lugares aledaños (RURAL). La tarifa del pedido es la de la zona donde cae la dirección; fuera de toda zona no se puede pedir."
+  fuente: Docs/04-modelo-de-datos.md
+RF-15:
+  texto: "El administrador define el horario de operación por día (hora de Colombia). Fuera de horario se ven el mapa y los menús, pero el botón de pedir muestra la próxima hora de apertura."
+  fuente: Docs/05-flujos-y-ux.md
+RF-16:
+  texto: "Los parámetros del negocio se cambian desde el panel sin desplegar (AppSetting): porcentaje de comisión, tope para clientes nuevos (100.000 COP), vencimiento de ofertas (60 s), tiempo de decisión del cliente (180 s), umbral de llegada (80 m) y espera para entrega con foto (10 min)."
+  fuente: Docs/04-modelo-de-datos.md
+RF-17:
+  texto: "Los precios se cobran en COP y, para extranjeros, se muestra al lado un valor aproximado en USD o EUR con la tasa de cambio del día, marcado como aproximado."
+  fuente: Docs/05-flujos-y-ux.md
+
+# ── Pedido del cliente ───────────────────────────────────────────────────────
+RF-20:
+  texto: "El cliente arma un carrito con productos de un solo establecimiento y ve el total: suma de productos más la tarifa de la zona de entrega."
+  fuente: Docs/05-flujos-y-ux.md
+RF-21:
+  texto: "La dirección de entrega es la ubicación actual o un punto elegido en el mapa, con una referencia en texto; si el pedido es para otra persona se registran su nombre y teléfono."
+  fuente: Docs/05-flujos-y-ux.md
+RF-22:
+  texto: "Al confirmar, se crea el pedido con código RC-XXXX, se copian nombre, precio y tiempo de cada producto, se registra el medio de pago contra entrega elegido (efectivo, Nequi, Daviplata o transferencia) y se aplica el tope de 100.000 COP a clientes sin pedidos entregados."
+  fuente: Docs/04-modelo-de-datos.md
+RF-23:
+  texto: "Mis pedidos muestra los pedidos activos con su estado y el historial de pedidos anteriores con su detalle."
+  fuente: Docs/05-flujos-y-ux.md
+
+# ── Asignación ───────────────────────────────────────────────────────────────
+RF-30:
+  texto: "Cada pedido nuevo entra al panel del operador con alerta sonora y queda resaltado mientras no tenga domiciliario."
+  fuente: Docs/05-flujos-y-ux.md
+RF-31:
+  texto: "El panel muestra en un mapa el establecimiento, el punto de entrega y los domiciliarios disponibles y verificados ordenados por cercanía al establecimiento; solo el personal de RapiChonta ve esta información."
+  fuente: Docs/05-flujos-y-ux.md
+RF-32:
+  texto: "El operador envía el pedido a un domiciliario específico o a todos los disponibles; el primero que acepta lo toma (actualización condicional en base de datos) y a los demás se les retira la oferta. Cada oferta y respuesta queda en OrderOffer."
+  fuente: Docs/04-modelo-de-datos.md
+RF-33:
+  texto: "Si nadie acepta antes del vencimiento de la oferta (60 s por defecto), el pedido vuelve al panel resaltado para reenviarlo."
+  fuente: Docs/05-flujos-y-ux.md
+RF-34:
+  texto: "La plataforma envía notificaciones push por FCM (Android/iOS) y Huawei Push Kit, con tokens por dispositivo y proveedor (DeviceToken)."
+  fuente: Docs/02-stack-tecnologico.md
+
+# ── Domiciliario y geocercas ─────────────────────────────────────────────────
+RF-40:
+  texto: "El domiciliario activa o desactiva Disponible; su ubicación se envía solo mientras está disponible o con un pedido activo y tras aceptar una autorización expresa."
+  fuente: Docs/06-seguridad.md
+RF-41:
+  texto: "La oferta abre una pantalla con establecimiento, productos, total a comprar y tarifa, con los botones Tomar pedido y No puedo."
+  fuente: Docs/05-flujos-y-ux.md
+RF-42:
+  texto: "Con el pedido en ACCEPTED, tras dos lecturas seguidas de ubicación dentro del área del local (ST_Covers), el pedido pasa a AT_ESTABLISHMENT automáticamente."
+  fuente: Docs/05-flujos-y-ux.md
+RF-43:
+  texto: "Con el pedido en ON_THE_WAY, cuando la distancia al punto de entrega baja del umbral (80 m por defecto), el pedido pasa a ARRIVING y el cliente recibe una notificación."
+  fuente: Docs/05-flujos-y-ux.md
+RF-44:
+  texto: "El domiciliario registra lo pagado en el local (purchaseTotal) con foto de la factura; el pedido pasa a PREPARING y se calcula la hora estimada de listo con el producto que más tarda."
+  fuente: Docs/04-modelo-de-datos.md
+RF-45:
+  texto: "Al cumplirse el tiempo de preparación, el domiciliario recibe un aviso con Ya está listo (pasa a ON_THE_WAY) o Sigue en preparación (marca retraso visible para el cliente y repite el aviso)."
+  fuente: Docs/05-flujos-y-ux.md
+RF-46:
+  texto: "Sin señal, la app del domiciliario guarda los cambios de estado y los envía en orden al recuperar la conexión."
+  fuente: Docs/10-aspectos-adicionales.md
+
+# ── Seguimiento y producto faltante ─────────────────────────────────────────
+RF-50:
+  texto: "El cliente ve una línea de tiempo con el estado del pedido y la cuenta regresiva de preparación, nunca la ubicación del domiciliario."
+  fuente: Docs/05-flujos-y-ux.md
+RF-51:
+  texto: "Si falta un producto o cambió el precio, el domiciliario lo reporta y el cliente decide con opciones cerradas (cambiar por otro, quitar, aceptar nuevo precio, cancelar) en 3 minutos; si vence se quita el producto y, si era el único, se cancela. Cada decisión queda en OrderAdjustment."
+  fuente: Docs/05-flujos-y-ux.md
+
+# ── Entrega e incidencias ───────────────────────────────────────────────────
+RF-60:
+  texto: "En ARRIVING el cliente ve una pantalla de entrega con el total a pagar que no se cierra hasta que marca Recibí mi pedido o No lo recibí."
+  fuente: Docs/05-flujos-y-ux.md
+RF-61:
+  texto: "El cliente paga contra entrega en efectivo o con el QR de la cuenta del domiciliario (Nequi, Daviplata, transferencia) y el domiciliario marca con qué medio cobró."
+  fuente: Docs/05-flujos-y-ux.md
+RF-62:
+  texto: "No lo recibí crea una incidencia, pasa el pedido a DISPUTED, alerta al operador con prioridad y notifica al domiciliario; el operador resuelve como entregado o cancelado y ambos reciben la resolución."
+  fuente: Docs/05-flujos-y-ux.md
+RF-63:
+  texto: "Si el cliente no confirma tras la espera configurada (10 min), el domiciliario entrega con una foto tomada con la cámara de la app (no galería) con fecha, hora y ubicación; el pedido queda en PENDING_REVIEW hasta que el operador decide."
+  fuente: Docs/05-flujos-y-ux.md
+RF-64:
+  texto: "El panel del operador lista los pedidos activos con alertas (sin asignar, nadie aceptó, preparación retrasada, decisión vencida, foto por revisar, incidencias), su línea de tiempo completa y la acción de cancelar."
+  fuente: Docs/05-flujos-y-ux.md
+
+# ── Dinero ───────────────────────────────────────────────────────────────────
+RF-70:
+  texto: "El administrador abre la caja diaria de cada domiciliario con modo CASH_BOX registrando el monto base y si lo entregó en efectivo o por transferencia."
+  fuente: Docs/04-modelo-de-datos.md
+RF-71:
+  texto: "Cada compra, cobro y comisión de un pedido genera un movimiento de caja inmutable; los errores se corrigen con un movimiento de ajuste firmado por un administrador."
+  fuente: Docs/06-seguridad.md
+RF-72:
+  texto: "Al cierre del día el sistema calcula lo que el domiciliario devuelve: base entregada más comisiones de los domicilios completados (CASH_BOX) o solo comisiones (OWN_FUNDS), y muestra las diferencias."
+  fuente: Docs/04-modelo-de-datos.md
+RF-73:
+  texto: "La comisión es un porcentaje fijo de cada domicilio completado; el porcentaje vigente y su valor se copian en el pedido para que un cambio futuro no altere pedidos pasados."
+  fuente: Docs/04-modelo-de-datos.md
+
+# ── Fases futuras ────────────────────────────────────────────────────────────
+RF-80:
+  texto: "La app se publica en Google Play, App Store y Huawei AppGallery, con el texto y video de justificación del permiso de ubicación en segundo plano."
+  fuente: Docs/07-roadmap.md
+RF-81:
+  texto: "Las pantallas de cliente, domiciliario y operador se actualizan al instante con WebSockets (Socket.IO) y Redis."
+  fuente: Docs/07-roadmap.md
+RF-82:
+  texto: "El cliente repite un pedido anterior en un toque y guarda establecimientos favoritos."
+  fuente: Docs/07-roadmap.md
+RF-83:
+  texto: "El panel de métricas muestra tiempo hasta aceptación, tiempo de entrega y desvío frente a la preparación estimada, retrasos por local, producto faltante, incidencias y pedidos recurrentes."
+  fuente: Docs/01-vision-y-alcance.md
+RF-90:
+  texto: "El cliente paga en línea dentro de la app (PSE, Nequi, Daviplata) mediante una pasarela como Wompi o Mercado Pago."
+  fuente: Docs/07-roadmap.md
+RF-91:
+  texto: "El cliente califica al domiciliario y al establecimiento después de cada pedido entregado."
+  fuente: Docs/07-roadmap.md
+RF-92:
+  texto: "El administrador crea cupones y promociones con reglas de uso."
+  fuente: Docs/07-roadmap.md
+RF-93:
+  texto: "La tarifa puede calcularse por distancia además de por zona fija, según configuración."
+  fuente: Docs/07-roadmap.md
+RF-95:
+  texto: "El comercio aliado tiene un portal para administrar su menú, recibir pedidos y reportar tiempos reales de preparación."
+  fuente: Docs/07-roadmap.md
+RF-96:
+  texto: "El cliente elige entre pedido directo al comercio (MERCHANT_DIRECT) y compra por RapiChonta (COURIER_PURCHASE)."
+  fuente: Docs/01-vision-y-alcance.md
+RF-97:
+  texto: "Los domiciliarios se asignan automáticamente por proximidad, carga y calificación, con el operador como supervisión."
+  fuente: Docs/07-roadmap.md
+RF-98:
+  texto: "La plataforma opera en varios municipios del Putumayo, cada uno con sus zonas, tarifas, horario y equipo."
+  fuente: Docs/07-roadmap.md
+
+# ── No funcionales ───────────────────────────────────────────────────────────
+RNF-01:
+  texto: "Arquitectura limpia en los tres proyectos: la lógica de negocio vive en dominio y casos de uso, cada caso de uso nuevo tiene prueba unitaria y el dominio se prueba sin base de datos."
+  fuente: Docs/09-convenciones.md
+RNF-02:
+  texto: "La API mantiene cabeceras seguras (helmet), CORS por lista blanca, validación estricta de entrada, límite de peticiones (más estricto en OTP), SQL parametrizado y errores sin detalles internos."
+  fuente: Docs/06-seguridad.md
+RNF-03:
+  texto: "Todos los textos visibles están en archivos JSON/ARB por idioma (español e inglés); agregar un idioma es agregar un archivo."
+  fuente: Docs/03-arquitectura.md
+RNF-04:
+  texto: "Accesibilidad: contraste AA, botones de mínimo 48 px y textos que escalan con la configuración del sistema."
+  fuente: Docs/05-flujos-y-ux.md
+RNF-05:
+  texto: "El dinero se guarda en Decimal(12,2) en pesos colombianos, nunca en float."
+  fuente: Docs/04-modelo-de-datos.md
+RNF-06:
+  texto: "La ubicación del domiciliario nunca se envía al cliente, se valida en el servidor con varias lecturas y su historial se borra a los 30 días."
+  fuente: Docs/06-seguridad.md
+RNF-07:
+  texto: "Las acciones de operadores y administradores (asignar, cancelar, resolver, ajustar caja) quedan en un registro de auditoría con quién y cuándo."
+  fuente: Docs/06-seguridad.md
+RNF-08:
+  texto: "Las fotos (productos, facturas, entregas) se suben con URL firmada y vencimiento, validando tipo y tamaño."
+  fuente: Docs/06-seguridad.md
+RNF-09:
+  texto: "Cada PR ejecuta en GitHub Actions lint, pruebas y build de los proyectos que toca; main y develop están protegidas y solo reciben cambios por PR con CI en verde."
+  fuente: Docs/09-convenciones.md
+RNF-10:
+  texto: "Los errores de los tres proyectos se reportan a Sentry y la API escribe logs estructurados."
+  fuente: Docs/10-aspectos-adicionales.md
+RNF-11:
+  texto: "Los mapas usan OpenStreetMap/MapLibre, sin depender de servicios de Google, para funcionar en teléfonos Huawei."
+  fuente: Docs/02-stack-tecnologico.md
+RNF-12:
+  texto: "Las dependencias se revisan con Dependabot y npm audit en CI; ningún secreto vive en el repositorio."
+  fuente: Docs/06-seguridad.md

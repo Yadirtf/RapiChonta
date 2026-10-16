@@ -1,0 +1,10 @@
+{
+  "name": "rapichonta-flujo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Scripts de GitHub Actions para el backlog, el flujo de estados y el tablero de RapiChonta",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "js-yaml": "4.1.0"
+  }
+}

@@ -18,3 +18,7 @@ La documentación del proyecto vive en [`Docs/`](Docs/README.md).
 ## Ramas
 
 `main` es producción, `develop` es integración y se despliega en SnapDeploy. El trabajo se hace en ramas `feature/*` que entran a `develop` por pull request. Ver [convenciones](Docs/09-convenciones.md).
+
+## Backlog y progreso
+
+Las épicas e historias de usuario son issues de GitHub y GitHub Actions las mueve de estado con cada PR. El avance está en el issue fijado "📊 Progreso del proyecto". Ver [flujo de trabajo](Docs/12-flujo-de-trabajo.md) y [requerimientos](Docs/13-requerimientos.md).

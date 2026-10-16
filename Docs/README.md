@@ -15,6 +15,8 @@ Esta carpeta es la fuente de verdad del proyecto: qué se construye, con qué, c
 | 09 | [Convenciones de trabajo](09-convenciones.md) | Ramas, commits, PRs, pruebas y estilo |
 | 10 | [Decisiones y preguntas abiertas](10-aspectos-adicionales.md) | Decisiones del negocio ya tomadas y lo que falta por definir |
 | 11 | [Despliegue en SnapDeploy](11-despliegue-snapdeploy.md) | Cómo levantar el entorno de pruebas actual (un contenedor Docker + Neon) |
+| 12 | [Flujo de trabajo](12-flujo-de-trabajo.md) | Épicas, historias, estados automáticos con GitHub Actions, progreso y asignación a agentes |
+| 13 | [Requerimientos y backlog](13-requerimientos.md) | Catálogo de requerimientos y las épicas e historias del roadmap (generado desde `backlog/`) |
 
 ## Resumen de decisiones
 
@@ -29,6 +31,7 @@ Esta carpeta es la fuente de verdad del proyecto: qué se construye, con qué, c
 - **App:** Flutter (Android, iOS, Huawei AppGallery y web desde un solo código).
 - **Mapas:** OpenStreetMap / MapLibre, para no depender de Google (indispensable en Huawei) ni pagar por mapa cargado en el MVP.
 - **Ramas:** `main` (producción), `develop` (integración y despliegue de pruebas en SnapDeploy), ramas `feature/*` hacia `develop`.
+- **Backlog:** épicas e historias de usuario como issues de GitHub, con estados que mueve GitHub Actions y un issue fijado con el progreso ([12](12-flujo-de-trabajo.md), [13](13-requerimientos.md)).
 
 ## Estado actual del código
 

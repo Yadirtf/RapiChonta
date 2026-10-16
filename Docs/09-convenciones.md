@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | `main` | Lo que está en producción. Solo recibe merges desde `develop` (o `hotfix/*`). | Producción (cuando exista) |
 | `develop` | Integración de lo terminado. | SnapDeploy (pruebas) |
-| `feature/<tema>` | Una funcionalidad, sale de `develop` y vuelve por PR. | — |
+| `feature/<número>-<tema>` | Una historia o tarea (por ejemplo `feature/34-carrito`), sale de `develop` y vuelve por PR. | — |
 | `hotfix/<tema>` | Corrección urgente, sale de `main` y vuelve a `main` y `develop`. | — |
 
 Recomendado en GitHub: proteger `main` y `develop` (sin push directo, PR con al menos una aprobación y CI en verde).
@@ -17,7 +17,7 @@ Recomendado en GitHub: proteger `main` y `develop` (sin push directo, PR con al 
 
 ## Pull requests
 
-- Un PR por funcionalidad, pequeño y revisable.
+- Un PR por historia o tarea, pequeño y revisable, con `Closes #<número>` para que el flujo mueva el issue ([12 · Flujo de trabajo](12-flujo-de-trabajo.md)).
 - Descripción con antes/después y cómo probarlo.
 - Si cambia una decisión documentada, el PR actualiza `Docs/` en el mismo cambio.
 

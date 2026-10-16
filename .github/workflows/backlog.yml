@@ -1,0 +1,74 @@
+# Crea etiquetas, épicas e historias desde backlog/*.yml, reescribe el issue de
+# progreso y sincroniza el tablero de GitHub Projects. Ver Docs/12-flujo-de-trabajo.md.
+name: Backlog
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - "backlog/**"
+      - ".github/labels.yml"
+      - ".github/scripts/**"
+      - ".github/workflows/backlog.yml"
+  schedule:
+    - cron: "0 11 * * *" # 6:00 a. m. en Colombia (solo corre desde la rama por defecto)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: backlog
+  cancel-in-progress: false
+
+jobs:
+  sincronizar:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+      PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: .github/scripts/package-lock.json
+
+      - name: Instalar dependencias de los scripts
+        run: npm ci --prefix .github/scripts
+
+      - name: Validar backlog
+        run: node .github/scripts/cli.js validar
+
+      - name: Etiquetas
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await require('./.github/scripts/etiquetas.js')({ github, context, core })
+
+      - name: Épicas e historias
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await require('./.github/scripts/backlog.js')({ github, context, core })
+
+      - name: Issue de progreso
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await require('./.github/scripts/progreso.js')({ github, context, core })
+
+      - name: Tablero de GitHub Projects
+        if: env.PROJECT_TOKEN != ''
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PROJECT_TOKEN }}
+          script: |
+            await require('./.github/scripts/tablero.js')({ github, context, core, numeros: 'todos' })
+
+      - name: Aviso si falta el token del tablero
+        if: env.PROJECT_TOKEN == ''
+        run: echo "::notice::El tablero de GitHub Projects no se sincronizó porque falta el secreto PROJECT_TOKEN (ver Docs/12-flujo-de-trabajo.md)."
