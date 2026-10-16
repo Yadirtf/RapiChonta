@@ -1,9 +1,13 @@
 /// Configuración por entorno. Se inyecta al compilar:
-/// flutter run --dart-define=API_URL=https://rapichonta-api.onrender.com/api/v1
+/// flutter run --dart-define=API_URL=https://rapichonta.example.com/api/v1
 class Env {
   static const apiUrl = String.fromEnvironment('API_URL', defaultValue: 'http://10.0.2.2:3000/api/v1');
   static const mapTilesUrl = String.fromEnvironment(
     'MAP_TILES_URL',
     defaultValue: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   );
+
+  /// Web pública (documentos legales). Por defecto, el mismo origen de la API (contenedor único).
+  static const _webUrl = String.fromEnvironment('WEB_URL');
+  static String get webUrl => _webUrl.isNotEmpty ? _webUrl : apiUrl.replaceFirst(RegExp(r'/api/v\d+/?$'), '');
 }

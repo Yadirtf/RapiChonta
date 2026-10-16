@@ -25,6 +25,10 @@ dependencies:
   geolocator: ^14.1.1
   equatable: ^3.0.0
   intl: any
+  # Token de refresco en Keystore (Android, también Huawei sin GMS) / Keychain (iOS)
+  flutter_secure_storage: ^11.2.0
+  # Abrir los documentos legales publicados en la web
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_test:
