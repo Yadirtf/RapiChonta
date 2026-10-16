@@ -1,6 +1,11 @@
-// Esquema inicial del MVP. Ver Docs/04-modelo-de-datos.md
-// Las columnas geográficas usan PostGIS (geography(Point,4326)); Prisma las trata como Unsupported
-// y se consultan con SQL crudo desde los repositorios de infraestructura.
+// Esquema normalizado de RapiChonta. Diseño completo y reglas: Docs/14-base-de-datos/.
+//
+// - Cada estado o clasificación es una tabla catálogo (id + code): no hay enums.
+// - Lo que Prisma no sabe expresar (CHECK, índices parciales, NULLS NOT DISTINCT, exclusiones,
+//   disparadores, vistas) está en SQL al final de cada migration.sql. Revise toda migración nueva
+//   antes de aplicarla y quite cualquier DROP INDEX / DROP TRIGGER que no sea intencional.
+// - Las columnas geography son Unsupported: las tablas con una obligatoria se escriben con
+//   $executeRaw + Prisma.sql desde su repositorio de infraestructura.
 
 generator client {
   provider        = "prisma-client-js"
@@ -10,467 +15,1138 @@ generator client {
 datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
-  extensions = [postgis]
+  extensions = [postgis, citext, btree_gist, unaccent]
 }
 
-/// Los domiciliarios los registra un administrador. Un COURIER puede cambiar a "modo cliente" en la app;
-/// los clientes nunca ven la opción de domiciliario.
-enum UserRole {
-  CUSTOMER
-  COURIER
-  OPERATOR
-  ADMIN
+// ═══════════════════════════ 00 · Transversal ═══════════════════════════
+
+model Country {
+  id          Int          @id @default(autoincrement()) @db.SmallInt
+  iso2        String       @unique @db.Char(2)
+  name        String       @db.VarChar(80)
+  departments Department[]
+
+  @@map("countries")
 }
 
-enum EstablishmentCategory {
-  FAST_FOOD
-  RESTAURANT
-  SUPERMARKET
-  STORE
-  PHARMACY
+model Department {
+  id             Int            @id @default(autoincrement()) @db.SmallInt
+  countryId      Int            @map("country_id") @db.SmallInt
+  daneCode       String         @unique @map("dane_code") @db.Char(2)
+  name           String         @db.VarChar(80)
+  country        Country        @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  municipalities Municipality[]
+
+  @@unique([countryId, name])
+  @@map("departments")
 }
 
-enum OrderStatus {
-  PENDING_ASSIGNMENT
-  OFFERED
-  ACCEPTED
-  AT_ESTABLISHMENT
-  AWAITING_CUSTOMER
-  PREPARING
-  ON_THE_WAY
-  ARRIVING
-  PENDING_REVIEW
-  DELIVERED
-  DISPUTED
-  CANCELLED
+model Municipality {
+  id           Int                                      @id @default(autoincrement())
+  departmentId Int                                      @map("department_id") @db.SmallInt
+  daneCode     String                                   @unique @map("dane_code") @db.Char(5)
+  name         String                                   @db.VarChar(80)
+  timeZone     String                                   @map("time_zone") @db.VarChar(40)
+  center       Unsupported("geography(Point, 4326)")
+  boundary     Unsupported("geography(Polygon, 4326)")?
+  launchedAt   DateTime?                                @map("launched_at") @db.Timestamptz(6)
+  department   Department                               @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+
+  userRoles               UserRole[]
+  establishments          Establishment[]
+  deliveryZones           DeliveryZone[]
+  operatingHours          OperatingHour[]
+  operatingHourExceptions OperatingHourException[]
+  settingValues           SettingValue[]
+  commissionRates         CommissionRate[]
+
+  @@map("municipalities")
 }
 
-enum FulfillmentMode {
-  COURIER_PURCHASE
-  MERCHANT_DIRECT
+model Language {
+  id            Int       @id @default(autoincrement()) @db.SmallInt
+  code          String    @unique @db.VarChar(40)
+  sortOrder     Int       @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+
+  userPreferences      UserPreference[]
+  categoryTranslations EstablishmentCategoryTranslation[]
+  sectionTranslations  MenuSectionTranslation[]
+  productVersionTexts  ProductVersionText[]
+
+  @@map("languages")
 }
 
-/// Pago contra entrega: el cliente paga al domiciliario cuando llega.
-enum PaymentMethod {
-  CASH
-  NEQUI
-  DAVIPLATA
-  BANK_TRANSFER
+model Currency {
+  id            Int       @id @default(autoincrement()) @db.SmallInt
+  code          String    @unique @db.VarChar(40)
+  minorUnits    Int       @map("minor_units") @db.SmallInt
+  sortOrder     Int       @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+
+  userPreferences UserPreference[]
+  exchangeRates   ExchangeRate[]
+
+  @@map("currencies")
 }
 
-/// Cómo financia el domiciliario las compras.
-enum CourierFundingMode {
-  CASH_BOX // RapiChonta le entrega una base diaria (caja)
-  OWN_FUNDS // compra con su propio dinero y solo rinde cuentas de los domicilios
+model PaymentMethod {
+  id               Int       @id @default(autoincrement()) @db.SmallInt
+  code             String    @unique @db.VarChar(40)
+  sortOrder        Int       @map("sort_order") @db.SmallInt
+  deactivatedAt    DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  isCashOnDelivery Boolean   @map("is_cash_on_delivery")
+  isAccountBased   Boolean   @map("is_account_based")
+  requiresBank     Boolean   @map("requires_bank")
+
+  collectionAccounts CourierCollectionAccount[]
+
+  @@map("payment_methods")
 }
 
-enum CashBoxStatus {
-  OPEN
-  CLOSED
+model FilePurpose {
+  id               Int       @id @default(autoincrement()) @db.SmallInt
+  code             String    @unique @db.VarChar(40)
+  sortOrder        Int       @map("sort_order") @db.SmallInt
+  deactivatedAt    DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  maxSizeBytes     Int       @map("max_size_bytes")
+  allowedMimeTypes String[]  @map("allowed_mime_types")
+  requiresCamera   Boolean   @map("requires_camera")
+
+  files File[]
+
+  @@map("file_purposes")
 }
 
-enum MoneyTransferMethod {
-  CASH
-  BANK_TRANSFER
+model File {
+  id               String                                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  purposeId        Int                                    @map("purpose_id") @db.SmallInt
+  storageKey       String                                 @unique @map("storage_key") @db.VarChar(300)
+  mimeType         String                                 @map("mime_type") @db.VarChar(80)
+  sizeBytes        Int                                    @map("size_bytes")
+  sha256           String                                 @db.Char(64)
+  uploadedByUserId String                                 @map("uploaded_by_user_id") @db.Uuid
+  capturedAt       DateTime?                              @map("captured_at") @db.Timestamptz(6)
+  capturedLocation Unsupported("geography(Point, 4326)")? @map("captured_location")
+  createdAt        DateTime                               @default(now()) @map("created_at") @db.Timestamptz(6)
+  purpose          FilePurpose                            @relation(fields: [purposeId], references: [id], onDelete: Restrict)
+  uploadedBy       User                                   @relation("FileUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+
+  legalDocumentVersions LegalDocumentVersion[]
+  courierDocuments      CourierDocument[]
+  collectionAccountQrs  CourierCollectionAccount[]
+  establishmentLogos    Establishment[]
+  productImages         ProductImage[]
+
+  @@map("files")
 }
 
-enum CashMovementType {
-  OPENING // base entregada por RapiChonta
-  PURCHASE // compra en un establecimiento
-  COLLECTION // cobro al cliente (compra + domicilio), recibido en la cuenta del domiciliario en el MVP
-  COMMISSION // porcentaje del domicilio que el domiciliario paga a RapiChonta
-  DELIVERY_FEE // valor del domicilio a rendir
-  RETURN // devolución de dinero a RapiChonta al cierre
-  ADJUSTMENT
+model AuditAction {
+  id            Int       @id @default(autoincrement()) @db.SmallInt
+  code          String    @unique @db.VarChar(40)
+  sortOrder     Int       @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+
+  logs AuditLog[]
+
+  @@map("audit_actions")
 }
 
-enum AdjustmentReason {
-  UNAVAILABLE
-  PRICE_CHANGED
+/// Registro de auditoría de solo inserción (RNF-07). entity_table + entity_id es una referencia polimórfica.
+model AuditLog {
+  id          BigInt      @id @default(autoincrement())
+  actorUserId String?     @map("actor_user_id") @db.Uuid
+  actionId    Int         @map("action_id") @db.SmallInt
+  entityTable String      @map("entity_table") @db.VarChar(63)
+  entityId    String      @map("entity_id")
+  changes     Json?
+  ipAddress   String?     @map("ip_address") @db.Inet
+  occurredAt  DateTime    @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  actor       User?       @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  action      AuditAction @relation(fields: [actionId], references: [id], onDelete: Restrict)
+
+  @@index([entityTable, entityId, occurredAt])
+  @@index([actorUserId, occurredAt])
+  @@map("audit_logs")
 }
 
-enum AdjustmentDecision {
-  PENDING
-  SUBSTITUTE
-  REMOVE_ITEM
-  ACCEPT_PRICE
-  CANCEL_ORDER
-  EXPIRED
+// ═══════════════════════════ E01 · Identidad y acceso ═══════════════════════════
+
+model DocumentType {
+  id            Int       @id @default(autoincrement()) @db.SmallInt
+  code          String    @unique @db.VarChar(40)
+  sortOrder     Int       @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  countryId     Int?      @map("country_id") @db.SmallInt
+
+  people Person[]
+
+  @@map("document_types")
 }
 
-enum IncidentType {
-  NOT_RECEIVED
-  WRONG_ORDER
-  OTHER
+/// Quién es la persona. Nada de acceso vive aquí.
+model Person {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  givenNames     String        @map("given_names") @db.VarChar(80)
+  familyNames    String?       @map("family_names") @db.VarChar(80)
+  documentTypeId Int?          @map("document_type_id") @db.SmallInt
+  documentNumber String?       @map("document_number") @db.VarChar(20)
+  birthDate      DateTime?     @map("birth_date") @db.Date
+  anonymizedAt   DateTime?     @map("anonymized_at") @db.Timestamptz(6)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  documentType   DocumentType? @relation(fields: [documentTypeId], references: [id], onDelete: Restrict)
+
+  phones       PersonPhone[]
+  emails       PersonEmail[]
+  user         User?
+  consents     PersonConsent[]
+  dataRequests DataRequest[]
+
+  @@unique([documentTypeId, documentNumber])
+  @@map("people")
 }
 
-enum IncidentStatus {
-  OPEN
-  RESOLVED
+model PersonPhone {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  personId   String    @map("person_id") @db.Uuid
+  phoneE164  String    @unique @map("phone_e164") @db.VarChar(16)
+  isPrimary  Boolean   @map("is_primary")
+  verifiedAt DateTime? @map("verified_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  person     Person    @relation(fields: [personId], references: [id], onDelete: Restrict)
+
+  @@index([personId])
+  @@map("person_phones")
 }
 
-/// Barrios del casco urbano o veredas/lugares aledaños: cada zona tiene su tarifa fija.
-enum ZoneKind {
-  URBAN
-  RURAL
+model PersonEmail {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  personId   String    @map("person_id") @db.Uuid
+  email      String    @unique @db.Citext
+  isPrimary  Boolean   @map("is_primary")
+  verifiedAt DateTime? @map("verified_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  person     Person    @relation(fields: [personId], references: [id], onDelete: Restrict)
+
+  @@index([personId])
+  @@map("person_emails")
 }
 
-enum OfferMode {
-  SPECIFIC // el operador eligió un domiciliario
-  BROADCAST // enviado a todos los disponibles; el primero que acepta lo toma
+model UserStatus {
+  id            Int       @id @default(autoincrement()) @db.SmallInt
+  code          String    @unique @db.VarChar(40)
+  sortOrder     Int       @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  isInitial     Boolean   @map("is_initial")
+  isTerminal    Boolean   @map("is_terminal")
+  canSignIn     Boolean   @map("can_sign_in")
+
+  users           User[]
+  transitionsFrom UserStatusTransition[] @relation("UserStatusTransitionFrom")
+  transitionsTo   UserStatusTransition[] @relation("UserStatusTransitionTo")
+  historyTo       UserStatusHistory[]    @relation("UserStatusHistoryTo")
+
+  @@map("user_statuses")
 }
 
-enum OfferResponse {
-  PENDING
-  ACCEPTED
-  REJECTED
-  EXPIRED
-  TAKEN_BY_OTHER
+model UserStatusTransition {
+  fromStatusId Int                 @map("from_status_id") @db.SmallInt
+  toStatusId   Int                 @map("to_status_id") @db.SmallInt
+  fromStatus   UserStatus          @relation("UserStatusTransitionFrom", fields: [fromStatusId], references: [id], onDelete: Cascade)
+  toStatus     UserStatus          @relation("UserStatusTransitionTo", fields: [toStatusId], references: [id], onDelete: Cascade)
+  history      UserStatusHistory[]
+
+  @@id([fromStatusId, toStatusId])
+  @@map("user_status_transitions")
 }
 
-enum PushProvider {
-  FCM // Android con Google e iOS
-  HMS // Huawei Push Kit
-}
-
+/// Puede entrar al sistema. Los datos personales están en people.
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  role         UserRole @default(CUSTOMER)
-  fullName     String   @map("full_name")
-  phone        String   @unique
-  email        String?  @unique
-  passwordHash String?  @map("password_hash")
-  locale       String   @default("es")
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id                String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  personId          String     @unique @map("person_id") @db.Uuid
+  /// Estado actual: solo lo escribe el disparador de user_status_history.
+  statusId          Int        @map("status_id") @db.SmallInt
+  passwordHash      String?    @map("password_hash") @db.VarChar(255)
+  passwordChangedAt DateTime?  @map("password_changed_at") @db.Timestamptz(6)
+  createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  person            Person     @relation(fields: [personId], references: [id], onDelete: Restrict)
+  status            UserStatus @relation(fields: [statusId], references: [id], onDelete: Restrict)
 
-  addresses      Address[]
-  courierProfile CourierProfile?
-  ordersAsClient Order[]         @relation("CustomerOrders")
-  devices        DeviceToken[]
+  statusHistory          UserStatusHistory[]          @relation("UserStatusHistoryUser")
+  statusChanges          UserStatusHistory[]          @relation("UserStatusHistoryChangedBy")
+  roles                  UserRole[]                   @relation("UserRoleUser")
+  rolesGranted           UserRole[]                   @relation("UserRoleGrantedBy")
+  rolesRevoked           UserRole[]                   @relation("UserRoleRevokedBy")
+  preference             UserPreference?
+  sessions               Session[]
+  authAttempts           AuthAttempt[]
+  uploadedFiles          File[]                       @relation("FileUploadedBy")
+  auditLogs              AuditLog[]
+  legalVersionsCreated   LegalDocumentVersion[]
+  dataRequestsResolved   DataRequest[]
+  courierProfile         CourierProfile?              @relation("CourierProfileUser")
+  couriersCreated        CourierProfile[]             @relation("CourierProfileCreatedBy")
+  courierVerifications   CourierVerificationHistory[]
+  fundingModesCreated    CourierFundingMode[]
+  establishmentsCreated  Establishment[]
+  productsCreated        Product[]
+  productVersionsCreated ProductVersion[]
+  zonesCreated           DeliveryZone[]
+  zoneFeesCreated        DeliveryZoneFee[]
+  hoursCreated           OperatingHour[]
+  settingValuesCreated   SettingValue[]
+  commissionRatesCreated CommissionRate[]
 
+  @@index([statusId])
   @@map("users")
 }
 
-model Address {
-  id             String                                @id @default(uuid()) @db.Uuid
-  userId         String                                @map("user_id") @db.Uuid
-  label          String
-  line           String
-  reference      String?
-  // El pedido puede ser para otra persona (amigo, familiar)
-  recipientName  String?                               @map("recipient_name")
-  recipientPhone String?                               @map("recipient_phone")
-  location       Unsupported("geography(Point, 4326)")
-  isDefault      Boolean                               @default(false) @map("is_default")
-  createdAt      DateTime                              @default(now()) @map("created_at")
+model UserStatusHistory {
+  id              String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String                @map("user_id") @db.Uuid
+  fromStatusId    Int?                  @map("from_status_id") @db.SmallInt
+  toStatusId      Int                   @map("to_status_id") @db.SmallInt
+  changedByUserId String?               @map("changed_by_user_id") @db.Uuid
+  reason          String?               @db.VarChar(300)
+  changedAt       DateTime              @default(dbgenerated("clock_timestamp()")) @map("changed_at") @db.Timestamptz(6)
+  user            User                  @relation("UserStatusHistoryUser", fields: [userId], references: [id], onDelete: Restrict)
+  toStatus        UserStatus            @relation("UserStatusHistoryTo", fields: [toStatusId], references: [id], onDelete: Restrict)
+  transition      UserStatusTransition? @relation(fields: [fromStatusId, toStatusId], references: [fromStatusId, toStatusId], onDelete: Restrict)
+  changedBy       User?                 @relation("UserStatusHistoryChangedBy", fields: [changedByUserId], references: [id], onDelete: Restrict)
 
-  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orders Order[]
+  @@index([userId, changedAt])
+  @@map("user_status_history")
+}
 
-  @@index([location], type: Gist)
-  @@map("addresses")
+model Role {
+  id                   Int       @id @default(autoincrement()) @db.SmallInt
+  code                 String    @unique @db.VarChar(40)
+  sortOrder            Int       @map("sort_order") @db.SmallInt
+  deactivatedAt        DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  requiresPassword     Boolean   @map("requires_password")
+  isSelfAssignable     Boolean   @map("is_self_assignable")
+  isStaff              Boolean   @map("is_staff")
+  requiresMunicipality Boolean   @map("requires_municipality")
+
+  permissions       RolePermission[]
+  userRoles         UserRole[]
+  sessions          Session[]
+  legalRequirements LegalDocumentRequirement[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id            Int              @id @default(autoincrement()) @db.SmallInt
+  code          String           @unique @db.VarChar(60)
+  module        String           @db.VarChar(40)
+  sortOrder     Int              @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?        @map("deactivated_at") @db.Timestamptz(6)
+  roles         RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       Int        @map("role_id") @db.SmallInt
+  permissionId Int        @map("permission_id") @db.SmallInt
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+/// Roles otorgados con su alcance por municipio. Índice único parcial NULLS NOT DISTINCT en SQL.
+model UserRole {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String        @map("user_id") @db.Uuid
+  roleId          Int           @map("role_id") @db.SmallInt
+  municipalityId  Int?          @map("municipality_id")
+  grantedByUserId String?       @map("granted_by_user_id") @db.Uuid
+  grantedAt       DateTime      @default(now()) @map("granted_at") @db.Timestamptz(6)
+  revokedByUserId String?       @map("revoked_by_user_id") @db.Uuid
+  revokedAt       DateTime?     @map("revoked_at") @db.Timestamptz(6)
+  user            User          @relation("UserRoleUser", fields: [userId], references: [id], onDelete: Restrict)
+  role            Role          @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  municipality    Municipality? @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
+  grantedBy       User?         @relation("UserRoleGrantedBy", fields: [grantedByUserId], references: [id], onDelete: Restrict)
+  revokedBy       User?         @relation("UserRoleRevokedBy", fields: [revokedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@map("user_roles")
+}
+
+model UserPreference {
+  userId            String    @id @map("user_id") @db.Uuid
+  languageId        Int       @map("language_id") @db.SmallInt
+  displayCurrencyId Int?      @map("display_currency_id") @db.SmallInt
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  language          Language  @relation(fields: [languageId], references: [id], onDelete: Restrict)
+  displayCurrency   Currency? @relation(fields: [displayCurrencyId], references: [id], onDelete: Restrict)
+
+  @@map("user_preferences")
+}
+
+model Platform {
+  id            Int       @id @default(autoincrement()) @db.SmallInt
+  code          String    @unique @db.VarChar(40)
+  sortOrder     Int       @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  devices       Device[]
+
+  @@map("platforms")
+}
+
+/// Una instalación de la app o un navegador. Se relaciona con usuarios solo a través de sus sesiones.
+model Device {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  installationId String    @unique @map("installation_id") @db.Uuid
+  platformId     Int       @map("platform_id") @db.SmallInt
+  appVersion     String?   @map("app_version") @db.VarChar(20)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastSeenAt     DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  platform       Platform  @relation(fields: [platformId], references: [id], onDelete: Restrict)
+  sessions       Session[]
+
+  @@map("devices")
+}
+
+model SessionEndReason {
+  id            Int       @id @default(autoincrement()) @db.SmallInt
+  code          String    @unique @db.VarChar(40)
+  sortOrder     Int       @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  sessions      Session[]
+
+  @@map("session_end_reasons")
+}
+
+model Session {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String            @map("user_id") @db.Uuid
+  activeRoleId  Int               @map("active_role_id") @db.SmallInt
+  deviceId      String?           @map("device_id") @db.Uuid
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  endedAt       DateTime?         @map("ended_at") @db.Timestamptz(6)
+  endReasonId   Int?              @map("end_reason_id") @db.SmallInt
+  user          User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  activeRole    Role              @relation(fields: [activeRoleId], references: [id], onDelete: Restrict)
+  device        Device?           @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  endReason     SessionEndReason? @relation(fields: [endReasonId], references: [id], onDelete: Restrict)
+  refreshTokens RefreshToken[]
+
+  @@index([userId, createdAt])
+  @@map("sessions")
+}
+
+model RefreshToken {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId  String    @map("session_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash") @db.Char(64)
+  issuedAt   DateTime  @default(now()) @map("issued_at") @db.Timestamptz(6)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  consumedAt DateTime? @map("consumed_at") @db.Timestamptz(6)
+  session    Session   @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+
+  @@index([sessionId])
+  @@map("refresh_tokens")
+}
+
+model OtpPurpose {
+  id            Int            @id @default(autoincrement()) @db.SmallInt
+  code          String         @unique @db.VarChar(40)
+  sortOrder     Int            @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?      @map("deactivated_at") @db.Timestamptz(6)
+  challenges    OtpChallenge[]
+
+  @@map("otp_purposes")
+}
+
+model OtpChannel {
+  id            Int            @id @default(autoincrement()) @db.SmallInt
+  code          String         @unique @db.VarChar(40)
+  sortOrder     Int            @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?      @map("deactivated_at") @db.Timestamptz(6)
+  challenges    OtpChallenge[]
+
+  @@map("otp_channels")
+}
+
+/// Código de un solo uso. Nunca guarda el código en claro.
+model OtpChallenge {
+  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  phoneE164         String        @map("phone_e164") @db.VarChar(16)
+  purposeId         Int           @map("purpose_id") @db.SmallInt
+  channelId         Int           @map("channel_id") @db.SmallInt
+  codeHash          String?       @map("code_hash") @db.VarChar(255)
+  providerMessageId String?       @map("provider_message_id") @db.VarChar(100)
+  expiresAt         DateTime      @map("expires_at") @db.Timestamptz(6)
+  consumedAt        DateTime?     @map("consumed_at") @db.Timestamptz(6)
+  ipAddress         String?       @map("ip_address") @db.Inet
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  purpose           OtpPurpose    @relation(fields: [purposeId], references: [id], onDelete: Restrict)
+  channel           OtpChannel    @relation(fields: [channelId], references: [id], onDelete: Restrict)
+  attempts          AuthAttempt[]
+
+  @@index([phoneE164, createdAt])
+  @@map("otp_challenges")
+}
+
+model AuthFactor {
+  id            Int           @id @default(autoincrement()) @db.SmallInt
+  code          String        @unique @db.VarChar(40)
+  sortOrder     Int           @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?     @map("deactivated_at") @db.Timestamptz(6)
+  attempts      AuthAttempt[]
+
+  @@map("auth_factors")
+}
+
+/// Cada intento de código o contraseña. Los límites se cuentan; no hay contadores guardados.
+model AuthAttempt {
+  id             BigInt        @id @default(autoincrement())
+  authFactorId   Int           @map("auth_factor_id") @db.SmallInt
+  otpChallengeId String?       @map("otp_challenge_id") @db.Uuid
+  userId         String?       @map("user_id") @db.Uuid
+  succeeded      Boolean
+  ipAddress      String?       @map("ip_address") @db.Inet
+  attemptedAt    DateTime      @default(now()) @map("attempted_at") @db.Timestamptz(6)
+  authFactor     AuthFactor    @relation(fields: [authFactorId], references: [id], onDelete: Restrict)
+  otpChallenge   OtpChallenge? @relation(fields: [otpChallengeId], references: [id], onDelete: Restrict)
+  user           User?         @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([otpChallengeId])
+  @@index([userId, attemptedAt])
+  @@map("auth_attempts")
+}
+
+model LegalDocumentType {
+  id            Int                        @id @default(autoincrement()) @db.SmallInt
+  code          String                     @unique @db.VarChar(40)
+  sortOrder     Int                        @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?                  @map("deactivated_at") @db.Timestamptz(6)
+  requirements  LegalDocumentRequirement[]
+  versions      LegalDocumentVersion[]
+
+  @@map("legal_document_types")
+}
+
+/// Qué documentos legales debe aceptar quien tiene cada rol.
+model LegalDocumentRequirement {
+  legalDocumentTypeId Int               @map("legal_document_type_id") @db.SmallInt
+  roleId              Int               @map("role_id") @db.SmallInt
+  legalDocumentType   LegalDocumentType @relation(fields: [legalDocumentTypeId], references: [id], onDelete: Cascade)
+  role                Role              @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([legalDocumentTypeId, roleId])
+  @@map("legal_document_requirements")
+}
+
+model LegalDocumentVersion {
+  id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  legalDocumentTypeId Int               @map("legal_document_type_id") @db.SmallInt
+  versionLabel        String            @map("version_label") @db.VarChar(20)
+  /// Nulo mientras el texto se publica como página de la web (H12.3 sube el PDF firmado).
+  fileId              String?           @map("file_id") @db.Uuid
+  publishedAt         DateTime          @map("published_at") @db.Timestamptz(6)
+  createdByUserId     String?           @map("created_by_user_id") @db.Uuid
+  createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  legalDocumentType   LegalDocumentType @relation(fields: [legalDocumentTypeId], references: [id], onDelete: Restrict)
+  file                File?             @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  createdBy           User?             @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  consents            PersonConsent[]
+
+  @@unique([legalDocumentTypeId, versionLabel])
+  @@map("legal_document_versions")
+}
+
+/// El consentimiento es del titular de los datos (la persona), no de la cuenta.
+model PersonConsent {
+  id                     String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  personId               String               @map("person_id") @db.Uuid
+  legalDocumentVersionId String               @map("legal_document_version_id") @db.Uuid
+  acceptedAt             DateTime             @default(now()) @map("accepted_at") @db.Timestamptz(6)
+  ipAddress              String?              @map("ip_address") @db.Inet
+  revokedAt              DateTime?            @map("revoked_at") @db.Timestamptz(6)
+  person                 Person               @relation(fields: [personId], references: [id], onDelete: Restrict)
+  legalDocumentVersion   LegalDocumentVersion @relation(fields: [legalDocumentVersionId], references: [id], onDelete: Restrict)
+
+  @@index([personId])
+  @@map("person_consents")
+}
+
+model DataRequestType {
+  id            Int           @id @default(autoincrement()) @db.SmallInt
+  code          String        @unique @db.VarChar(40)
+  sortOrder     Int           @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?     @map("deactivated_at") @db.Timestamptz(6)
+  requests      DataRequest[]
+
+  @@map("data_request_types")
+}
+
+model DataRequestStatus {
+  id            Int           @id @default(autoincrement()) @db.SmallInt
+  code          String        @unique @db.VarChar(40)
+  sortOrder     Int           @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?     @map("deactivated_at") @db.Timestamptz(6)
+  isInitial     Boolean       @map("is_initial")
+  isTerminal    Boolean       @map("is_terminal")
+  requests      DataRequest[]
+
+  @@map("data_request_statuses")
+}
+
+/// Solicitudes del titular (Ley 1581): consulta, corrección, eliminación, revocación.
+model DataRequest {
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  personId         String            @map("person_id") @db.Uuid
+  requestTypeId    Int               @map("request_type_id") @db.SmallInt
+  statusId         Int               @map("status_id") @db.SmallInt
+  details          String?
+  requestedAt      DateTime          @default(now()) @map("requested_at") @db.Timestamptz(6)
+  resolvedByUserId String?           @map("resolved_by_user_id") @db.Uuid
+  resolvedAt       DateTime?         @map("resolved_at") @db.Timestamptz(6)
+  person           Person            @relation(fields: [personId], references: [id], onDelete: Restrict)
+  requestType      DataRequestType   @relation(fields: [requestTypeId], references: [id], onDelete: Restrict)
+  status           DataRequestStatus @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  resolvedBy       User?             @relation(fields: [resolvedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([personId])
+  @@map("data_requests")
+}
+
+// ─────────────── Domiciliarios ───────────────
+
+model CourierVerificationStatus {
+  id               Int       @id @default(autoincrement()) @db.SmallInt
+  code             String    @unique @db.VarChar(40)
+  sortOrder        Int       @map("sort_order") @db.SmallInt
+  deactivatedAt    DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  isInitial        Boolean   @map("is_initial")
+  isTerminal       Boolean   @map("is_terminal")
+  canReceiveOffers Boolean   @map("can_receive_offers")
+
+  profiles        CourierProfile[]
+  transitionsFrom CourierVerificationTransition[] @relation("CourierVerificationTransitionFrom")
+  transitionsTo   CourierVerificationTransition[] @relation("CourierVerificationTransitionTo")
+  historyTo       CourierVerificationHistory[]    @relation("CourierVerificationHistoryTo")
+
+  @@map("courier_verification_statuses")
+}
+
+model CourierVerificationTransition {
+  fromStatusId Int                          @map("from_status_id") @db.SmallInt
+  toStatusId   Int                          @map("to_status_id") @db.SmallInt
+  fromStatus   CourierVerificationStatus    @relation("CourierVerificationTransitionFrom", fields: [fromStatusId], references: [id], onDelete: Cascade)
+  toStatus     CourierVerificationStatus    @relation("CourierVerificationTransitionTo", fields: [toStatusId], references: [id], onDelete: Cascade)
+  history      CourierVerificationHistory[]
+
+  @@id([fromStatusId, toStatusId])
+  @@map("courier_verification_transitions")
 }
 
 model CourierProfile {
-  userId       String                                 @id @map("user_id") @db.Uuid
-  vehicleType  String                                 @map("vehicle_type")
-  vehiclePlate String?                                @map("vehicle_plate")
-  documentId   String                                 @map("document_id")
-  isVerified   Boolean                                @default(false) @map("is_verified")
-  fundingMode  CourierFundingMode                     @default(CASH_BOX) @map("funding_mode")
-  isAvailable  Boolean                                @default(false) @map("is_available")
-  lastLocation Unsupported("geography(Point, 4326)")? @map("last_location")
-  lastSeenAt   DateTime?                              @map("last_seen_at")
+  userId               String                    @id @map("user_id") @db.Uuid
+  /// Estado actual: solo lo escribe el disparador de courier_verification_history.
+  verificationStatusId Int                       @map("verification_status_id") @db.SmallInt
+  createdByUserId      String                    @map("created_by_user_id") @db.Uuid
+  createdAt            DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  user                 User                      @relation("CourierProfileUser", fields: [userId], references: [id], onDelete: Restrict)
+  verificationStatus   CourierVerificationStatus @relation(fields: [verificationStatusId], references: [id], onDelete: Restrict)
+  createdBy            User                      @relation("CourierProfileCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
 
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orders    Order[]
-  cashBoxes CashBox[]
+  verificationHistory CourierVerificationHistory[]
+  fundingModes        CourierFundingMode[]
+  vehicles            Vehicle[]
+  documents           CourierDocument[]
+  collectionAccounts  CourierCollectionAccount[]
 
-  @@index([lastLocation], type: Gist)
   @@map("courier_profiles")
 }
 
-model Establishment {
-  id        String                                @id @default(uuid()) @db.Uuid
-  name      String
-  category  EstablishmentCategory
-  address   String
-  phone     String?
-  logoUrl   String?                               @map("logo_url")
-  location  Unsupported("geography(Point, 4326)")
-  isActive  Boolean                               @default(true) @map("is_active")
-  isPartner Boolean                               @default(false) @map("is_partner")
-  createdAt DateTime                              @default(now()) @map("created_at")
-  updatedAt DateTime                              @updatedAt @map("updated_at")
+model CourierVerificationHistory {
+  id              String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  courierUserId   String                         @map("courier_user_id") @db.Uuid
+  fromStatusId    Int?                           @map("from_status_id") @db.SmallInt
+  toStatusId      Int                            @map("to_status_id") @db.SmallInt
+  changedByUserId String?                        @map("changed_by_user_id") @db.Uuid
+  reason          String?                        @db.VarChar(300)
+  changedAt       DateTime                       @default(dbgenerated("clock_timestamp()")) @map("changed_at") @db.Timestamptz(6)
+  courier         CourierProfile                 @relation(fields: [courierUserId], references: [userId], onDelete: Restrict)
+  toStatus        CourierVerificationStatus      @relation("CourierVerificationHistoryTo", fields: [toStatusId], references: [id], onDelete: Restrict)
+  transition      CourierVerificationTransition? @relation(fields: [fromStatusId, toStatusId], references: [fromStatusId, toStatusId], onDelete: Restrict)
+  changedBy       User?                          @relation(fields: [changedByUserId], references: [id], onDelete: Restrict)
 
-  orders   Order[]
-  products Product[]
+  @@index([courierUserId, changedAt])
+  @@map("courier_verification_history")
+}
+
+model FundingMode {
+  id            Int                  @id @default(autoincrement()) @db.SmallInt
+  code          String               @unique @db.VarChar(40)
+  sortOrder     Int                  @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?            @map("deactivated_at") @db.Timestamptz(6)
+  courierModes  CourierFundingMode[]
+
+  @@map("funding_modes")
+}
+
+/// Modo de financiación versionado por fecha: el de un día es la última fila con effective_on <= ese día.
+model CourierFundingMode {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  courierUserId   String         @map("courier_user_id") @db.Uuid
+  fundingModeId   Int            @map("funding_mode_id") @db.SmallInt
+  effectiveOn     DateTime       @map("effective_on") @db.Date
+  createdByUserId String         @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  courier         CourierProfile @relation(fields: [courierUserId], references: [userId], onDelete: Restrict)
+  fundingMode     FundingMode    @relation(fields: [fundingModeId], references: [id], onDelete: Restrict)
+  createdBy       User           @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([courierUserId, effectiveOn])
+  @@map("courier_funding_modes")
+}
+
+model VehicleType {
+  id            Int       @id @default(autoincrement()) @db.SmallInt
+  code          String    @unique @db.VarChar(40)
+  sortOrder     Int       @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  requiresPlate Boolean   @map("requires_plate")
+  vehicles      Vehicle[]
+
+  @@map("vehicle_types")
+}
+
+model Vehicle {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  courierUserId String            @map("courier_user_id") @db.Uuid
+  vehicleTypeId Int               @map("vehicle_type_id") @db.SmallInt
+  plate         String?           @db.VarChar(10)
+  description   String?           @db.VarChar(120)
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  retiredAt     DateTime?         @map("retired_at") @db.Timestamptz(6)
+  courier       CourierProfile    @relation(fields: [courierUserId], references: [userId], onDelete: Restrict)
+  vehicleType   VehicleType       @relation(fields: [vehicleTypeId], references: [id], onDelete: Restrict)
+  documents     CourierDocument[]
+
+  @@unique([id, courierUserId])
+  @@index([courierUserId])
+  @@map("vehicles")
+}
+
+model CourierDocumentType {
+  id                Int               @id @default(autoincrement()) @db.SmallInt
+  code              String            @unique @db.VarChar(40)
+  sortOrder         Int               @map("sort_order") @db.SmallInt
+  deactivatedAt     DateTime?         @map("deactivated_at") @db.Timestamptz(6)
+  requiresExpiry    Boolean           @map("requires_expiry")
+  isVehicleDocument Boolean           @map("is_vehicle_document")
+  documents         CourierDocument[]
+
+  @@map("courier_document_types")
+}
+
+model CourierDocumentStatus {
+  id            Int               @id @default(autoincrement()) @db.SmallInt
+  code          String            @unique @db.VarChar(40)
+  sortOrder     Int               @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?         @map("deactivated_at") @db.Timestamptz(6)
+  isInitial     Boolean           @map("is_initial")
+  isTerminal    Boolean           @map("is_terminal")
+  documents     CourierDocument[]
+
+  @@map("courier_document_statuses")
+}
+
+model CourierDocument {
+  id             String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  courierUserId  String                @map("courier_user_id") @db.Uuid
+  documentTypeId Int                   @map("document_type_id") @db.SmallInt
+  vehicleId      String?               @map("vehicle_id") @db.Uuid
+  fileId         String                @map("file_id") @db.Uuid
+  expiresOn      DateTime?             @map("expires_on") @db.Date
+  statusId       Int                   @map("status_id") @db.SmallInt
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  courier        CourierProfile        @relation(fields: [courierUserId], references: [userId], onDelete: Restrict)
+  documentType   CourierDocumentType   @relation(fields: [documentTypeId], references: [id], onDelete: Restrict)
+  vehicle        Vehicle?              @relation(fields: [vehicleId, courierUserId], references: [id, courierUserId], onDelete: Restrict)
+  file           File                  @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  status         CourierDocumentStatus @relation(fields: [statusId], references: [id], onDelete: Restrict)
+
+  @@index([courierUserId])
+  @@map("courier_documents")
+}
+
+/// Catálogo del negocio (lo administra el administrador).
+model Bank {
+  id                 Int                        @id @default(autoincrement()) @db.SmallInt
+  code               String                     @unique @db.VarChar(40)
+  name               String                     @db.VarChar(80)
+  achCode            String?                    @map("ach_code") @db.VarChar(10)
+  sortOrder          Int                        @map("sort_order") @db.SmallInt
+  deactivatedAt      DateTime?                  @map("deactivated_at") @db.Timestamptz(6)
+  collectionAccounts CourierCollectionAccount[]
+
+  @@map("banks")
+}
+
+model BankAccountType {
+  id                 Int                        @id @default(autoincrement()) @db.SmallInt
+  code               String                     @unique @db.VarChar(40)
+  sortOrder          Int                        @map("sort_order") @db.SmallInt
+  deactivatedAt      DateTime?                  @map("deactivated_at") @db.Timestamptz(6)
+  collectionAccounts CourierCollectionAccount[]
+
+  @@map("bank_account_types")
+}
+
+/// Cuentas personales del domiciliario a las que el cliente paga con QR (MVP).
+model CourierCollectionAccount {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  courierUserId     String           @map("courier_user_id") @db.Uuid
+  paymentMethodId   Int              @map("payment_method_id") @db.SmallInt
+  bankId            Int?             @map("bank_id") @db.SmallInt
+  bankAccountTypeId Int?             @map("bank_account_type_id") @db.SmallInt
+  accountNumber     String           @map("account_number") @db.VarChar(30)
+  holderName        String           @map("holder_name") @db.VarChar(120)
+  qrFileId          String?          @map("qr_file_id") @db.Uuid
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  archivedAt        DateTime?        @map("archived_at") @db.Timestamptz(6)
+  courier           CourierProfile   @relation(fields: [courierUserId], references: [userId], onDelete: Restrict)
+  paymentMethod     PaymentMethod    @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
+  bank              Bank?            @relation(fields: [bankId], references: [id], onDelete: Restrict)
+  bankAccountType   BankAccountType? @relation(fields: [bankAccountTypeId], references: [id], onDelete: Restrict)
+  qrFile            File?            @relation(fields: [qrFileId], references: [id], onDelete: Restrict)
+
+  @@index([courierUserId])
+  @@map("courier_collection_accounts")
+}
+
+// ═══════════════════════════ E02 · Establecimientos y menús ═══════════════════════════
+
+model EstablishmentStatus {
+  id             Int             @id @default(autoincrement()) @db.SmallInt
+  code           String          @unique @db.VarChar(40)
+  sortOrder      Int             @map("sort_order") @db.SmallInt
+  deactivatedAt  DateTime?       @map("deactivated_at") @db.Timestamptz(6)
+  isInitial      Boolean         @map("is_initial")
+  isTerminal     Boolean         @map("is_terminal")
+  isVisibleOnMap Boolean         @map("is_visible_on_map")
+  acceptsOrders  Boolean         @map("accepts_orders")
+  establishments Establishment[]
+
+  @@map("establishment_statuses")
+}
+
+model Establishment {
+  id              String                                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  municipalityId  Int                                     @map("municipality_id")
+  name            String                                  @db.VarChar(120)
+  addressLine     String                                  @map("address_line") @db.VarChar(200)
+  location        Unsupported("geography(Point, 4326)")
+  area            Unsupported("geography(Polygon, 4326)")
+  logoFileId      String?                                 @map("logo_file_id") @db.Uuid
+  statusId        Int                                     @map("status_id") @db.SmallInt
+  createdByUserId String                                  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime                                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime                                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  municipality    Municipality                            @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
+  logoFile        File?                                   @relation(fields: [logoFileId], references: [id], onDelete: Restrict)
+  status          EstablishmentStatus                     @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  createdBy       User                                    @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  categoryLinks EstablishmentCategoryLink[]
+  phones        EstablishmentPhone[]
+  menuSections  MenuSection[]
+  products      Product[]
 
   @@index([location], type: Gist)
-  @@index([category])
+  @@index([area], type: Gist)
+  @@index([municipalityId])
   @@map("establishments")
 }
 
-/// Menú administrado por RapiChonta (los comercios aún no están integrados).
-model Product {
-  id              String   @id @default(uuid()) @db.Uuid
-  establishmentId String   @map("establishment_id") @db.Uuid
-  name            String
-  description     String?
-  price           Decimal  @db.Decimal(12, 2)
-  prepMinutes     Int      @map("prep_minutes")
-  imageUrl        String?  @map("image_url")
-  isAvailable     Boolean  @default(true) @map("is_available")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+model EstablishmentCategory {
+  id            Int                                @id @default(autoincrement()) @db.SmallInt
+  code          String                             @unique @db.VarChar(40)
+  icon          String                             @db.VarChar(40)
+  sortOrder     Int                                @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?                          @map("deactivated_at") @db.Timestamptz(6)
+  translations  EstablishmentCategoryTranslation[]
+  links         EstablishmentCategoryLink[]
 
-  establishment Establishment     @relation(fields: [establishmentId], references: [id])
-  orderItems    OrderItem[]
-  substitutions OrderAdjustment[]
+  @@map("establishment_categories")
+}
+
+model EstablishmentCategoryTranslation {
+  categoryId Int                   @map("category_id") @db.SmallInt
+  languageId Int                   @map("language_id") @db.SmallInt
+  name       String                @db.VarChar(80)
+  category   EstablishmentCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  language   Language              @relation(fields: [languageId], references: [id], onDelete: Restrict)
+
+  @@id([categoryId, languageId])
+  @@map("establishment_category_translations")
+}
+
+model EstablishmentCategoryLink {
+  establishmentId String                @map("establishment_id") @db.Uuid
+  categoryId      Int                   @map("category_id") @db.SmallInt
+  isPrimary       Boolean               @map("is_primary")
+  establishment   Establishment         @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+  category        EstablishmentCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@id([establishmentId, categoryId])
+  @@index([categoryId])
+  @@map("establishment_category_links")
+}
+
+model EstablishmentPhone {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  establishmentId String        @map("establishment_id") @db.Uuid
+  phoneE164       String        @map("phone_e164") @db.VarChar(16)
+  label           String?       @db.VarChar(40)
+  establishment   Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+
+  @@unique([establishmentId, phoneE164])
+  @@map("establishment_phones")
+}
+
+model MenuSection {
+  id              String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  establishmentId String                   @map("establishment_id") @db.Uuid
+  sortOrder       Int                      @map("sort_order") @db.SmallInt
+  createdAt       DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  deactivatedAt   DateTime?                @map("deactivated_at") @db.Timestamptz(6)
+  establishment   Establishment            @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  translations    MenuSectionTranslation[]
+  products        Product[]
+
+  @@unique([id, establishmentId])
+  @@index([establishmentId])
+  @@map("menu_sections")
+}
+
+model MenuSectionTranslation {
+  menuSectionId String      @map("menu_section_id") @db.Uuid
+  languageId    Int         @map("language_id") @db.SmallInt
+  name          String      @db.VarChar(80)
+  menuSection   MenuSection @relation(fields: [menuSectionId], references: [id], onDelete: Cascade)
+  language      Language    @relation(fields: [languageId], references: [id], onDelete: Restrict)
+
+  @@id([menuSectionId, languageId])
+  @@map("menu_section_translations")
+}
+
+model ProductStatus {
+  id            Int       @id @default(autoincrement()) @db.SmallInt
+  code          String    @unique @db.VarChar(40)
+  sortOrder     Int       @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  isInitial     Boolean   @map("is_initial")
+  isTerminal    Boolean   @map("is_terminal")
+  isVisible     Boolean   @map("is_visible")
+  isOrderable   Boolean   @map("is_orderable")
+  products      Product[]
+
+  @@map("product_statuses")
+}
+
+model Product {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  establishmentId String           @map("establishment_id") @db.Uuid
+  menuSectionId   String           @map("menu_section_id") @db.Uuid
+  statusId        Int              @map("status_id") @db.SmallInt
+  createdByUserId String           @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  establishment   Establishment    @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  menuSection     MenuSection      @relation(fields: [menuSectionId, establishmentId], references: [id, establishmentId], onDelete: Restrict)
+  status          ProductStatus    @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  createdBy       User             @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  versions        ProductVersion[]
+  images          ProductImage[]
 
   @@index([establishmentId])
   @@map("products")
 }
 
-/// Zonas de cobertura dibujadas en el panel. La tarifa del pedido es la de la zona donde cae la dirección.
-model DeliveryZone {
-  id        String                                  @id @default(uuid()) @db.Uuid
-  name      String
-  kind      ZoneKind
-  area      Unsupported("geography(Polygon, 4326)")
-  fee       Decimal                                 @db.Decimal(12, 2)
-  sortOrder Int                                     @default(0) @map("sort_order")
-  isActive  Boolean                                 @default(true) @map("is_active")
-  createdAt DateTime                                @default(now()) @map("created_at")
-  updatedAt DateTime                                @updatedAt @map("updated_at")
+/// Versión inmutable de lo que el cliente acepta al pedir (precio, tiempo y textos).
+model ProductVersion {
+  id              String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId       String               @map("product_id") @db.Uuid
+  price           Decimal              @db.Decimal(12, 2)
+  prepMinutes     Int                  @map("prep_minutes") @db.SmallInt
+  createdByUserId String               @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime             @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(6)
+  product         Product              @relation(fields: [productId], references: [id], onDelete: Restrict)
+  createdBy       User                 @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  texts           ProductVersionText[]
 
-  orders Order[]
+  @@unique([productId, createdAt])
+  @@map("product_versions")
+}
+
+model ProductVersionText {
+  productVersionId String         @map("product_version_id") @db.Uuid
+  languageId       Int            @map("language_id") @db.SmallInt
+  name             String         @db.VarChar(120)
+  description      String?
+  productVersion   ProductVersion @relation(fields: [productVersionId], references: [id], onDelete: Restrict)
+  language         Language       @relation(fields: [languageId], references: [id], onDelete: Restrict)
+
+  @@id([productVersionId, languageId])
+  @@map("product_version_texts")
+}
+
+model ProductImage {
+  productId String  @map("product_id") @db.Uuid
+  fileId    String  @map("file_id") @db.Uuid
+  sortOrder Int     @map("sort_order") @db.SmallInt
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  file      File    @relation(fields: [fileId], references: [id], onDelete: Restrict)
+
+  @@id([productId, fileId])
+  @@map("product_images")
+}
+
+// ═══════════════════════════ E03 · Zonas, horario y configuración ═══════════════════════════
+
+model ZoneKind {
+  id            Int            @id @default(autoincrement()) @db.SmallInt
+  code          String         @unique @db.VarChar(40)
+  sortOrder     Int            @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?      @map("deactivated_at") @db.Timestamptz(6)
+  zones         DeliveryZone[]
+
+  @@map("zone_kinds")
+}
+
+model DeliveryZone {
+  id              String                                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  municipalityId  Int                                     @map("municipality_id")
+  zoneKindId      Int                                     @map("zone_kind_id") @db.SmallInt
+  name            String                                  @db.VarChar(80)
+  area            Unsupported("geography(Polygon, 4326)")
+  sortOrder       Int                                     @map("sort_order") @db.SmallInt
+  createdByUserId String                                  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime                                @default(now()) @map("created_at") @db.Timestamptz(6)
+  deactivatedAt   DateTime?                               @map("deactivated_at") @db.Timestamptz(6)
+  municipality    Municipality                            @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
+  zoneKind        ZoneKind                                @relation(fields: [zoneKindId], references: [id], onDelete: Restrict)
+  createdBy       User                                    @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  fees            DeliveryZoneFee[]
 
   @@index([area], type: Gist)
   @@map("delivery_zones")
 }
 
-model Order {
-  id               String          @id @default(uuid()) @db.Uuid
-  code             String          @unique // código corto legible, ej. RC-7F3K
-  customerId       String          @map("customer_id") @db.Uuid
-  establishmentId  String          @map("establishment_id") @db.Uuid
-  courierId        String?         @map("courier_id") @db.Uuid
-  addressId        String          @map("address_id") @db.Uuid
-  deliveryZoneId   String          @map("delivery_zone_id") @db.Uuid
-  status           OrderStatus     @default(PENDING_ASSIGNMENT)
-  fulfillmentMode  FulfillmentMode @default(COURIER_PURCHASE) @map("fulfillment_mode")
-  paymentMethod    PaymentMethod   @default(CASH) @map("payment_method")
-  itemsTotal       Decimal         @map("items_total") @db.Decimal(12, 2)
-  purchaseTotal    Decimal?        @map("purchase_total") @db.Decimal(12, 2)
-  deliveryFee      Decimal         @map("delivery_fee") @db.Decimal(12, 2)
-  estimatedReadyAt DateTime?       @map("estimated_ready_at")
-  prepDelayed      Boolean         @default(false) @map("prep_delayed")
-  /// Porcentaje vigente al crear el pedido (0.1500 = 15 %) y valor que el domiciliario paga a RapiChonta.
-  commissionRate   Decimal         @map("commission_rate") @db.Decimal(5, 4)
-  commissionAmount Decimal         @map("commission_amount") @db.Decimal(12, 2)
-  deliveryProofUrl String?         @map("delivery_proof_url")
-  receiptUrl       String?         @map("receipt_url")
-  customerNotes    String?         @map("customer_notes")
-  createdAt        DateTime        @default(now()) @map("created_at")
-  updatedAt        DateTime        @updatedAt @map("updated_at")
+model DeliveryZoneFee {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  deliveryZoneId  String       @map("delivery_zone_id") @db.Uuid
+  amount          Decimal      @db.Decimal(12, 2)
+  createdByUserId String       @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime     @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(6)
+  deliveryZone    DeliveryZone @relation(fields: [deliveryZoneId], references: [id], onDelete: Restrict)
+  createdBy       User         @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
 
-  customer      User               @relation("CustomerOrders", fields: [customerId], references: [id])
-  establishment Establishment      @relation(fields: [establishmentId], references: [id])
-  courier       CourierProfile?    @relation(fields: [courierId], references: [userId])
-  address       Address            @relation(fields: [addressId], references: [id])
-  deliveryZone  DeliveryZone       @relation(fields: [deliveryZoneId], references: [id])
-  offers        OrderOffer[]
-  items         OrderItem[]
-  events        OrderStatusEvent[]
-  adjustments   OrderAdjustment[]
-  incidents     Incident[]
-  cashMovements CashMovement[]
-
-  @@index([status])
-  @@index([customerId])
-  @@index([courierId])
-  @@map("orders")
+  @@unique([deliveryZoneId, createdAt])
+  @@map("delivery_zone_fees")
 }
 
-/// Copia el nombre, precio y tiempo del producto al momento del pedido (el menú puede cambiar después).
-model OrderItem {
-  id          String  @id @default(uuid()) @db.Uuid
-  orderId     String  @map("order_id") @db.Uuid
-  productId   String  @map("product_id") @db.Uuid
-  name        String
-  quantity    Int
-  unitPrice   Decimal @map("unit_price") @db.Decimal(12, 2)
-  prepMinutes Int     @map("prep_minutes")
-  notes       String?
+model OperatingHour {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  municipalityId  Int          @map("municipality_id")
+  weekday         Int          @db.SmallInt
+  opensAt         DateTime     @map("opens_at") @db.Time(0)
+  closesAt        DateTime     @map("closes_at") @db.Time(0)
+  createdByUserId String       @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  deactivatedAt   DateTime?    @map("deactivated_at") @db.Timestamptz(6)
+  municipality    Municipality @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
+  createdBy       User         @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
 
-  order       Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product     Product           @relation(fields: [productId], references: [id])
-  adjustments OrderAdjustment[]
-
-  @@map("order_items")
-}
-
-/// Bitácora inmutable de cambios de estado: auditoría y línea de tiempo para el cliente.
-model OrderStatusEvent {
-  id        String      @id @default(uuid()) @db.Uuid
-  orderId   String      @map("order_id") @db.Uuid
-  status    OrderStatus
-  actorId   String?     @map("actor_id") @db.Uuid
-  note      String?
-  createdAt DateTime    @default(now()) @map("created_at")
-
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  @@index([orderId])
-  @@map("order_status_events")
-}
-
-/// "Chat estratégico": el domiciliario reporta un problema con un producto y el cliente elige
-/// entre opciones cerradas (sustituir, quitar, aceptar precio, cancelar) antes de que venza el tiempo.
-model OrderAdjustment {
-  id                  String             @id @default(uuid()) @db.Uuid
-  orderId             String             @map("order_id") @db.Uuid
-  orderItemId         String             @map("order_item_id") @db.Uuid
-  reason              AdjustmentReason
-  newPrice            Decimal?           @map("new_price") @db.Decimal(12, 2)
-  substituteProductId String?            @map("substitute_product_id") @db.Uuid
-  decision            AdjustmentDecision @default(PENDING)
-  expiresAt           DateTime           @map("expires_at")
-  decidedAt           DateTime?          @map("decided_at")
-  createdAt           DateTime           @default(now()) @map("created_at")
-
-  order             Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  orderItem         OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
-  substituteProduct Product?  @relation(fields: [substituteProductId], references: [id])
-
-  @@index([orderId])
-  @@map("order_adjustments")
-}
-
-/// Reporte del cliente (p. ej. no recibió el pedido). RapiChonta decide y notifica al domiciliario.
-model Incident {
-  id           String         @id @default(uuid()) @db.Uuid
-  orderId      String         @map("order_id") @db.Uuid
-  reportedById String         @map("reported_by_id") @db.Uuid
-  type         IncidentType
-  description  String?
-  status       IncidentStatus @default(OPEN)
-  resolution   String?
-  resolvedById String?        @map("resolved_by_id") @db.Uuid
-  createdAt    DateTime       @default(now()) @map("created_at")
-  resolvedAt   DateTime?      @map("resolved_at")
-
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  @@index([status])
-  @@map("incidents")
-}
-
-/// Caja diaria de cada domiciliario: la abre un administrador y se cierra con cuentas claras al final del día.
-model CashBox {
-  id            String              @id @default(uuid()) @db.Uuid
-  courierId     String              @map("courier_id") @db.Uuid
-  businessDate  DateTime            @map("business_date") @db.Date
-  status        CashBoxStatus       @default(OPEN)
-  openingAmount Decimal             @map("opening_amount") @db.Decimal(12, 2)
-  openingMethod MoneyTransferMethod @map("opening_method")
-  openedById    String              @map("opened_by_id") @db.Uuid
-  closedById    String?             @map("closed_by_id") @db.Uuid
-  closingNotes  String?             @map("closing_notes")
-  openedAt      DateTime            @default(now()) @map("opened_at")
-  closedAt      DateTime?           @map("closed_at")
-
-  courier   CourierProfile @relation(fields: [courierId], references: [userId])
-  movements CashMovement[]
-
-  @@unique([courierId, businessDate])
-  @@map("cash_boxes")
-}
-
-/// Movimiento inmutable de dinero: cada peso entregado, gastado o cobrado queda registrado.
-model CashMovement {
-  id          String           @id @default(uuid()) @db.Uuid
-  cashBoxId   String           @map("cash_box_id") @db.Uuid
-  orderId     String?          @map("order_id") @db.Uuid
-  type        CashMovementType
-  amount      Decimal          @db.Decimal(12, 2)
-  method      String? // efectivo, Nequi, Daviplata, transferencia
-  createdById String           @map("created_by_id") @db.Uuid
-  note        String?
-  createdAt   DateTime         @default(now()) @map("created_at")
-
-  cashBox CashBox @relation(fields: [cashBoxId], references: [id], onDelete: Cascade)
-  order   Order?  @relation(fields: [orderId], references: [id])
-
-  @@index([cashBoxId])
-  @@map("cash_movements")
-}
-
-/// Token de notificaciones push por dispositivo (FCM o Huawei Push Kit).
-model DeviceToken {
-  id        String       @id @default(uuid()) @db.Uuid
-  userId    String       @map("user_id") @db.Uuid
-  token     String       @unique
-  provider  PushProvider
-  platform  String
-  updatedAt DateTime     @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("device_tokens")
-}
-
-/// Cada notificación de un pedido a un domiciliario y su respuesta (trazabilidad de la asignación).
-model OrderOffer {
-  id          String        @id @default(uuid()) @db.Uuid
-  orderId     String        @map("order_id") @db.Uuid
-  courierId   String        @map("courier_id") @db.Uuid
-  sentById    String?       @map("sent_by_id") @db.Uuid // operador o administrador; vacío si lo envió el sistema
-  mode        OfferMode
-  response    OfferResponse @default(PENDING)
-  expiresAt   DateTime      @map("expires_at")
-  respondedAt DateTime?     @map("responded_at")
-  createdAt   DateTime      @default(now()) @map("created_at")
-
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  @@index([orderId])
-  @@index([courierId, response])
-  @@map("order_offers")
-}
-
-/// Horario de operación de RapiChonta. Fuera de horario se ve el mapa pero no se puede pedir.
-model OperatingHours {
-  id        String @id @default(uuid()) @db.Uuid
-  dayOfWeek Int    @map("day_of_week") // 0 = domingo ... 6 = sábado
-  opensAt   String @map("opens_at") // "08:00", hora de Colombia
-  closesAt  String @map("closes_at") // "22:00"
-
-  @@unique([dayOfWeek, opensAt])
+  @@index([municipalityId, weekday])
   @@map("operating_hours")
 }
 
-/// Parámetros que el administrador cambia sin desplegar: porcentaje de comisión, tope de clientes nuevos,
-/// tiempos límite, umbral de "llegando". Ver Docs/04-modelo-de-datos.md.
-model AppSetting {
-  key         String   @id
-  value       Json
-  description String?
-  updatedById String?  @map("updated_by_id") @db.Uuid
-  updatedAt   DateTime @updatedAt @map("updated_at")
+model OperatingHourException {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  municipalityId Int          @map("municipality_id")
+  onDate         DateTime     @map("on_date") @db.Date
+  opensAt        DateTime?    @map("opens_at") @db.Time(0)
+  closesAt       DateTime?    @map("closes_at") @db.Time(0)
+  reason         String?      @db.VarChar(120)
+  municipality   Municipality @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
 
-  @@map("app_settings")
+  /// En SQL con NULLS NOT DISTINCT: un solo "cerrado todo el día" por fecha.
+  @@unique([municipalityId, onDate, opensAt], map: "operating_hour_exceptions_unique_idx")
+  @@map("operating_hour_exceptions")
 }
 
-/// Tasa de cambio aproximada para mostrar precios en otras monedas (referencia, no se cobra en ellas).
-model ExchangeRate {
-  currency   String   @id // USD, EUR
-  copPerUnit Decimal  @map("cop_per_unit") @db.Decimal(12, 4)
-  source     String
-  fetchedAt  DateTime @map("fetched_at")
+model SettingDataType {
+  id            Int                 @id @default(autoincrement()) @db.SmallInt
+  code          String              @unique @db.VarChar(40)
+  sortOrder     Int                 @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?           @map("deactivated_at") @db.Timestamptz(6)
+  definitions   SettingDefinition[]
 
+  @@map("setting_data_types")
+}
+
+model SettingDefinition {
+  id                     Int             @id @default(autoincrement()) @db.SmallInt
+  key                    String          @unique @db.VarChar(60)
+  dataTypeId             Int             @map("data_type_id") @db.SmallInt
+  minValue               Decimal?        @map("min_value") @db.Decimal(14, 4)
+  maxValue               Decimal?        @map("max_value") @db.Decimal(14, 4)
+  isScopedByMunicipality Boolean         @map("is_scoped_by_municipality")
+  dataType               SettingDataType @relation(fields: [dataTypeId], references: [id], onDelete: Restrict)
+  values                 SettingValue[]
+
+  @@map("setting_definitions")
+}
+
+model SettingValue {
+  id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  settingDefinitionId Int               @map("setting_definition_id") @db.SmallInt
+  municipalityId      Int?              @map("municipality_id")
+  value               Decimal           @db.Decimal(14, 4)
+  createdByUserId     String?           @map("created_by_user_id") @db.Uuid
+  createdAt           DateTime          @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(6)
+  settingDefinition   SettingDefinition @relation(fields: [settingDefinitionId], references: [id], onDelete: Restrict)
+  municipality        Municipality?     @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
+  createdBy           User?             @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@index([settingDefinitionId, municipalityId, createdAt])
+  @@map("setting_values")
+}
+
+model CommissionRate {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  municipalityId  Int          @map("municipality_id")
+  rate            Decimal      @db.Decimal(5, 4)
+  createdByUserId String       @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime     @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(6)
+  municipality    Municipality @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
+  createdBy       User         @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([municipalityId, createdAt])
+  @@map("commission_rates")
+}
+
+model ExchangeRate {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  currencyId Int      @map("currency_id") @db.SmallInt
+  copPerUnit Decimal  @map("cop_per_unit") @db.Decimal(14, 4)
+  source     String   @db.VarChar(60)
+  fetchedAt  DateTime @map("fetched_at") @db.Timestamptz(6)
+  currency   Currency @relation(fields: [currencyId], references: [id], onDelete: Restrict)
+
+  @@unique([currencyId, fetchedAt])
   @@map("exchange_rates")
 }

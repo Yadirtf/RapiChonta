@@ -38,7 +38,7 @@ ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     API_PORT=4000 \
     TRUST_PROXY=2
-# API: se conservan las dependencias de desarrollo (CLI de Prisma para migrar, ts-node para el seed).
+# API: se conservan las dependencias de desarrollo (CLI de Prisma para migrar; la semilla va compilada en dist/).
 COPY --from=build /app/api/node_modules ./api/node_modules
 COPY --from=build /app/api/dist ./api/dist
 COPY --from=build /app/api/prisma ./api/prisma

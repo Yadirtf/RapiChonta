@@ -6,9 +6,8 @@ set -e
 cd /app/api
 if [ -n "$DATABASE_URL" ]; then
   npx prisma migrate deploy
-  if [ "$SEED_DEMO_DATA" = "true" ]; then
-    npm run prisma:seed
-  fi
+  # Semilla idempotente: catálogos siempre; primer administrador con SEED_ADMIN_*; ejemplos con SEED_DEMO_DATA=true.
+  node dist/database/seed/run.js
 fi
 
 # La API escucha solo en el puerto interno; PORT (público) es de la web.

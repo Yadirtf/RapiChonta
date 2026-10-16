@@ -22,7 +22,7 @@ export class FindNearbyEstablishmentsUseCase {
   async execute(input: FindNearbyEstablishmentsInput): Promise<NearbyResult[]> {
     const radiusMeters = input.radiusMeters ?? DEFAULT_RADIUS;
     if (radiusMeters <= 0 || radiusMeters > MAX_RADIUS) {
-      throw new DomainError(`El radio debe estar entre 1 y ${MAX_RADIUS} metros`);
+      throw new DomainError(`El radio debe estar entre 1 y ${MAX_RADIUS} metros`, 'INVALID_RADIUS');
     }
     return this.repository.findNearby({
       origin: GeoPoint.create(input.latitude, input.longitude),

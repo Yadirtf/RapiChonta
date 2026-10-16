@@ -15,8 +15,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
-# Se conservan las dependencias de desarrollo: la CLI de Prisma (migraciones) y ts-node (datos de ejemplo)
-# se usan al arrancar el contenedor.
+# Se conservan las dependencias de desarrollo: la CLI de Prisma aplica las migraciones
+# al arrancar el contenedor (la semilla ya está compilada en dist/).
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
