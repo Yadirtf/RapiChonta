@@ -2,19 +2,20 @@
 # La web atiende el puerto público y reenvía /api/* a la API en 127.0.0.1:4000.
 # Guía: Docs/11-despliegue-snapdeploy.md
 
-FROM node:22-bookworm-slim AS base
-# Prisma necesita OpenSSL para su motor de consultas.
+# Dos etapas en total: el plan gratuito (Small) de SnapDeploy no acepta más.
+
+# 1) Build: compila la API y la web en la misma etapa.
+FROM node:22-bookworm-slim AS build
+# Prisma necesita OpenSSL para generar el cliente con el motor correcto.
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-FROM base AS api
 WORKDIR /app/api
 COPY api/package.json api/package-lock.json ./
 RUN npm ci --include=dev
 COPY api/ ./
 RUN npx prisma generate && npm run build
 
-FROM base AS web
 WORKDIR /app/web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci --include=dev
@@ -28,20 +29,23 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
-FROM base
+# 2) Runtime: solo lo necesario para ejecutar.
+FROM node:22-bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     API_PORT=4000 \
     TRUST_PROXY=2
 # API: se conservan las dependencias de desarrollo (CLI de Prisma para migrar, ts-node para el seed).
-COPY --from=api /app/api/node_modules ./api/node_modules
-COPY --from=api /app/api/dist ./api/dist
-COPY --from=api /app/api/prisma ./api/prisma
+COPY --from=build /app/api/node_modules ./api/node_modules
+COPY --from=build /app/api/dist ./api/dist
+COPY --from=build /app/api/prisma ./api/prisma
 COPY api/package.json api/tsconfig.json ./api/
 # Web: servidor standalone de Next.js.
-COPY --from=web /app/web/.next/standalone ./web
-COPY --from=web /app/web/.next/static ./web/.next/static
+COPY --from=build /app/web/.next/standalone ./web
+COPY --from=build /app/web/.next/static ./web/.next/static
 COPY start.sh ./
 RUN chmod +x start.sh
 USER node

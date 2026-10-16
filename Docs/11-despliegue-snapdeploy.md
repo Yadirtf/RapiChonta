@@ -68,6 +68,7 @@ La app no se despliega en SnapDeploy; se compila para las tiendas y apunta a la 
 - **100 horas de contenedor al mes.** El tiempo dormido no cuenta.
 - **10 despliegues al día** (5 cada 12 horas), y los fallidos cuentan. Conviene probar el build en local antes de unir a `develop` (ver abajo).
 - **512 MB de RAM y 0,25 vCPU.** Alcanza para el MVP.
+- **Máximo 2 etapas en el `Dockerfile`** en el plan gratuito. Por eso el `Dockerfile` raíz compila API y web en una sola etapa de build.
 - **Sin WebSockets ni dominios propios** en el plan gratuito. Cuando lleguen el chat y las notificaciones en tiempo real, o el dominio de RapiChonta, habrá que pasar el contenedor a *Always-On* (desde 12 USD/mes, o 1 USD por 24 h para una prueba puntual).
 - **100 peticiones por minuto por IP** en SnapDeploy, igual al límite que ya aplica la API. La API identifica la IP real del cliente a través del balanceador y de la web (`TRUST_PROXY=2` en el `Dockerfile`).
 
@@ -93,6 +94,7 @@ Cuando el tráfico lo pida, `api/` y `web/` tienen su propio `Dockerfile` para d
 | Síntoma | Causa probable | Solución |
 | --- | --- | --- |
 | *No application files found at the repository root* | La rama desplegada no tiene el `Dockerfile` raíz | Desplegar `develop` con este cambio ya unido |
+| *Your Dockerfile has N build stages (limit: 2 for Small containers)* | El plan gratuito acepta como máximo 2 etapas `FROM` | Mantener el `Dockerfile` raíz en 2 etapas (build y runtime); no agregar etapas nuevas |
 | *Repository … is already linked to container* | Ya hay un contenedor enlazado a esa rama | Reutilizarlo (Root Directory vacío) o eliminarlo |
 | La web carga pero el mapa no trae establecimientos | La base está vacía o la API no conecta | Revisar el log; poner `SEED_DEMO_DATA=true` |
 | "Health check never passed" | El contenedor no arranca, normalmente por la migración | Ver el final del log; revisar `DATABASE_URL` y que tenga `sslmode=require` |
