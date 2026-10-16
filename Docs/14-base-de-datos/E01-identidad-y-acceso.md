@@ -279,7 +279,7 @@ Semilla de `permissions` y `role_permissions`:
 | --- | --- | --- |
 | `legal_document_types` (sistema) | `code`: `TERMS_OF_SERVICE`, `DATA_PROCESSING_POLICY`, `COURIER_LOCATION_AUTHORIZATION` | |
 | `legal_document_requirements` | `legal_document_type_id`, `role_id` | PK compuesta. Qué documentos debe aceptar quien tiene cada rol |
-| `legal_document_versions` | `id`, `legal_document_type_id`, `version_label`, `file_id`, `published_at`, `created_by_user_id` | `UNIQUE (legal_document_type_id, version_label)`. Vigente: la última con `published_at <= now()` |
+| `legal_document_versions` | `id`, `legal_document_type_id`, `version_label`, `file_id` (nulable), `published_at`, `created_by_user_id` | `UNIQUE (legal_document_type_id, version_label)`. Vigente: la última con `published_at <= now()`. Sin `file_id`, el texto de esa versión es el que publican la web y la app en `/legal/<documento>`; con archivo, se muestra el PDF |
 | `person_consents` | `id`, `person_id`, `legal_document_version_id`, `accepted_at`, `ip_address`, `revoked_at` | Índice único parcial `(person_id, legal_document_version_id) WHERE revoked_at IS NULL` (se puede volver a aceptar tras revocar) |
 
 El consentimiento es de la **persona** (el titular de los datos), no de la cuenta. Cuando se publica una versión nueva, el caso de uso pide aceptarla en el siguiente inicio de sesión.
@@ -467,3 +467,29 @@ WHERE phone_e164 = :phone AND created_at > now() - interval '1 hour';
 5. `user_preferences` con el idioma del dispositivo.
 6. `person_consents` de la versión vigente de `TERMS_OF_SERVICE` y `DATA_PROCESSING_POLICY`.
 7. `sessions` + `refresh_tokens`.
+
+## API (implementada en E01)
+
+Prefijo `/api/v1`. Los errores responden `{ code, details }` y cada cliente traduce el `code`. Las búsquedas por nombre usan la extensión `unaccent` (además de `citext`) para que "Ramirez" encuentre "Ramírez".
+
+| Ruta | Acceso | Para qué |
+| --- | --- | --- |
+| `POST /auth/otp` | Pública, límite estricto | Envía el código (3 por hora por número) |
+| `POST /auth/otp/verify` | Pública | Verifica el código: devuelve la sesión o pide registro |
+| `POST /auth/register` | Pública | Crea el cliente con sus consentimientos (transacción de arriba) |
+| `POST /auth/password` y `/auth/password/verify` | Pública | Ingreso del personal y del domiciliario: contraseña y luego código |
+| `POST /auth/refresh` | Pública | Rota el refresco; reutilizar uno ya usado cierra la sesión |
+| `POST /auth/sign-out` | Pública | Revoca la sesión actual |
+| `POST /auth/switch-role` | Sesión | Domiciliario ↔ modo cliente (`sessions.active_role_id`) |
+| `GET /legal/current` | Pública | Versiones vigentes de los documentos legales |
+| `GET /me`, `PATCH /me/profile`, `PUT /me/language` | `ACCOUNT_MANAGE_OWN` | Mi cuenta |
+| `POST /me/phone/otp` y `/me/phone/verify` | `ACCOUNT_MANAGE_OWN` | Cambio de celular con código al número nuevo |
+| `PUT /me/password` | `ACCOUNT_MANAGE_OWN` | Cambia la contraseña y cierra las demás sesiones (`PASSWORD_CHANGED`) |
+| `POST /me/consents` | `ACCOUNT_MANAGE_OWN` | Acepta versiones nuevas pendientes |
+| `POST /me/data-deletion` | `ACCOUNT_MANAGE_OWN` | Anonimiza a la persona y cierra todas sus sesiones |
+| `GET/POST /admin/couriers`, `GET /admin/couriers/:id` | `COURIERS_MANAGE` | Alta y consulta de domiciliarios |
+| `POST /admin/couriers/:id/verification` | `COURIERS_VERIFY` | Verifica o rechaza al domiciliario |
+| `POST /admin/users/:id/status` | Según el rol de la cuenta | Activa, suspende o desactiva; desactivar revoca las sesiones |
+| `GET/POST /admin/staff` | `USERS_MANAGE_STAFF` (solo administrador) | Operadores y administradores |
+
+El token web de refresco viaja en la cookie `rc_refresh` (`HttpOnly`, `SameSite=Strict`, ruta `/api/v1/auth`); la app lo recibe en el cuerpo y lo guarda en Keystore/Keychain. Un recurso de otra persona responde 404, no 403, para no revelar que existe.

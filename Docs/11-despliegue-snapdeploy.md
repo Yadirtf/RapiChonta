@@ -43,13 +43,33 @@ SnapDeploy permite **un contenedor por repositorio y rama**. Si ya existe un con
    | --- | --- | --- |
    | `DATABASE_URL` | La cadena de Neon del paso 1 | Secreto. Sin ella la API arranca con datos en memoria |
    | `JWT_SECRET` | Una cadena aleatoria larga, por ejemplo la salida de `openssl rand -hex 32` | Secreto |
-   | `SEED_DEMO_DATA` | `true` | Carga los establecimientos de ejemplo si la tabla está vacía. Se puede borrar después |
+   | `OTP_PEPPER` | Otra cadena aleatoria (`openssl rand -hex 32`) | Secreto. Opcional; si falta, los códigos se firman con `JWT_SECRET` |
+   | `OTP_PROVIDER` | `console` mientras no haya proveedor de SMS; `twilio` cuando lo haya | Con `console` el código se escribe en el log del contenedor |
+   | `OTP_EXPOSE_CODE` | `true` solo en este entorno de pruebas | Devuelve el código en la respuesta y la pantalla lo muestra. **Nunca en producción** |
+   | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID` | Datos de Twilio Verify | Secretos. Solo con `OTP_PROVIDER=twilio` (SMS y WhatsApp) |
+   | `SEED_ADMIN_PHONE` | Celular del primer administrador, por ejemplo `3001234567` | Se crea al arrancar si el número no existe |
+   | `SEED_ADMIN_PASSWORD` | Contraseña de al menos 10 caracteres | Secreto. Después de crear el administrador se puede borrar la variable |
+   | `SEED_ADMIN_NAME` | Nombre del administrador | |
+   | `SEED_DEMO_DATA` | `true` | Carga los establecimientos de ejemplo si la tabla está vacía (exige el administrador inicial). Se puede borrar después |
+
+   La cookie de la sesión web va con `Secure` porque el `Dockerfile` usa `NODE_ENV=production`; solo para probar la imagen en local por `http://` se define `COOKIE_SECURE=false`.
 
    No definir `PORT` ni `HOST` (los pone SnapDeploy), ni `NEXT_PUBLIC_API_URL` ni `CORS_ORIGIN` (no hacen falta con un solo dominio). Si SnapDeploy detecta otras variables en los `.env.example`, se pueden dejar vacías.
 4. Desplegar. El primer build tarda unos minutos.
 5. Verificar:
    - `https://<contenedor>.containers.snapdeploy.app/api/health` responde `{"status":"ok",...}`.
    - `https://<contenedor>.containers.snapdeploy.app/` muestra el mapa; al permitir la ubicación aparecen los establecimientos de ejemplo.
+
+### Una sola vez: reiniciar la base al llegar E01
+
+E01 reemplazó la migración inicial por el esquema normalizado (`20261016000000_init`). Una base que ya tenía la migración anterior (`20261015000000_init`) no puede aplicarla, y el contenedor no arranca. Como esa base solo tenía datos de ejemplo, se vacía una vez desde el **SQL Editor** de Neon, antes del despliegue:
+
+```sql
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+```
+
+Al arrancar, el contenedor vuelve a crear las extensiones, las tablas, los catálogos y el administrador inicial.
 
 ## Despliegues siguientes
 
@@ -60,7 +80,7 @@ Se trabaja en una rama `feature/*` y se abre un PR hacia `develop`. Al unirlo, S
 
 ## App Flutter
 
-La app no se despliega en SnapDeploy; se compila para las tiendas y apunta a la API con `--dart-define=API_URL=https://<contenedor>.containers.snapdeploy.app/api/v1`.
+La app no se despliega en SnapDeploy; se compila para las tiendas y apunta a la API con `--dart-define=API_URL=https://<contenedor>.containers.snapdeploy.app/api/v1`. Los enlaces a los documentos legales abren la web; su dirección se deduce de `API_URL` y se puede cambiar con `--dart-define=WEB_URL=...`.
 
 ## Límites del plan gratuito que afectan las pruebas
 
