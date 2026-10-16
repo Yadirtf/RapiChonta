@@ -6,7 +6,9 @@
     "explore": "Explorar",
     "myOrders": "Mis pedidos",
     "myAccount": "Mi cuenta",
-    "language": "Idioma"
+    "language": "Idioma",
+    "panel": "Panel",
+    "dataPolicy": "Política de datos"
   },
   "categories": {
     "FAST_FOOD": "Comida rápida",
@@ -27,6 +29,493 @@
     "close": "Cerrar"
   },
   "errors": {
-    "NEARBY_FAILED": "No pudimos cargar los establecimientos cercanos."
+    "NEARBY_FAILED": "No pudimos cargar los establecimientos cercanos.",
+    "UNKNOWN": "Algo salió mal. Inténtalo de nuevo.",
+    "NETWORK_ERROR": "Sin conexión. Revisa tu internet e inténtalo de nuevo.",
+    "SERVER_ERROR": "Tuvimos un problema de nuestro lado. Inténtalo en un momento.",
+    "INTERNAL_ERROR": "Tuvimos un problema de nuestro lado. Inténtalo en un momento.",
+    "VALIDATION_FAILED": "Revisa los datos: hay campos incompletos o con formato no válido.",
+    "TOO_MANY_REQUESTS": "Demasiados intentos seguidos. Espera un momento.",
+    "REQUEST_FAILED": "No se pudo completar la solicitud.",
+    "NOT_FOUND": "No encontramos lo que buscas.",
+    "PERMISSION_DENIED": "No tienes permiso para hacer esto.",
+    "ROLE_NOT_ALLOWED": "Tu rol no tiene acceso a esta sección.",
+    "UNAUTHENTICATED": "Tu sesión terminó. Vuelve a entrar.",
+    "SESSION_INVALID": "Tu sesión terminó. Vuelve a entrar.",
+    "REFRESH_REUSED": "Cerramos tu sesión por seguridad. Vuelve a entrar.",
+    "INVALID_PHONE": "Ese número no parece un celular válido.",
+    "OTP_SEND_LIMIT": "Ya enviamos varios códigos a este número. Podrás pedir otro en {minutes, plural, one {# minuto} other {# minutos}}.",
+    "OTP_INVALID": "Código incorrecto. {remaining, plural, =0 {No te quedan intentos: pide otro código.} one {Te queda # intento.} other {Te quedan # intentos.}}",
+    "OTP_EXPIRED": "El código venció. Pide uno nuevo.",
+    "OTP_LOCKED": "Demasiados intentos con este código. Pide uno nuevo.",
+    "OTP_NOT_FOUND": "Ese código ya no es válido. Pide uno nuevo.",
+    "OTP_PROVIDER_UNAVAILABLE": "No pudimos enviar el SMS en este momento. Inténtalo de nuevo en unos minutos.",
+    "INVALID_CREDENTIALS": "El número o la contraseña no son correctos.",
+    "PASSWORD_LOCKED": "Demasiados intentos fallidos. Inténtalo en {minutes, plural, one {# minuto} other {# minutos}}.",
+    "WEAK_PASSWORD": "La contraseña debe tener al menos 10 caracteres y no puede ser tan obvia.",
+    "ACCOUNT_DISABLED": "Esta cuenta está desactivada. Comunícate con RapiChonta.",
+    "REGISTRATION_EXPIRED": "Pasó mucho tiempo. Pide un código nuevo para terminar tu registro.",
+    "CONSENT_REQUIRED": "Debes aceptar los documentos para continuar.",
+    "PHONE_ALREADY_REGISTERED": "Ese número ya pertenece a otra cuenta.",
+    "DOCUMENT_ALREADY_REGISTERED": "Ese documento ya está registrado.",
+    "ROLE_ALREADY_GRANTED": "Esa persona ya tiene ese rol.",
+    "ROLE_NOT_GRANTED": "Tu cuenta no tiene ese rol.",
+    "PASSWORD_REQUIRED": "Escribe tu contraseña para continuar.",
+    "USER_NOT_FOUND": "No encontramos ese usuario.",
+    "COURIER_NOT_FOUND": "No encontramos ese domiciliario.",
+    "INVALID_STATUS_TRANSITION": "Ese cambio de estado no está permitido.",
+    "STATUS_CONFLICT": "Alguien más cambió este registro al mismo tiempo. Recarga e inténtalo de nuevo.",
+    "CANNOT_CHANGE_OWN_STATUS": "No puedes cambiar el estado de tu propia cuenta.",
+    "MUNICIPALITY_REQUIRED": "Elige el municipio donde trabajará.",
+    "INVALID_OPTION": "Una de las opciones elegidas ya no es válida. Recarga la página.",
+    "PASSWORD_NOT_SET": "Tu cuenta no usa contraseña.",
+    "SAME_PHONE": "Ese ya es tu número actual.",
+    "ALREADY_EXISTS": "{field, select, plate {Esa placa ya está registrada en otro vehículo.} document {Ese documento ya está registrado.} phone {Ese celular ya pertenece a otra cuenta.} accountNumber {Esa cuenta ya está registrada.} other {Ya existe un registro con esos datos.}}",
+    "CONSTRAINT_VIOLATION": "Los datos no cumplen las reglas del sistema. Revísalos.",
+    "BUSINESS_RULE_VIOLATED": "No se puede hacer esto en este momento."
+  },
+  "auth": {
+    "signInTitle": "Entra con tu celular",
+    "signInSubtitle": "Te enviamos un código por SMS. Sin contraseñas.",
+    "phoneLabel": "Celular",
+    "phoneHint": "Lo usamos solo para tus pedidos y para avisarte de tu domicilio.",
+    "phoneInvalid": "Escribe un celular colombiano de 10 dígitos (empieza por 3).",
+    "sendCode": "Enviar código",
+    "noPassword": "Tu código vence en 5 minutos y solo sirve una vez.",
+    "codeTitle": "Escribe el código",
+    "codeSentTo": "Lo enviamos al <b>{phone}</b>.",
+    "changeNumber": "Cambiar",
+    "devCode": "Entorno de prueba, código:",
+    "codeLabel": "Código de verificación",
+    "verify": "Verificar",
+    "expiresIn": "Vence en {time}",
+    "codeExpired": "El código venció",
+    "resendIn": "Reenviar en {seconds} s",
+    "resend": "Reenviar código",
+    "profileTitle": "¡Bienvenido a RapiChonta!",
+    "profileSubtitle": "Solo falta tu nombre, así el domiciliario sabe a quién entregar.",
+    "givenNames": "Nombres",
+    "familyNames": "Apellidos",
+    "optional": "Opcional",
+    "createAccount": "Crear mi cuenta",
+    "close": "Cerrar"
+  },
+  "consents": {
+    "accept": "Leí y acepto {type, select, TERMS_OF_SERVICE {los} other {la}} <link>{document}</link>",
+    "version": "versión {version}",
+    "documents": {
+      "TERMS_OF_SERVICE": "Términos y condiciones",
+      "DATA_PROCESSING_POLICY": "Política de tratamiento de datos",
+      "COURIER_LOCATION_AUTHORIZATION": "Autorización de ubicación en turno"
+    },
+    "gateTitle": "Hola, {name}",
+    "gateSubtitle": "Actualizamos estos documentos. Para seguir usando RapiChonta, revísalos y acéptalos.",
+    "continue": "Aceptar y continuar",
+    "signOutInstead": "Ahora no, cerrar sesión"
+  },
+  "account": {
+    "title": "Mi cuenta",
+    "backToMap": "Volver al mapa",
+    "signedOutTitle": "Tu cuenta, en un toque",
+    "signedOutBody": "Entra con tu celular para ver tus pedidos, guardar tus datos y elegir tu idioma.",
+    "signIn": "Entrar con mi celular",
+    "signedOutLegal": "Al entrar aceptas los términos y la <link>política de tratamiento de datos</link>.",
+    "deleted": "Tus datos personales fueron eliminados y tu cuenta quedó cerrada.",
+    "profileSaved": "Guardamos tus cambios.",
+    "phoneChanged": "Tu celular quedó actualizado.",
+    "passwordChanged": "Tu contraseña quedó actualizada.",
+    "personalData": "Datos personales",
+    "phone": "Celular",
+    "phoneHint": "Para cambiarlo te enviamos un código al número nuevo.",
+    "change": "Cambiar",
+    "security": "Seguridad",
+    "password": "Contraseña",
+    "passwordHint": "La usas para entrar al panel o a la app de domiciliarios.",
+    "privacy": "Privacidad y documentos",
+    "legal": {
+      "TERMS_OF_SERVICE": "Términos y condiciones",
+      "DATA_PROCESSING_POLICY": "Política de tratamiento de datos",
+      "COURIER_LOCATION_AUTHORIZATION": "Autorización de ubicación en turno"
+    },
+    "signOut": "Cerrar sesión",
+    "deleteData": "Eliminar mis datos",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "language": "Idioma",
+    "languages": {
+      "es": "Español",
+      "en": "English"
+    },
+    "languageHint": "Lo recordamos en tu cuenta, también en la app.",
+    "changePhoneTitle": "Cambiar celular",
+    "changePhoneSubtitle": "Te enviaremos un código al número nuevo para confirmarlo.",
+    "newPhone": "Celular nuevo",
+    "changePasswordTitle": "Cambiar contraseña",
+    "changePasswordSubtitle": "Por seguridad, cerraremos tus otras sesiones abiertas.",
+    "currentPassword": "Contraseña actual",
+    "newPassword": "Contraseña nueva",
+    "confirmPassword": "Repite la contraseña nueva",
+    "passwordPolicy": "Mínimo {min} caracteres. Una frase fácil de recordar funciona bien.",
+    "passwordMismatch": "Las contraseñas no coinciden.",
+    "savePassword": "Guardar contraseña",
+    "deleteWord": "ELIMINAR",
+    "deleteTitle": "¿Eliminar tus datos?",
+    "deleteSubtitle": "Esta acción no se puede deshacer.",
+    "deleteConsequence1": "Borramos tu nombre, celular, direcciones y documentos.",
+    "deleteConsequence2": "Tu cuenta se cierra y salimos de todas tus sesiones.",
+    "deleteConsequence3": "Los pedidos ya hechos se conservan sin datos que te identifiquen, como exige la ley contable.",
+    "deleteConfirmLabel": "Escribe {word} para confirmar",
+    "deleteConfirm": "Eliminar definitivamente"
+  },
+  "roles": {
+    "CUSTOMER": "Cliente",
+    "COURIER": "Domiciliario",
+    "OPERATOR": "Operador",
+    "ADMIN": "Administrador"
+  },
+  "panelSignIn": {
+    "title": "Ingreso del personal",
+    "subtitle": "Con tu celular y contraseña. Luego confirmas con un código.",
+    "codeSubtitle": "Último paso: confirma que eres tú.",
+    "eyebrow": "Panel de RapiChonta",
+    "headline": "Cada pedido, cada domiciliario, en un solo lugar.",
+    "body": "Acceso exclusivo para operadores y administradores. Toda acción queda registrada.",
+    "backToSite": "Ir al sitio",
+    "password": "Contraseña",
+    "showPassword": "Mostrar contraseña",
+    "hidePassword": "Ocultar contraseña",
+    "notStaff": "Esta cuenta no tiene acceso al panel. Los domiciliarios usan la app de RapiChonta.",
+    "continue": "Continuar",
+    "twoSteps": "Verificación en dos pasos: contraseña y código por SMS."
+  },
+  "panel": {
+    "navigation": "Secciones del panel",
+    "nav": {
+      "home": "Inicio",
+      "couriers": "Domiciliarios",
+      "staff": "Personal"
+    },
+    "viewSite": "Ver el sitio",
+    "signOut": "Cerrar sesión",
+    "switchTitle": "Entrar como {role}",
+    "switchBody": "Tu sesión está en modo {role}. Confirma tu contraseña para abrir el panel.",
+    "password": "Contraseña",
+    "switchAction": "Abrir el panel",
+    "restrictedTitle": "Acceso restringido",
+    "restrictedBody": "El panel es solo para operadores y administradores de RapiChonta.",
+    "useOtherAccount": "Entrar con otra cuenta",
+    "reason": "Motivo",
+    "reasonHint": "Opcional. Queda en el historial.",
+    "cancel": "Cancelar"
+  },
+  "panelHome": {
+    "greeting": "Panel de RapiChonta",
+    "title": "Hola, {name}",
+    "pendingCouriers": "{count, plural, =0 {domiciliarios por verificar} one {domiciliario por verificar} other {domiciliarios por verificar}}",
+    "staffTitle": "Personal",
+    "staffBody": "Operadores y administradores con acceso al panel.",
+    "ordersTitle": "Pedidos",
+    "ordersBody": "La operación de pedidos llega en una próxima entrega."
+  },
+  "verification": {
+    "PENDING": "Por verificar",
+    "VERIFIED": "Verificado",
+    "SUSPENDED": "Suspendido",
+    "REJECTED": "Rechazado"
+  },
+  "accountStatus": {
+    "ACTIVE": "Activa",
+    "SUSPENDED": "Suspendida",
+    "DEACTIVATED": "Desactivada",
+    "CLOSED": "Cerrada"
+  },
+  "people": {
+    "familyNames": "Apellidos",
+    "documentType": "Documento",
+    "documentNumber": "Número de documento",
+    "phoneHint": "A este número llegan los códigos de ingreso.",
+    "initialPassword": "Contraseña inicial",
+    "initialPasswordHint": "Entrégala en persona. Podrá cambiarla desde Mi cuenta.",
+    "generatePassword": "Generar otra",
+    "showPassword": "Mostrar",
+    "hidePassword": "Ocultar",
+    "municipality": "Municipio"
+  },
+  "documentTypes": {
+    "CC": "Cédula de ciudadanía",
+    "CE": "Cédula de extranjería",
+    "PASSPORT": "Pasaporte",
+    "PPT": "Permiso por protección temporal",
+    "TI": "Tarjeta de identidad"
+  },
+  "catalog": {
+    "fundingModes": {
+      "CASH_BOX": "Caja diaria",
+      "OWN_FUNDS": "Fondos propios"
+    },
+    "fundingModeHints": {
+      "CASH_BOX": "RapiChonta le entrega una base para comprar y la cuadra al final del día.",
+      "OWN_FUNDS": "Compra con su propio dinero y lo recupera al cobrar el pedido."
+    },
+    "vehicleTypes": {
+      "MOTORCYCLE": "Moto",
+      "BICYCLE": "Bicicleta",
+      "CAR": "Carro",
+      "ON_FOOT": "A pie"
+    },
+    "paymentMethods": {
+      "CASH": "Efectivo",
+      "NEQUI": "Nequi",
+      "DAVIPLATA": "Daviplata",
+      "BANK_TRANSFER": "Transferencia bancaria"
+    },
+    "bankAccountTypes": {
+      "SAVINGS": "Ahorros",
+      "CHECKING": "Corriente"
+    }
+  },
+  "couriers": {
+    "title": "Domiciliarios",
+    "subtitle": "Registra, verifica y administra a quienes hacen las entregas.",
+    "new": "Nuevo domiciliario",
+    "search": "Buscar domiciliarios",
+    "searchPlaceholder": "Buscar por nombre, celular o documento",
+    "filterLabel": "Filtrar por verificación",
+    "all": "Todos",
+    "noResults": "Ningún domiciliario coincide con la búsqueda.",
+    "emptyTitle": "Aún no hay domiciliarios",
+    "emptyBody": "Registra al primero. Quedará por verificar hasta que revises sus datos.",
+    "createTitle": "Nuevo domiciliario",
+    "createSubtitle": "Quedará por verificar: no recibe pedidos hasta que lo verifiques.",
+    "phoneInvalid": "Escribe un celular colombiano de 10 dígitos.",
+    "plateRequired": "Este vehículo necesita placa.",
+    "sectionPerson": "Datos personales",
+    "sectionOperation": "Operación",
+    "fundingMode": "Cómo compra los pedidos",
+    "sectionVehicle": "Vehículo",
+    "vehicleType": "Tipo",
+    "plate": "Placa",
+    "vehicleDescription": "Descripción",
+    "vehicleDescriptionPlaceholder": "Marca, color… para que el cliente lo reconozca",
+    "sectionAccounts": "Cuentas para recibir pagos",
+    "accountsHint": "El cliente le paga por QR a estas cuentas (Nequi, Daviplata o banco).",
+    "paymentMethod": "Medio",
+    "removeAccount": "Quitar cuenta",
+    "bank": "Banco",
+    "choose": "Elige…",
+    "bankAccountType": "Tipo de cuenta",
+    "accountNumber": "Número",
+    "holderName": "Titular",
+    "addAccount": "Agregar cuenta",
+    "cancel": "Cancelar",
+    "create": "Registrar domiciliario",
+    "detailTitle": "Domiciliario",
+    "loading": "Cargando…",
+    "createdNotice": "Registrado. Revisa sus datos y verifícalo para que empiece a recibir pedidos.",
+    "pendingNotice": "Por verificar: no recibe ofertas de pedidos hasta que lo verifiques.",
+    "actions": "Acciones",
+    "verificationAction": {
+      "VERIFIED": "Verificar",
+      "REJECTED": "Rechazar",
+      "SUSPENDED": "Suspender verificación",
+      "PENDING": "Volver a revisar"
+    },
+    "accountAction": {
+      "ACTIVE": "Reactivar cuenta",
+      "SUSPENDED": "Suspender cuenta",
+      "DEACTIVATED": "Desactivar cuenta"
+    },
+    "verificationConfirm": {
+      "VERIFIED": "{name} podrá recibir ofertas de pedidos cuando esté en turno.",
+      "REJECTED": "{name} no podrá recibir pedidos. Puedes volver a revisarlo después.",
+      "SUSPENDED": "{name} dejará de recibir ofertas de pedidos hasta que lo vuelvas a verificar.",
+      "PENDING": "{name} vuelve a quedar por verificar."
+    },
+    "accountConfirm": {
+      "ACTIVE": "{name} podrá volver a entrar a la app.",
+      "SUSPENDED": "La cuenta de {name} quedará suspendida y se cerrarán todas sus sesiones.",
+      "DEACTIVATED": "La cuenta de {name} quedará desactivada y se cerrarán todas sus sesiones."
+    },
+    "confirm": "Confirmar",
+    "document": "Documento",
+    "municipality": "Municipio",
+    "createdAt": "Registrado",
+    "noAccounts": "Sin cuentas registradas: solo podrá cobrar en efectivo.",
+    "history": "Historial de verificación",
+    "filters": {
+      "PENDING": "Por verificar",
+      "VERIFIED": "Verificados",
+      "SUSPENDED": "Suspendidos",
+      "REJECTED": "Rechazados"
+    }
+  },
+  "staff": {
+    "title": "Personal",
+    "subtitle": "Operadores y administradores con acceso al panel.",
+    "new": "Nuevo miembro",
+    "createdNotice": "Listo. Entrégale su contraseña inicial: entrará con su celular, la contraseña y un código.",
+    "emptyTitle": "Aún no hay personal registrado",
+    "you": "(tú)",
+    "actions": "Acciones",
+    "action": {
+      "ACTIVE": "Reactivar",
+      "SUSPENDED": "Suspender",
+      "DEACTIVATED": "Desactivar"
+    },
+    "confirm": {
+      "ACTIVE": "{name} podrá volver a entrar al panel.",
+      "SUSPENDED": "La cuenta de {name} quedará suspendida y se cerrarán sus sesiones.",
+      "DEACTIVATED": "La cuenta de {name} quedará desactivada y se cerrarán sus sesiones."
+    },
+    "confirmAction": "Confirmar",
+    "lastSignIn": "Último ingreso {when}",
+    "neverSignedIn": "Aún no ha entrado",
+    "forbiddenTitle": "Solo para administradores",
+    "forbiddenBody": "Tu rol no puede administrar al personal.",
+    "createTitle": "Nuevo miembro del personal",
+    "createSubtitle": "Entrará al panel con su celular, contraseña y un código por SMS.",
+    "phoneInvalid": "Escribe un celular colombiano de 10 dígitos.",
+    "sectionRole": "Rol",
+    "roleHint": {
+      "OPERATOR": "Atiende pedidos y asigna domiciliarios en su municipio.",
+      "ADMIN": "Todo lo del operador, más personal, domiciliarios y configuración."
+    },
+    "sectionPerson": "Datos personales",
+    "cancel": "Cancelar",
+    "create": "Crear {role}"
+  },
+  "legalDocs": {
+    "back": "Volver",
+    "version": "Versión {version}",
+    "otherDocuments": "Otros documentos",
+    "TERMS_OF_SERVICE": {
+      "title": "Términos y condiciones",
+      "version": "2026-10",
+      "intro": "Estas condiciones regulan el uso de RapiChonta, el servicio de domicilios de Villagarzón, Putumayo. Al crear tu cuenta las aceptas.",
+      "sections": [
+        {
+          "heading": "Qué es RapiChonta",
+          "paragraphs": [
+            "RapiChonta conecta a clientes con establecimientos registrados y con domiciliarios que compran y entregan los pedidos. Por ahora el servicio funciona solo en Villagarzón y solo se puede pedir en los establecimientos registrados."
+          ]
+        },
+        {
+          "heading": "Tu cuenta",
+          "paragraphs": [
+            "Entras con tu número de celular y un código que te enviamos por SMS. El código es personal: no lo compartas con nadie, ni siquiera con alguien que diga ser de RapiChonta.",
+            "Eres responsable de que tus datos sean ciertos y de lo que se haga con tu cuenta. Puedes cerrar tu sesión o eliminar tus datos en cualquier momento desde Mi cuenta."
+          ]
+        },
+        {
+          "heading": "Pedidos y pagos",
+          "paragraphs": [
+            "El precio del pedido es el que cobra el establecimiento más la tarifa de domicilio que ves antes de confirmar. Pagas al recibir: en efectivo o por Nequi, Daviplata o transferencia a la cuenta del domiciliario.",
+            "Si un producto no está disponible, te lo informamos antes de comprarlo para que decidas. Al recibir el pedido confirmas la entrega en la app."
+          ]
+        },
+        {
+          "heading": "Uso adecuado",
+          "paragraphs": [
+            "No uses RapiChonta para pedidos falsos, para productos prohibidos por la ley ni para acosar a domiciliarios o al personal. Podemos suspender las cuentas que incumplan estas condiciones."
+          ]
+        },
+        {
+          "heading": "Responsabilidad",
+          "paragraphs": [
+            "Los productos son responsabilidad del establecimiento que los vende. RapiChonta responde por la compra y la entrega hechas por sus domiciliarios en las condiciones informadas en cada pedido."
+          ]
+        },
+        {
+          "heading": "Cambios",
+          "paragraphs": [
+            "Si cambiamos estas condiciones publicaremos una nueva versión y te pediremos aceptarla antes de seguir usando el servicio."
+          ]
+        }
+      ]
+    },
+    "DATA_PROCESSING_POLICY": {
+      "title": "Política de tratamiento de datos personales",
+      "version": "2026-10",
+      "intro": "Cumplimos la Ley 1581 de 2012 y el Decreto 1377 de 2013 (compilado en el Decreto 1074 de 2015). Aquí explicamos qué datos tratamos, para qué y cómo ejercer tus derechos.",
+      "sections": [
+        {
+          "heading": "Responsable",
+          "paragraphs": [
+            "RapiChonta es el responsable del tratamiento de los datos que recoge a través de su web y su app. Puedes comunicarte con nosotros por los canales de atención publicados en la app."
+          ]
+        },
+        {
+          "heading": "Datos que tratamos",
+          "paragraphs": [
+            "Clientes: nombre, número de celular, direcciones de entrega, idioma preferido y el historial de sus pedidos.",
+            "Domiciliarios y personal: además, documento de identidad, vehículo, cuentas para recibir pagos y, solo para domiciliarios en turno, su ubicación.",
+            "Datos técnicos: dispositivo, dirección IP y registros de ingreso, para proteger tu cuenta."
+          ]
+        },
+        {
+          "heading": "Para qué los usamos",
+          "paragraphs": [
+            "Para crear y proteger tu cuenta, tomar y entregar tus pedidos, comunicarnos contigo sobre ellos, atender reclamos y cumplir obligaciones legales y contables. No vendemos tus datos."
+          ]
+        },
+        {
+          "heading": "Con quién los compartimos",
+          "paragraphs": [
+            "El domiciliario que lleva tu pedido ve tu nombre, tu dirección y un número de contacto. Usamos proveedores para enviar los SMS y alojar la información, con las mismas obligaciones de confidencialidad."
+          ]
+        },
+        {
+          "heading": "Tus derechos",
+          "paragraphs": [
+            "Puedes conocer, actualizar y rectificar tus datos; pedir prueba de tu autorización; saber cómo los usamos; revocar la autorización y pedir que los eliminemos; y presentar quejas ante la Superintendencia de Industria y Comercio.",
+            "Desde Mi cuenta puedes actualizar tu nombre y celular, y eliminar tus datos. Respondemos las consultas en máximo 10 días hábiles y los reclamos en máximo 15 días hábiles."
+          ]
+        },
+        {
+          "heading": "Eliminación",
+          "paragraphs": [
+            "Al eliminar tus datos borramos tu nombre, celular, direcciones y documentos, y cerramos tu cuenta. Los registros de pedidos que la ley obliga a conservar quedan sin datos que te identifiquen."
+          ]
+        },
+        {
+          "heading": "Seguridad",
+          "paragraphs": [
+            "Protegemos la información con cifrado en tránsito, contraseñas y códigos guardados de forma irreversible, sesiones que vencen y registros de auditoría de las acciones del personal."
+          ]
+        }
+      ]
+    },
+    "COURIER_LOCATION_AUTHORIZATION": {
+      "title": "Autorización de ubicación en turno",
+      "version": "2026-10",
+      "intro": "Esta autorización la aceptan los domiciliarios de RapiChonta. Explica cuándo y para qué usamos tu ubicación.",
+      "sections": [
+        {
+          "heading": "Cuándo se usa",
+          "paragraphs": [
+            "Solo mientras estás en turno en la app de domiciliarios. Al terminar tu turno dejamos de recibir tu ubicación."
+          ]
+        },
+        {
+          "heading": "Para qué",
+          "paragraphs": [
+            "Para ofrecerte los pedidos más cercanos, saber en qué paso va cada entrega (en el establecimiento, en camino, entregado) y atender incidencias.",
+            "El cliente no ve tu ubicación en vivo: solo el estado de su pedido."
+          ]
+        },
+        {
+          "heading": "Cuánto tiempo se guarda",
+          "paragraphs": [
+            "Guardamos las posiciones el tiempo necesario para la operación y para resolver reclamos de los pedidos, y luego se eliminan o se conservan sin identificarte."
+          ]
+        },
+        {
+          "heading": "Revocar",
+          "paragraphs": [
+            "Puedes revocar esta autorización. Sin ella no es posible recibir pedidos, porque la asignación depende de la cercanía."
+          ]
+        }
+      ]
+    }
   }
 }

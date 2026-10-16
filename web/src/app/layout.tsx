@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { AuthProvider } from "@/presentation/auth/AuthProvider";
 import "./globals.css";
 
 const font = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta" });
@@ -18,7 +19,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <html lang={locale} className={font.variable}>
       <body className="font-sans antialiased">
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );
