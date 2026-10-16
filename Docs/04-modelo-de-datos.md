@@ -1,5 +1,7 @@
 # 04 · Modelo de datos
 
+> **Esquema provisional.** Este documento describe el esquema que hoy está en `api/prisma/schema.prisma`. El diseño normalizado que lo reemplaza a partir de E01 está en [14 · Base de datos normalizada](14-base-de-datos/README.md); ante cualquier diferencia, manda el 14.
+
 El esquema vive en [`api/prisma/schema.prisma`](../api/prisma/schema.prisma) y la migración inicial en `api/prisma/migrations/`.
 
 ```mermaid

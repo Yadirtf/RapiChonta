@@ -47,8 +47,8 @@ RF-15:
   texto: "El administrador define el horario de operación por día (hora de Colombia). Fuera de horario se ven el mapa y los menús, pero el botón de pedir muestra la próxima hora de apertura."
   fuente: Docs/05-flujos-y-ux.md
 RF-16:
-  texto: "Los parámetros del negocio se cambian desde el panel sin desplegar (AppSetting): porcentaje de comisión, tope para clientes nuevos (100.000 COP), vencimiento de ofertas (60 s), tiempo de decisión del cliente (180 s), umbral de llegada (80 m) y espera para entrega con foto (10 min)."
-  fuente: Docs/04-modelo-de-datos.md
+  texto: "Los parámetros del negocio se cambian desde el panel sin desplegar (setting_values, versionados): tope para clientes nuevos (100.000 COP), vencimiento de ofertas (60 s), tiempo de decisión del cliente (180 s), umbral de llegada (80 m) y espera para entrega con foto (10 min); la comisión tiene su propia tabla versionada (commission_rates)."
+  fuente: Docs/14-base-de-datos/E03-zonas-horario-configuracion.md
 RF-17:
   texto: "Los precios se cobran en COP y, para extranjeros, se muestra al lado un valor aproximado en USD o EUR con la tasa de cambio del día, marcado como aproximado."
   fuente: Docs/05-flujos-y-ux.md
@@ -61,8 +61,8 @@ RF-21:
   texto: "La dirección de entrega es la ubicación actual o un punto elegido en el mapa, con una referencia en texto; si el pedido es para otra persona se registran su nombre y teléfono."
   fuente: Docs/05-flujos-y-ux.md
 RF-22:
-  texto: "Al confirmar, se crea el pedido con código RC-XXXX, se copian nombre, precio y tiempo de cada producto, se registra el medio de pago contra entrega elegido (efectivo, Nequi, Daviplata o transferencia) y se aplica el tope de 100.000 COP a clientes sin pedidos entregados."
-  fuente: Docs/04-modelo-de-datos.md
+  texto: "Al confirmar, se crea el pedido con código RC-XXXX; cada línea apunta a la versión vigente del producto (nombre, precio y tiempo quedan fijados sin copiarlos), se registra el medio de pago contra entrega elegido (efectivo, Nequi, Daviplata o transferencia) y se aplica el tope de 100.000 COP a clientes sin pedidos entregados."
+  fuente: Docs/14-base-de-datos/E04-pedido-del-cliente.md
 RF-23:
   texto: "Mis pedidos muestra los pedidos activos con su estado y el historial de pedidos anteriores con su detalle."
   fuente: Docs/05-flujos-y-ux.md
@@ -75,14 +75,14 @@ RF-31:
   texto: "El panel muestra en un mapa el establecimiento, el punto de entrega y los domiciliarios disponibles y verificados ordenados por cercanía al establecimiento; solo el personal de RapiChonta ve esta información."
   fuente: Docs/05-flujos-y-ux.md
 RF-32:
-  texto: "El operador envía el pedido a un domiciliario específico o a todos los disponibles; el primero que acepta lo toma (actualización condicional en base de datos) y a los demás se les retira la oferta. Cada oferta y respuesta queda en OrderOffer."
-  fuente: Docs/04-modelo-de-datos.md
+  texto: "El operador envía el pedido a un domiciliario específico o a todos los disponibles; el primero que acepta lo toma (índice único de una asignación vigente por pedido) y a los demás se les retira la oferta. Cada oferta, cada destinatario con su respuesta y cada asignación quedan en order_offers, order_offer_recipients y order_assignments."
+  fuente: Docs/14-base-de-datos/E07-asignacion.md
 RF-33:
   texto: "Si nadie acepta antes del vencimiento de la oferta (60 s por defecto), el pedido vuelve al panel resaltado para reenviarlo."
   fuente: Docs/05-flujos-y-ux.md
 RF-34:
-  texto: "La plataforma envía notificaciones push por FCM (Android/iOS) y Huawei Push Kit, con tokens por dispositivo y proveedor (DeviceToken)."
-  fuente: Docs/02-stack-tecnologico.md
+  texto: "La plataforma envía notificaciones push por FCM (Android/iOS) y Huawei Push Kit, con tokens por dispositivo y proveedor (devices y device_push_tokens) y registro de cada envío."
+  fuente: Docs/14-base-de-datos/E06-notificaciones.md
 
 # ── Domiciliario y geocercas ─────────────────────────────────────────────────
 RF-40:
@@ -98,8 +98,8 @@ RF-43:
   texto: "Con el pedido en ON_THE_WAY, cuando la distancia al punto de entrega baja del umbral (80 m por defecto), el pedido pasa a ARRIVING y el cliente recibe una notificación."
   fuente: Docs/05-flujos-y-ux.md
 RF-44:
-  texto: "El domiciliario registra lo pagado en el local (purchaseTotal) con foto de la factura; el pedido pasa a PREPARING y se calcula la hora estimada de listo con el producto que más tarda."
-  fuente: Docs/04-modelo-de-datos.md
+  texto: "El domiciliario registra lo pagado en el local (movimiento PURCHASE de su caja) con foto de la factura (order_purchases); el pedido pasa a PREPARING y se calcula la hora estimada de listo con el producto que más tarda."
+  fuente: Docs/14-base-de-datos/E08-modo-domiciliario.md
 RF-45:
   texto: "Al cumplirse el tiempo de preparación, el domiciliario recibe un aviso con Ya está listo (pasa a ON_THE_WAY) o Sigue en preparación (marca retraso visible para el cliente y repite el aviso)."
   fuente: Docs/05-flujos-y-ux.md
@@ -112,8 +112,8 @@ RF-50:
   texto: "El cliente ve una línea de tiempo con el estado del pedido y la cuenta regresiva de preparación, nunca la ubicación del domiciliario."
   fuente: Docs/05-flujos-y-ux.md
 RF-51:
-  texto: "Si falta un producto o cambió el precio, el domiciliario lo reporta y el cliente decide con opciones cerradas (cambiar por otro, quitar, aceptar nuevo precio, cancelar) en 3 minutos; si vence se quita el producto y, si era el único, se cancela. Cada decisión queda en OrderAdjustment."
-  fuente: Docs/05-flujos-y-ux.md
+  texto: "Si falta un producto o cambió el precio, el domiciliario lo reporta (una consulta puede incluir varias líneas) y el cliente decide por línea con opciones cerradas (cambiar por otro, quitar, aceptar nuevo precio, cancelar) en 3 minutos; si vence se quita el producto y, si era el único, se cancela. Cada consulta y decisión queda en order_adjustment_requests y order_item_adjustments."
+  fuente: Docs/14-base-de-datos/E09-producto-faltante.md
 
 # ── Entrega e incidencias ───────────────────────────────────────────────────
 RF-60:
@@ -137,14 +137,14 @@ RF-70:
   texto: "El administrador abre la caja diaria de cada domiciliario con modo CASH_BOX registrando el monto base y si lo entregó en efectivo o por transferencia."
   fuente: Docs/04-modelo-de-datos.md
 RF-71:
-  texto: "Cada compra, cobro y comisión de un pedido genera un movimiento de caja inmutable; los errores se corrigen con un movimiento de ajuste firmado por un administrador."
-  fuente: Docs/06-seguridad.md
+  texto: "Cada compra y cobro de un pedido genera un movimiento de caja inmutable y la comisión se calcula del pedido; los errores se corrigen con un movimiento de ajuste firmado por un administrador."
+  fuente: Docs/14-base-de-datos/E11-cajas-y-comisiones.md
 RF-72:
   texto: "Al cierre del día el sistema calcula lo que el domiciliario devuelve: base entregada más comisiones de los domicilios completados (CASH_BOX) o solo comisiones (OWN_FUNDS), y muestra las diferencias."
   fuente: Docs/04-modelo-de-datos.md
 RF-73:
-  texto: "La comisión es un porcentaje fijo de cada domicilio completado; el porcentaje vigente y su valor se copian en el pedido para que un cambio futuro no altere pedidos pasados."
-  fuente: Docs/04-modelo-de-datos.md
+  texto: "La comisión es un porcentaje fijo de cada domicilio completado; el pedido apunta a la versión vigente del porcentaje (commission_rates) y su valor se calcula, para que un cambio futuro no altere pedidos pasados."
+  fuente: Docs/14-base-de-datos/E03-zonas-horario-configuracion.md
 
 # ── Fases futuras ────────────────────────────────────────────────────────────
 RF-80:
