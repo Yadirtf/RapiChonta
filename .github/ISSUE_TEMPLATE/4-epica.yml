@@ -1,0 +1,56 @@
+name: Épica
+description: Una capacidad grande del producto que agrupa varias historias.
+title: "Exx · "
+labels: ["tipo: épica", "estado: backlog"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Las épicas del roadmap ya existen (E01 a E15). Cree una nueva solo si el trabajo no cabe en ninguna; agréguela también a `backlog/epicas.yml` si quiere que quede en Docs/13.
+  - type: textarea
+    id: objetivo
+    attributes:
+      label: Objetivo
+    validations:
+      required: true
+  - type: textarea
+    id: terminado
+    attributes:
+      label: Terminado cuando
+    validations:
+      required: true
+  - type: dropdown
+    id: areas
+    attributes:
+      label: Áreas
+      multiple: true
+      options: [api, web, app, docs, infra]
+    validations:
+      required: true
+  - type: dropdown
+    id: fase
+    attributes:
+      label: Fase
+      options:
+        - Fase 1 · Catálogo y pedido del cliente
+        - Fase 2 · Operación del domiciliario y piloto
+        - Fase 3 · Publicación y tiempo real
+        - Fase 4 · Pagos y crecimiento
+        - Fase 5 · Comercios aliados
+    validations:
+      required: true
+  - type: dropdown
+    id: prioridad
+    attributes:
+      label: Prioridad
+      options: [Alta, Media, Baja]
+    validations:
+      required: true
+  - type: textarea
+    id: historias
+    attributes:
+      label: Historias
+      description: Se completa sola al crear historias que apunten a esta épica.
+      value: |
+        <!-- historias:inicio -->
+        <!-- historias:fin -->

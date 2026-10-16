@@ -1,0 +1,93 @@
+name: Historia de usuario
+description: Algo que un cliente, domiciliario, operador o administrador necesita poder hacer.
+title: "Como <rol>, quiero …"
+labels: ["tipo: historia", "estado: backlog"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Una historia describe **qué** necesita alguien y **por qué**, con criterios que se puedan comprobar. Al crearla, el flujo la enlaza a su épica y le pone las etiquetas de área, fase y prioridad.
+  - type: input
+    id: epica
+    attributes:
+      label: Épica
+      description: Número de la épica a la que pertenece.
+      placeholder: "#12"
+    validations:
+      required: true
+  - type: dropdown
+    id: como
+    attributes:
+      label: Como
+      options:
+        - cliente
+        - cliente extranjero
+        - domiciliario
+        - operador
+        - administrador
+        - comercio aliado
+        - equipo de RapiChonta
+    validations:
+      required: true
+  - type: input
+    id: quiero
+    attributes:
+      label: Quiero
+      placeholder: "repetir un pedido anterior en un toque"
+    validations:
+      required: true
+  - type: input
+    id: para
+    attributes:
+      label: Para
+      placeholder: "pedir lo de siempre más rápido"
+    validations:
+      required: true
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Criterios de aceptación
+      description: Uno por línea, comprobables.
+      value: |
+        - [ ] 
+        - [ ] 
+    validations:
+      required: true
+  - type: input
+    id: requerimientos
+    attributes:
+      label: Requerimientos
+      description: Ids de Docs/13-requerimientos.md que cubre (o déjelo vacío si es uno nuevo).
+      placeholder: "RF-22, RNF-05"
+  - type: dropdown
+    id: areas
+    attributes:
+      label: Áreas
+      multiple: true
+      options: [api, web, app, docs, infra]
+    validations:
+      required: true
+  - type: dropdown
+    id: fase
+    attributes:
+      label: Fase
+      options:
+        - Fase 1 · Catálogo y pedido del cliente
+        - Fase 2 · Operación del domiciliario y piloto
+        - Fase 3 · Publicación y tiempo real
+        - Fase 4 · Pagos y crecimiento
+        - Fase 5 · Comercios aliados
+    validations:
+      required: true
+  - type: dropdown
+    id: prioridad
+    attributes:
+      label: Prioridad
+      options: [Alta, Media, Baja]
+    validations:
+      required: true
+  - type: textarea
+    id: notas
+    attributes:
+      label: Notas
+      description: Decisiones, enlaces a Docs/, diseño o dudas.

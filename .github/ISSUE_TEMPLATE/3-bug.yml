@@ -1,0 +1,51 @@
+name: Bug
+description: Algo no funciona como debería.
+labels: ["tipo: bug", "estado: backlog"]
+body:
+  - type: textarea
+    id: que-paso
+    attributes:
+      label: Qué pasó
+    validations:
+      required: true
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para reproducirlo
+      value: |
+        1. 
+        2. 
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Qué se esperaba
+    validations:
+      required: true
+  - type: dropdown
+    id: entorno
+    attributes:
+      label: Dónde
+      options:
+        - Pruebas (SnapDeploy)
+        - Local
+        - Producción
+    validations:
+      required: true
+  - type: dropdown
+    id: areas
+    attributes:
+      label: Áreas
+      multiple: true
+      options: [api, web, app, docs, infra]
+  - type: dropdown
+    id: prioridad
+    attributes:
+      label: Prioridad
+      options: [Alta, Media, Baja]
+  - type: textarea
+    id: evidencia
+    attributes:
+      label: Capturas o registros
+      description: Sin datos personales de clientes (teléfonos, direcciones).

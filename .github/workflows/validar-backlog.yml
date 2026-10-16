@@ -1,0 +1,31 @@
+# Revisa en cada PR que el backlog sea válido, que Docs/13 esté al día y que
+# los scripts del flujo pasen sus pruebas.
+name: Validar backlog
+
+on:
+  pull_request:
+    paths:
+      - "backlog/**"
+      - ".github/labels.yml"
+      - ".github/scripts/**"
+      - ".github/workflows/**"
+      - "Docs/13-requerimientos.md"
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: .github/scripts/package-lock.json
+
+      - run: npm ci --prefix .github/scripts
+      - run: node .github/scripts/cli.js validar
+      - run: node --test .github/scripts/test/*.test.js

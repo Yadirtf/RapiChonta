@@ -1,0 +1,67 @@
+# Mueve los issues entre estados con cada cambio en issues y pull requests,
+# actualiza el issue de progreso y el tablero. Ver Docs/12-flujo-de-trabajo.md.
+#
+# Nota: GitHub ejecuta los eventos de issues con el workflow de la rama por
+# defecto del repositorio; los eventos de PR, con el de la rama del PR.
+name: Flujo de trabajo
+
+on:
+  issues:
+    types: [opened, reopened, closed, assigned, unassigned, labeled]
+  pull_request:
+    types: [opened, reopened, edited, ready_for_review, converted_to_draft, closed]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: flujo-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  mover:
+    # Los PR desde forks no tienen permiso de escritura sobre los issues.
+    if: github.event_name == 'issues' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+      PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: .github/scripts/package-lock.json
+
+      - name: Instalar dependencias de los scripts
+        run: npm ci --prefix .github/scripts
+
+      - name: Mover estados
+        id: mover
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await require('./.github/scripts/flujo.js')({ github, context, core })
+
+      - name: Issue de progreso
+        if: steps.mover.outputs.issues != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await require('./.github/scripts/progreso.js')({ github, context, core })
+
+      - name: Tablero de GitHub Projects
+        if: env.PROJECT_TOKEN != '' && steps.mover.outputs.issues != ''
+        uses: actions/github-script@v7
+        env:
+          ISSUES: ${{ steps.mover.outputs.issues }}
+        with:
+          github-token: ${{ secrets.PROJECT_TOKEN }}
+          script: |
+            await require('./.github/scripts/tablero.js')({ github, context, core, numeros: process.env.ISSUES })

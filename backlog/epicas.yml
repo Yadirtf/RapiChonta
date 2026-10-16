@@ -1,0 +1,979 @@
+# Backlog inicial de RapiChonta: épicas e historias de usuario.
+#
+# Este archivo es la semilla del backlog. El flujo "Backlog" (GitHub Actions)
+# crea en GitHub un issue por cada épica e historia que todavía no exista,
+# enlaza cada historia como sub-issue de su épica y no vuelve a tocar los
+# issues que ya creó: desde ese momento el issue es la fuente de verdad.
+# Para agregar trabajo nuevo, agréguelo aquí (con un id nuevo) o cree el
+# issue desde las plantillas de GitHub. Ver Docs/12-flujo-de-trabajo.md.
+#
+# Campos de una historia: id, titulo, como, quiero, para, areas, prioridad,
+# requerimientos (ids de backlog/requerimientos.yml), criterios (al menos 2)
+# y, opcionales, fase (si difiere de la épica) y notas.
+
+epicas:
+  # ═══════════════════════════ FASE 1 ═══════════════════════════
+  - id: E01
+    titulo: Identidad y acceso
+    fase: 1
+    prioridad: alta
+    areas: [api, web, app]
+    objetivo: "Que clientes, domiciliarios, operadores y administradores entren con su cuenta y solo vean lo que su rol permite (módulo identity)."
+    terminado: "Un cliente inicia sesión con su celular, un operador entra al panel y un domiciliario creado por el administrador inicia sesión en la app, cada uno con los permisos de su rol."
+    docs: [Docs/06-seguridad.md, Docs/04-modelo-de-datos.md]
+    historias:
+      - id: H01.1
+        titulo: Iniciar sesión con celular y código
+        como: cliente
+        quiero: "registrarme e iniciar sesión con mi número de celular y un código que me llega por SMS o WhatsApp"
+        para: "pedir sin crear ni recordar contraseñas"
+        areas: [api, web, app]
+        prioridad: alta
+        requerimientos: [RF-01, RF-02, RF-07, RNF-02]
+        criterios:
+          - "La sesión se pide solo al confirmar el pedido, no al abrir la app ni la web."
+          - "Acepta números colombianos e internacionales en formato E.164."
+          - "El código tiene 6 dígitos, vence a los 5 minutos y se bloquea tras 5 intentos fallidos."
+          - "No se envían más de 3 códigos por hora al mismo número; el límite de peticiones del endpoint es más estricto que el global."
+          - "En el primer ingreso el cliente acepta la política de tratamiento de datos y queda registrada la fecha de aceptación."
+          - "Tras validar el código se emiten token de acceso (15 min) y de refresco rotativo (30 días): en la web en cookie HttpOnly, en la app en almacenamiento seguro."
+          - "Cerrar sesión revoca el token de refresco en la base de datos."
+        notas: "Proveedor de SMS detrás de un puerto (por ejemplo Twilio Verify) con un adaptador falso para desarrollo y pruebas."
+      - id: H01.2
+        titulo: Roles y permisos en cada endpoint
+        como: equipo de RapiChonta
+        quiero: "que cada endpoint valide el rol y la propiedad de los datos"
+        para: "que nadie vea ni cambie pedidos o datos que no le corresponden"
+        areas: [api]
+        prioridad: alta
+        requerimientos: [RF-03, RF-06, RNF-01]
+        criterios:
+          - "Existen guards de NestJS por rol (CUSTOMER, COURIER, OPERATOR, ADMIN) aplicados con un decorador."
+          - "Un cliente que pide un pedido ajeno recibe 404, no 403, para no revelar que existe."
+          - "Un domiciliario solo ve los pedidos que se le ofrecieron o aceptó, y solo mientras están activos."
+          - "La dirección exacta y el teléfono de quien recibe se muestran al domiciliario solo desde ON_THE_WAY."
+          - "Hay pruebas unitarias de los guards y de la regla de propiedad."
+      - id: H01.3
+        titulo: Crear y verificar domiciliarios
+        como: administrador
+        quiero: "crear la cuenta de cada domiciliario con sus datos, documentos y cuentas de cobro"
+        para: "que solo personas verificadas por RapiChonta hagan domicilios"
+        areas: [api, web]
+        prioridad: alta
+        requerimientos: [RF-04, RF-05]
+        criterios:
+          - "El formulario registra nombre, documento, teléfono, modo de financiación (caja diaria o dinero propio) y cuentas Nequi/Daviplata/banco para el QR."
+          - "El domiciliario no puede recibir ofertas hasta que el administrador lo marca como verificado."
+          - "No existe un endpoint ni pantalla para que un cliente se convierta en domiciliario."
+          - "El administrador puede desactivar un domiciliario; sus sesiones quedan revocadas."
+      - id: H01.4
+        titulo: Acceso al panel para operadores y administradores
+        como: operador
+        quiero: "entrar al panel web con mi celular, código y contraseña"
+        para: "gestionar pedidos con una cuenta más protegida que la de un cliente"
+        areas: [api, web]
+        prioridad: alta
+        requerimientos: [RF-05, RF-02, RF-03]
+        criterios:
+          - "Las cuentas de personal piden código más contraseña; los clientes nunca ven ese formulario."
+          - "El panel (/panel) redirige al inicio de sesión si no hay sesión de OPERATOR o ADMIN."
+          - "El administrador crea operadores y puede desactivarlos."
+          - "Las opciones exclusivas del administrador no aparecen para el operador y la API las rechaza."
+      - id: H01.5
+        titulo: Mi cuenta con mis datos e idioma
+        como: cliente
+        quiero: "ver y corregir mis datos, cambiar el idioma y pedir que se eliminen mis datos"
+        para: "controlar mi información como lo exige la ley"
+        areas: [api, web, app]
+        prioridad: media
+        requerimientos: [RF-07, RNF-03]
+        criterios:
+          - "Mi cuenta muestra nombre, teléfono y direcciones guardadas, y permite editarlos."
+          - "El idioma (español o inglés) se puede cambiar y se recuerda."
+          - "La solicitud de eliminación anonimiza los datos personales sin borrar el historial de pedidos necesario para la contabilidad."
+          - "Hay un enlace visible a la política de tratamiento de datos."
+
+  - id: E02
+    titulo: Establecimientos y menús
+    fase: 1
+    prioridad: alta
+    areas: [api, web, app]
+    objetivo: "Que RapiChonta registre los locales de Villagarzón con su área en el mapa y su menú, y que el cliente los encuentre en el mapa."
+    terminado: "Los locales del piloto están cargados con área y menú, y el cliente los ve en el mapa y en su ficha."
+    docs: [Docs/04-modelo-de-datos.md, Docs/05-flujos-y-ux.md]
+    historias:
+      - id: H02.1
+        titulo: Registrar establecimientos con área en el mapa
+        como: administrador
+        quiero: "registrar un establecimiento con su punto y dibujar su área en el mapa"
+        para: "que aparezca en el mapa y la app detecte cuándo el domiciliario llegó"
+        areas: [api, web]
+        prioridad: alta
+        requerimientos: [RF-10, RNF-11]
+        criterios:
+          - "El formulario pide nombre, categoría, dirección, teléfono, punto en el mapa y un polígono dibujado con MapLibre."
+          - "La API rechaza polígonos inválidos o que no contienen el punto del local."
+          - "Se puede editar y desactivar un establecimiento; uno inactivo no aparece en el mapa del cliente."
+          - "El punto y el área se guardan como geography con índice GIST."
+      - id: H02.2
+        titulo: Administrar el menú de un establecimiento
+        como: operador
+        quiero: "crear y editar productos con precio, detalle, foto, tiempo de preparación y disponibilidad"
+        para: "que el cliente vea precios y tiempos reales"
+        areas: [api, web]
+        prioridad: alta
+        requerimientos: [RF-11, RNF-05]
+        criterios:
+          - "Operadores y administradores pueden crear, editar, ordenar y marcar como no disponible un producto."
+          - "Los precios se guardan en Decimal(12,2) en COP."
+          - "Un producto no disponible no se puede agregar al carrito."
+          - "Cambiar un precio no altera los pedidos ya creados."
+      - id: H02.3
+        titulo: Subir fotos de productos
+        como: operador
+        quiero: "subir la foto de cada producto"
+        para: "que el cliente reconozca lo que pide"
+        areas: [api, web]
+        prioridad: media
+        requerimientos: [RNF-08]
+        criterios:
+          - "La subida usa una URL firmada con vencimiento hacia el almacenamiento de archivos (R2 o S3)."
+          - "Solo se aceptan JPEG, PNG o WebP de hasta 5 MB."
+          - "La imagen se muestra optimizada en la web y la app."
+        notas: "El mismo mecanismo se reutiliza para las fotos de factura y de entrega (H08.4 y H10.4)."
+      - id: H02.4
+        titulo: Filtrar el mapa por categoría
+        como: cliente
+        quiero: "filtrar los establecimientos del mapa por categoría y abrir la tarjeta de un local"
+        para: "encontrar rápido dónde pedir"
+        areas: [api, web, app]
+        prioridad: alta
+        requerimientos: [RF-12, RNF-04, RNF-11]
+        criterios:
+          - "Las categorías del menú lateral filtran el mapa y se pueden combinar."
+          - "El mapa se centra en el usuario si comparte ubicación; si no, en Villagarzón con una invitación a activarla."
+          - "Al tocar un marcador sube la tarjeta con nombre, distancia y botón Pedir aquí."
+          - "Los datos salen de la base (PostGIS), no de datos en memoria."
+        notas: "La base ya muestra el mapa y los cercanos (Fase 0); esta historia agrega filtros, tarjeta y datos reales."
+      - id: H02.5
+        titulo: Ver la ficha y el menú de un establecimiento
+        como: cliente
+        quiero: "ver el menú de un establecimiento con precio, foto y tiempo de preparación"
+        para: "elegir qué pedir"
+        areas: [api, web, app]
+        prioridad: alta
+        requerimientos: [RF-13, RF-17, RNF-03]
+        criterios:
+          - "La ficha muestra nombre, categoría, distancia y los productos disponibles agrupados por sección."
+          - "Cada producto muestra precio en COP, foto, detalle y tiempo estimado de preparación."
+          - "Desde la ficha se agregan productos al carrito."
+          - "La ficha funciona en español e inglés."
+      - id: H02.6
+        titulo: Cargar el catálogo inicial de Villagarzón
+        como: administrador
+        quiero: "cargar los establecimientos y menús reales del piloto"
+        para: "que los primeros clientes tengan dónde pedir"
+        areas: [api, docs]
+        prioridad: media
+        requerimientos: [RF-10, RF-11]
+        criterios:
+          - "Hay una forma documentada de cargar locales y productos (panel o importación desde CSV)."
+          - "Los locales del piloto tienen punto, área, categoría y menú con precios y tiempos."
+          - "La carga se puede repetir sin duplicar registros."
+
+  - id: E03
+    titulo: Zonas, horario y configuración del negocio
+    fase: 1
+    prioridad: alta
+    areas: [api, web]
+    objetivo: "Que el administrador configure tarifas por zona, horario de operación, comisión y demás parámetros sin desplegar."
+    terminado: "Cambiar una tarifa, el horario o la comisión en el panel se refleja en el siguiente pedido."
+    docs: [Docs/04-modelo-de-datos.md, Docs/05-flujos-y-ux.md]
+    historias:
+      - id: H03.1
+        titulo: Zonas de entrega con tarifa fija
+        como: administrador
+        quiero: "dibujar zonas en el mapa y asignarles una tarifa"
+        para: "cobrar el domicilio según el barrio o la vereda"
+        areas: [api, web]
+        prioridad: alta
+        requerimientos: [RF-14, RNF-05]
+        criterios:
+          - "Se crean zonas URBAN (barrios del casco urbano) y RURAL (rangos de veredas) con nombre, polígono y tarifa."
+          - "La API calcula la tarifa con la zona que contiene el punto de entrega (ST_Covers)."
+          - "Si el punto no cae en ninguna zona, la API responde que no hay cobertura y el cliente lo ve antes de confirmar."
+          - "Si dos zonas se solapan, el panel lo advierte al guardar."
+      - id: H03.2
+        titulo: Horario de operación
+        como: administrador
+        quiero: "definir el horario por día de la semana"
+        para: "que no entren pedidos cuando no hay domiciliarios"
+        areas: [api, web, app]
+        prioridad: alta
+        requerimientos: [RF-15]
+        criterios:
+          - "El horario se define por día en hora de Colombia (America/Bogota), con una o varias franjas."
+          - "Fuera de horario, el botón de pedir muestra la próxima apertura (por ejemplo Abrimos a las 8:00 a. m.)."
+          - "La API rechaza crear pedidos fuera de horario aunque el cliente lo intente directamente."
+      - id: H03.3
+        titulo: Parámetros del negocio en el panel
+        como: administrador
+        quiero: "cambiar la comisión, el tope para clientes nuevos y los tiempos de espera desde el panel"
+        para: "ajustar la operación sin desplegar"
+        areas: [api, web]
+        prioridad: media
+        requerimientos: [RF-16, RF-73, RNF-07]
+        criterios:
+          - "El panel lista y edita los parámetros de AppSetting con su valor por defecto y una explicación."
+          - "Los valores se validan (por ejemplo la comisión entre 0 y 100 %)."
+          - "Cada cambio queda registrado con quién y cuándo."
+          - "Un cambio de comisión no altera pedidos ya creados."
+      - id: H03.4
+        titulo: Precio aproximado en dólares o euros
+        como: cliente extranjero
+        quiero: "ver al lado de cada precio su valor aproximado en mi moneda"
+        para: "entender cuánto voy a pagar"
+        areas: [api, web, app]
+        prioridad: baja
+        requerimientos: [RF-17]
+        criterios:
+          - "La API guarda la tasa USD y EUR una vez al día desde un proveedor público."
+          - "El cliente elige mostrar USD, EUR o ninguna; el valor aparece como aproximado (≈ US$ 6,10)."
+          - "Si no hay tasa del día, se usa la última disponible y se indica la fecha."
+
+  - id: E04
+    titulo: Pedido del cliente
+    fase: 1
+    prioridad: alta
+    areas: [api, web, app]
+    objetivo: "Que el cliente arme un pedido con el menú real, elija dirección y medio de pago, lo confirme y lo siga en Mis pedidos."
+    terminado: "Un cliente puede armar un pedido con el menú real de un local de Villagarzón y verlo en Mis pedidos (criterio de la Fase 1)."
+    docs: [Docs/05-flujos-y-ux.md, Docs/04-modelo-de-datos.md]
+    historias:
+      - id: H04.1
+        titulo: Carrito con total y tarifa
+        como: cliente
+        quiero: "agregar productos al carrito y ver el total con la tarifa del domicilio"
+        para: "saber cuánto voy a pagar antes de confirmar"
+        areas: [web, app]
+        prioridad: alta
+        requerimientos: [RF-20, RNF-05]
+        criterios:
+          - "El carrito solo admite productos de un establecimiento; al agregar de otro se pregunta si se vacía."
+          - "Se pueden cambiar cantidades y quitar productos."
+          - "El total muestra productos, tarifa de la zona y total a pagar."
+          - "El carrito se conserva si el cliente cierra y vuelve a abrir la app."
+      - id: H04.2
+        titulo: Elegir la dirección de entrega
+        como: cliente
+        quiero: "usar mi ubicación actual o marcar un punto en el mapa, con una referencia"
+        para: "que el domiciliario encuentre dónde entregar, también si el pedido es para otra persona"
+        areas: [api, web, app]
+        prioridad: alta
+        requerimientos: [RF-21, RF-14]
+        criterios:
+          - "El cliente elige entre ubicación actual o punto en el mapa y escribe una referencia (casa azul, segundo piso)."
+          - "Puede marcar que el pedido es para otra persona e ingresar su nombre y teléfono."
+          - "Las direcciones se guardan para reutilizarlas."
+          - "Si el punto está fuera de las zonas, se informa que no hay cobertura."
+      - id: H04.3
+        titulo: Confirmar el pedido
+        como: cliente
+        quiero: "elegir cómo pagaré y confirmar el pedido"
+        para: "que RapiChonta lo compre y me lo lleve"
+        areas: [api, web, app]
+        prioridad: alta
+        requerimientos: [RF-22, RF-15, RF-16, RNF-01, RNF-05]
+        criterios:
+          - "El cliente elige el medio de pago contra entrega: efectivo, Nequi, Daviplata o transferencia."
+          - "El pedido se crea con código RC-XXXX, estado PENDING_ASSIGNMENT y copia nombre, precio y tiempo de cada producto."
+          - "Un cliente sin pedidos entregados no puede superar el tope configurado (100.000 COP) y ve el motivo."
+          - "No se puede confirmar fuera de horario ni con productos no disponibles."
+          - "El caso de uso CreateOrder tiene pruebas unitarias de tope, horario y totales."
+      - id: H04.4
+        titulo: Mis pedidos
+        como: cliente
+        quiero: "ver mis pedidos activos con su estado y el historial"
+        para: "saber en qué va mi pedido y revisar los anteriores"
+        areas: [api, web, app]
+        prioridad: alta
+        requerimientos: [RF-23, RF-50]
+        criterios:
+          - "Los pedidos activos aparecen primero con su estado en lenguaje claro (Buscando domiciliario, En camino...)."
+          - "El historial muestra fecha, establecimiento, total y estado final."
+          - "El detalle muestra productos, dirección, medio de pago y línea de tiempo de estados."
+          - "El cliente nunca ve la ubicación del domiciliario."
+
+  - id: E05
+    titulo: Calidad y entrega continua
+    fase: 1
+    prioridad: alta
+    areas: [infra]
+    objetivo: "Que cada cambio llegue a develop probado y que los errores en pruebas se vean sin buscarlos."
+    terminado: "Todo PR corre lint, pruebas y build; main y develop están protegidas; los errores llegan a Sentry."
+    docs: [Docs/09-convenciones.md, Docs/06-seguridad.md]
+    historias:
+      - id: H05.1
+        titulo: CI con lint, pruebas y build en cada PR
+        como: equipo de RapiChonta
+        quiero: "que cada PR verifique api, web y app con GitHub Actions"
+        para: "no romper develop ni el despliegue de pruebas"
+        areas: [infra]
+        prioridad: alta
+        requerimientos: [RNF-09, RNF-01]
+        criterios:
+          - "api: npm ci, prisma generate, lint, test y build."
+          - "web: npm ci, lint, typecheck y build."
+          - "app: flutter analyze y flutter test."
+          - "Cada trabajo corre solo si el PR cambia esa carpeta y usa caché de dependencias."
+          - "El build del Dockerfile raíz se verifica en los PR que lo tocan."
+      - id: H05.2
+        titulo: Revisión de dependencias
+        como: equipo de RapiChonta
+        quiero: "recibir PR automáticos de actualización y alertas de vulnerabilidades"
+        para: "mantener las dependencias seguras"
+        areas: [infra]
+        prioridad: media
+        requerimientos: [RNF-12]
+        criterios:
+          - "Dependabot revisa semanalmente npm (api, web), pub (app), Docker y GitHub Actions, con PR hacia develop."
+          - "CI ejecuta npm audit con nivel high y falla si hay vulnerabilidades altas."
+      - id: H05.3
+        titulo: Proteger main y develop
+        como: equipo de RapiChonta
+        quiero: "que main y develop solo reciban cambios por PR con CI en verde"
+        para: "que nadie despliegue por accidente código sin revisar"
+        areas: [infra, docs]
+        prioridad: media
+        requerimientos: [RNF-09]
+        criterios:
+          - "Reglas de protección: sin push directo, PR obligatorio y checks de CI requeridos."
+          - "La configuración queda documentada en Docs/09-convenciones.md."
+      - id: H05.4
+        titulo: Errores en Sentry y logs estructurados
+        como: equipo de RapiChonta
+        quiero: "ver los errores de api, web y app en Sentry"
+        para: "detectar fallos del piloto antes de que los clientes los reporten"
+        areas: [api, web, app, infra]
+        prioridad: media
+        fase: 2
+        requerimientos: [RNF-10]
+        criterios:
+          - "Los tres proyectos envían errores a Sentry con el entorno (pruebas o producción) y la versión."
+          - "La API escribe logs en JSON con id de petición."
+          - "Ningún dato personal (teléfono, dirección) viaja en los eventos."
+
+  # ═══════════════════════════ FASE 2 ═══════════════════════════
+  - id: E06
+    titulo: Notificaciones push
+    fase: 2
+    prioridad: alta
+    areas: [api, app]
+    objetivo: "Que domiciliarios y clientes reciban avisos en el teléfono, también en Huawei."
+    terminado: "Un domiciliario recibe la oferta por push en Android, iOS y Huawei y el cliente recibe los cambios de estado."
+    docs: [Docs/02-stack-tecnologico.md]
+    historias:
+      - id: H06.1
+        titulo: Registrar dispositivos y enviar push
+        como: equipo de RapiChonta
+        quiero: "registrar el token de cada dispositivo y enviar notificaciones por FCM y Huawei Push Kit"
+        para: "avisar a domiciliarios y clientes aunque no tengan la app abierta"
+        areas: [api, app]
+        prioridad: alta
+        requerimientos: [RF-34]
+        criterios:
+          - "La app registra su token al iniciar sesión indicando el proveedor (FCM o HMS) y lo borra al cerrar sesión."
+          - "La API envía por el proveedor correcto a través de un puerto con un adaptador falso para pruebas."
+          - "Los tokens inválidos se eliminan cuando el proveedor los rechaza."
+      - id: H06.2
+        titulo: Avisos al cliente por cambio de estado
+        como: cliente
+        quiero: "recibir una notificación cuando mi pedido cambie de estado"
+        para: "no tener que estar mirando la app"
+        areas: [api, app]
+        prioridad: media
+        requerimientos: [RF-34, RF-50, RNF-03]
+        criterios:
+          - "Se notifica al aceptar, en el establecimiento, en camino, llegando y entregado."
+          - "El texto llega en el idioma del cliente."
+          - "Tocar la notificación abre el pedido."
+
+  - id: E07
+    titulo: Asignación de pedidos por el operador
+    fase: 2
+    prioridad: alta
+    areas: [api, web]
+    objetivo: "Que el operador vea los pedidos nuevos y los domiciliarios cercanos y envíe cada pedido a uno o a todos."
+    terminado: "Un pedido nuevo se envía desde el panel y el primer domiciliario que acepta lo toma sin dobles asignaciones."
+    docs: [Docs/05-flujos-y-ux.md]
+    historias:
+      - id: H07.1
+        titulo: Alerta de pedido nuevo en el panel
+        como: operador
+        quiero: "escuchar una alerta y ver resaltado cada pedido nuevo"
+        para: "asignarlo sin demora"
+        areas: [web, api]
+        prioridad: alta
+        requerimientos: [RF-30]
+        criterios:
+          - "El panel consulta pedidos nuevos cada pocos segundos (tiempo real llega en la Fase 3)."
+          - "Un pedido nuevo suena una vez y queda resaltado hasta que se envía."
+          - "Se ve el tiempo que lleva cada pedido sin domiciliario."
+      - id: H07.2
+        titulo: Ver domiciliarios cercanos en el mapa
+        como: operador
+        quiero: "ver en un mapa el local, el punto de entrega y los domiciliarios disponibles por cercanía"
+        para: "decidir a quién enviar el pedido"
+        areas: [api, web]
+        prioridad: alta
+        requerimientos: [RF-31, RNF-06]
+        criterios:
+          - "Solo aparecen domiciliarios verificados, disponibles y vistos en los últimos 2 minutos."
+          - "La lista se ordena por distancia al establecimiento."
+          - "El endpoint solo responde a OPERATOR y ADMIN."
+      - id: H07.3
+        titulo: Enviar el pedido a uno o a todos
+        como: operador
+        quiero: "enviar el pedido a un domiciliario específico o a todos los disponibles"
+        para: "que el primero que pueda lo tome"
+        areas: [api, web]
+        prioridad: alta
+        requerimientos: [RF-32, RF-34, RNF-01]
+        criterios:
+          - "Cada envío crea un OrderOffer con modo SPECIFIC o BROADCAST y quién lo envió."
+          - "La aceptación usa una actualización condicional: si dos aceptan a la vez, solo uno gana y el otro ve Ya fue tomado."
+          - "Al aceptar, se retira la oferta a los demás y el cliente ve Tu pedido está en proceso."
+          - "Hay pruebas del caso de aceptación simultánea."
+      - id: H07.4
+        titulo: Oferta vencida vuelve al panel
+        como: operador
+        quiero: "que el pedido vuelva resaltado si nadie acepta a tiempo"
+        para: "reenviarlo a otro domiciliario"
+        areas: [api, web]
+        prioridad: media
+        requerimientos: [RF-33, RF-16]
+        criterios:
+          - "Las ofertas vencen según offers.timeoutSeconds (60 s por defecto) y quedan con respuesta EXPIRED."
+          - "El pedido vuelve a PENDING_ASSIGNMENT con alerta Nadie aceptó."
+          - "Un domiciliario no puede aceptar una oferta vencida."
+      - id: H07.5
+        titulo: Registro de auditoría del personal
+        como: administrador
+        quiero: "ver quién asignó, canceló, resolvió o ajustó cada cosa y cuándo"
+        para: "tener trazabilidad de la operación y del dinero"
+        areas: [api, web]
+        prioridad: media
+        requerimientos: [RNF-07]
+        criterios:
+          - "Las acciones del operador y del administrador se guardan con usuario, acción, entidad y fecha."
+          - "El registro no se puede editar ni borrar desde la aplicación."
+          - "El administrador puede filtrarlo por fecha, usuario y pedido."
+
+  - id: E08
+    titulo: Modo domiciliario y geocercas
+    fase: 2
+    prioridad: alta
+    areas: [api, app]
+    objetivo: "Que el domiciliario reciba ofertas, compre y avance el pedido desde la app, con llegada al local y al cliente detectadas por ubicación."
+    terminado: "Un domiciliario completa un pedido desde la app y los estados de llegada cambian solos."
+    docs: [Docs/05-flujos-y-ux.md, Docs/06-seguridad.md]
+    historias:
+      - id: H08.1
+        titulo: Activar disponibilidad y compartir ubicación
+        como: domiciliario
+        quiero: "marcarme Disponible y compartir mi ubicación solo mientras trabajo"
+        para: "recibir pedidos cercanos sin ser rastreado fuera del servicio"
+        areas: [api, app]
+        prioridad: alta
+        requerimientos: [RF-40, RNF-06]
+        criterios:
+          - "Antes de activar por primera vez, el domiciliario acepta una autorización expresa que explica el uso de su ubicación."
+          - "La ubicación se envía cada pocos segundos solo con Disponible activo o un pedido activo."
+          - "Al desactivar, se deja de enviar la ubicación."
+          - "El historial de ubicaciones se borra a los 30 días."
+      - id: H08.2
+        titulo: Tomar o rechazar una oferta
+        como: domiciliario
+        quiero: "ver el pedido ofrecido y elegir Tomar pedido o No puedo"
+        para: "decidir si lo hago"
+        areas: [app, api]
+        prioridad: alta
+        requerimientos: [RF-41, RF-32]
+        criterios:
+          - "La notificación abre la pantalla con establecimiento, productos, total a comprar y tarifa."
+          - "Tomar pedido pasa el pedido a ACCEPTED; si otro lo tomó antes se muestra Ya fue tomado."
+          - "No puedo registra la respuesta y cierra la oferta para ese domiciliario."
+      - id: H08.3
+        titulo: Detectar la llegada al establecimiento
+        como: cliente
+        quiero: "saber cuándo el domiciliario está en el establecimiento"
+        para: "tener certeza de que mi pedido avanza"
+        areas: [api]
+        prioridad: alta
+        requerimientos: [RF-42, RNF-06]
+        criterios:
+          - "Con el pedido en ACCEPTED, dos lecturas seguidas dentro del área del local pasan el pedido a AT_ESTABLISHMENT."
+          - "La comprobación se hace en el servidor con ST_Covers."
+          - "Lecturas con saltos imposibles (GPS simulado) se descartan."
+          - "Hay pruebas del caso de una sola lectura dentro (no cambia)."
+      - id: H08.4
+        titulo: Registrar la compra con la factura
+        como: domiciliario
+        quiero: "registrar lo que pagué en el local con la foto de la factura"
+        para: "dejar trazado el dinero y empezar la cuenta de preparación"
+        areas: [api, app]
+        prioridad: alta
+        requerimientos: [RF-44, RNF-08, RNF-05]
+        criterios:
+          - "El domiciliario ingresa el total pagado y toma la foto de la factura."
+          - "El pedido pasa a PREPARING con estimatedReadyAt según el producto que más tarda."
+          - "La factura queda visible para el cliente y el operador."
+      - id: H08.5
+        titulo: Avisos de preparación
+        como: domiciliario
+        quiero: "recibir un aviso cuando se cumpla el tiempo de preparación"
+        para: "marcar si ya está listo o si sigue en preparación"
+        areas: [api, app]
+        prioridad: media
+        requerimientos: [RF-45]
+        criterios:
+          - "Al cumplirse estimatedReadyAt llega un aviso con Ya está listo y Sigue en preparación."
+          - "Ya está listo pasa el pedido a ON_THE_WAY."
+          - "Sigue en preparación marca el retraso, el cliente ve el mensaje de alta demanda y el aviso se repite a los pocos minutos."
+      - id: H08.6
+        titulo: Detectar la llegada donde el cliente
+        como: cliente
+        quiero: "que me avisen cuando mi pedido está llegando"
+        para: "estar listo para recibirlo y pagar"
+        areas: [api]
+        prioridad: alta
+        requerimientos: [RF-43, RNF-06]
+        criterios:
+          - "Con el pedido en ON_THE_WAY, cuando la distancia al punto de entrega baja de delivery.arrivingMeters (80 m) pasa a ARRIVING."
+          - "El cliente recibe una notificación de llegada."
+          - "La ubicación del domiciliario nunca se incluye en las respuestas al cliente."
+      - id: H08.7
+        titulo: Cambiar a modo cliente
+        como: domiciliario
+        quiero: "cambiar a modo cliente desde mi menú"
+        para: "hacer mis propios pedidos con la misma app"
+        areas: [app]
+        prioridad: baja
+        requerimientos: [RF-06]
+        criterios:
+          - "La opción solo aparece para usuarios con rol COURIER."
+          - "En modo cliente no recibe ofertas y ve solo sus propios pedidos."
+          - "Puede volver a modo domiciliario en un toque."
+      - id: H08.8
+        titulo: Trabajar sin señal
+        como: domiciliario
+        quiero: "que mis cambios de estado se guarden si no tengo señal"
+        para: "no perder el avance del pedido en zonas rurales"
+        areas: [app, api]
+        prioridad: media
+        requerimientos: [RF-46]
+        criterios:
+          - "Los cambios de estado sin conexión se guardan en una cola local con su hora."
+          - "Al recuperar señal se envían en orden y la API acepta la hora original si es coherente."
+          - "La app muestra que hay cambios pendientes de enviar."
+
+  - id: E09
+    titulo: Seguimiento del pedido y producto faltante
+    fase: 2
+    prioridad: alta
+    areas: [api, web, app]
+    objetivo: "Que el cliente siga su pedido en una línea de tiempo y decida rápido cuando falta un producto."
+    terminado: "El cliente ve cada estado con cuenta regresiva y resuelve un producto faltante en menos de 3 minutos."
+    docs: [Docs/05-flujos-y-ux.md]
+    historias:
+      - id: H09.1
+        titulo: Línea de tiempo con cuenta regresiva
+        como: cliente
+        quiero: "ver una línea de tiempo animada con el estado y la cuenta regresiva de preparación"
+        para: "saber en todo momento qué pasa con mi pedido"
+        areas: [web, app]
+        prioridad: alta
+        requerimientos: [RF-50, RNF-04]
+        criterios:
+          - "La línea de tiempo muestra los estados de Docs/05 con el texto que ve el cliente."
+          - "En PREPARING aparece la cuenta regresiva y, si hay retraso, el mensaje de alta demanda."
+          - "La foto de la factura se puede ver desde el pedido."
+          - "No aparece ningún mapa ni ubicación del domiciliario."
+      - id: H09.2
+        titulo: Reportar producto faltante o cambio de precio
+        como: domiciliario
+        quiero: "reportar qué producto falta o cambió de precio"
+        para: "que el cliente decida sin llamadas"
+        areas: [app, api]
+        prioridad: alta
+        requerimientos: [RF-51]
+        criterios:
+          - "El domiciliario elige el producto y el motivo (no disponible o nuevo precio con su valor)."
+          - "El pedido pasa a AWAITING_CUSTOMER y se crea un OrderAdjustment con vencimiento de 3 minutos."
+          - "El domiciliario ve la cuenta regresiva y la decisión del cliente al llegar."
+      - id: H09.3
+        titulo: Decidir sobre un producto faltante
+        como: cliente
+        quiero: "elegir entre cambiar el producto, quitarlo, aceptar el nuevo precio o cancelar"
+        para: "recibir lo que quiero sin hacer esperar al domiciliario"
+        areas: [web, app, api]
+        prioridad: alta
+        requerimientos: [RF-51, RNF-01]
+        criterios:
+          - "La pantalla muestra solo opciones cerradas y el tiempo restante."
+          - "Cambiar por sugiere primero productos de la misma categoría y precio parecido."
+          - "Si vence el tiempo, se quita el producto; si era el único, el pedido se cancela."
+          - "El total del pedido se recalcula con la decisión y el caso de uso tiene pruebas."
+
+  - id: E10
+    titulo: Entrega, confirmación e incidencias
+    fase: 2
+    prioridad: alta
+    areas: [api, web, app]
+    objetivo: "Que la entrega la confirme el cliente, que exista una salida con foto si no confirma y que el operador resuelva incidencias."
+    terminado: "Todo pedido termina en DELIVERED o CANCELLED con evidencia, y el operador resuelve las incidencias desde el panel."
+    docs: [Docs/05-flujos-y-ux.md, Docs/06-seguridad.md]
+    historias:
+      - id: H10.1
+        titulo: Pantalla de entrega del cliente
+        como: cliente
+        quiero: "confirmar con Recibí mi pedido cuando me entregan"
+        para: "cerrar el pedido y dejar constancia"
+        areas: [web, app, api]
+        prioridad: alta
+        requerimientos: [RF-60, RNF-04]
+        criterios:
+          - "En ARRIVING aparece una pantalla con el total a pagar y los botones Recibí mi pedido y No lo recibí."
+          - "La pantalla no se puede cerrar sin responder."
+          - "Recibí mi pedido pasa el pedido a DELIVERED y registra quién y cuándo."
+      - id: H10.2
+        titulo: Cobro contra entrega
+        como: domiciliario
+        quiero: "mostrar mi QR de cobro y registrar con qué medio me pagaron"
+        para: "que la caja del día cuadre"
+        areas: [app, api]
+        prioridad: alta
+        requerimientos: [RF-61, RF-71]
+        criterios:
+          - "La app muestra el QR de la cuenta registrada del domiciliario para Nequi, Daviplata o transferencia."
+          - "El domiciliario marca el medio con que cobró y el valor."
+          - "El cobro genera el movimiento de caja correspondiente."
+      - id: H10.3
+        titulo: Reportar que no recibí el pedido
+        como: cliente
+        quiero: "reportar No lo recibí"
+        para: "que RapiChonta revise lo que pasó"
+        areas: [web, app, api]
+        prioridad: alta
+        requerimientos: [RF-62]
+        criterios:
+          - "Se crea una incidencia y el pedido pasa a DISPUTED."
+          - "El operador recibe una alerta prioritaria y el domiciliario es notificado."
+          - "El cliente ve que RapiChonta está revisando su caso."
+      - id: H10.4
+        titulo: Entregar con foto
+        como: domiciliario
+        quiero: "entregar con una foto cuando el cliente no confirma"
+        para: "cerrar el servicio aunque el cliente no abra la app"
+        areas: [app, api]
+        prioridad: alta
+        requerimientos: [RF-63, RNF-08]
+        criterios:
+          - "Entregar con foto se habilita tras delivery.proofAfterMinutes (10 min) en ARRIVING."
+          - "La foto solo se toma con la cámara de la app y guarda fecha, hora y ubicación."
+          - "El pedido pasa a PENDING_REVIEW y el operador recibe la alerta."
+      - id: H10.5
+        titulo: Gestionar pedidos activos e incidencias
+        como: operador
+        quiero: "ver los pedidos activos con alertas, revisar fotos de entrega y resolver incidencias"
+        para: "que ningún pedido quede sin cerrar"
+        areas: [web, api]
+        prioridad: alta
+        requerimientos: [RF-64, RF-62, RF-63, RNF-07]
+        criterios:
+          - "La lista muestra cada pedido activo con su estado y alertas: sin asignar, nadie aceptó, preparación retrasada, decisión vencida, foto por revisar, incidencia."
+          - "El detalle muestra la línea de tiempo completa con quién hizo qué y cuándo."
+          - "El operador marca una foto o una incidencia como entregado o cancelado, con un comentario."
+          - "El operador puede cancelar pedidos antes de PREPARING."
+
+  - id: E11
+    titulo: Cajas diarias y comisiones
+    fase: 2
+    prioridad: alta
+    areas: [api, web, app]
+    objetivo: "Que el dinero de cada domiciliario sea trazable y la caja de cada día cierre sin diferencias."
+    terminado: "Las cajas del piloto se abren y cierran en el panel y cuadran con los pedidos del día."
+    docs: [Docs/04-modelo-de-datos.md, Docs/06-seguridad.md]
+    historias:
+      - id: H11.1
+        titulo: Abrir la caja diaria
+        como: administrador
+        quiero: "abrir la caja del día de cada domiciliario con el monto base y cómo lo entregué"
+        para: "saber cuánto dinero de RapiChonta tiene cada uno"
+        areas: [api, web]
+        prioridad: alta
+        requerimientos: [RF-70, RNF-05, RNF-07]
+        criterios:
+          - "Solo se abre una caja por domiciliario y día, y solo para domiciliarios con modo CASH_BOX."
+          - "Se registra monto base, medio (efectivo o transferencia) y quién la abrió."
+          - "Un domiciliario CASH_BOX sin caja abierta no puede recibir ofertas."
+      - id: H11.2
+        titulo: Movimientos automáticos por pedido
+        como: administrador
+        quiero: "que cada compra, cobro y comisión de un pedido quede como movimiento inmutable"
+        para: "tener trazado todo el dinero"
+        areas: [api]
+        prioridad: alta
+        requerimientos: [RF-71, RF-73, RNF-01]
+        criterios:
+          - "Registrar la compra, el cobro y la entrega crean sus movimientos automáticamente."
+          - "La comisión se calcula con el porcentaje copiado en el pedido."
+          - "Ningún movimiento se edita ni borra; las correcciones son movimientos de ajuste firmados por un administrador."
+          - "Hay pruebas de los cálculos con Decimal."
+      - id: H11.3
+        titulo: Cerrar la caja y ver diferencias
+        como: administrador
+        quiero: "cerrar la caja del día y ver cuánto debe entregar cada domiciliario"
+        para: "cuadrar el dinero al final del día"
+        areas: [api, web]
+        prioridad: alta
+        requerimientos: [RF-72]
+        criterios:
+          - "El cierre calcula base + comisiones (CASH_BOX) o solo comisiones (OWN_FUNDS)."
+          - "El administrador registra lo recibido y el sistema muestra la diferencia."
+          - "Una caja cerrada no admite movimientos nuevos salvo ajustes."
+      - id: H11.4
+        titulo: Ver mi caja del día
+        como: domiciliario
+        quiero: "ver en la app mis movimientos y cuánto debo entregar hoy"
+        para: "llegar al cierre sin sorpresas"
+        areas: [app, api]
+        prioridad: media
+        requerimientos: [RF-72]
+        criterios:
+          - "La app muestra base, compras, cobros, comisiones y saldo a entregar."
+          - "Solo ve su propia caja."
+
+  - id: E12
+    titulo: Piloto en Villagarzón
+    fase: 2
+    prioridad: alta
+    areas: [docs, app, infra]
+    objetivo: "Lanzar el piloto con 2 operadores y 2 domiciliarios y pedidos reales de punta a punta."
+    terminado: "Se completan pedidos reales de punta a punta con los 2 domiciliarios y las cajas cierran sin diferencias (criterio de la Fase 2)."
+    docs: [Docs/07-roadmap.md, Docs/10-aspectos-adicionales.md]
+    historias:
+      - id: H12.1
+        titulo: Definir y cargar los valores iniciales
+        como: administrador
+        quiero: "cargar comisión, tarifas por zona, horario y tope del piloto"
+        para: "operar con valores reales desde el primer día"
+        areas: [docs, web]
+        prioridad: alta
+        requerimientos: [RF-14, RF-15, RF-16]
+        criterios:
+          - "Los valores acordados quedan escritos en Docs/10-aspectos-adicionales.md."
+          - "Están cargados en el panel del entorno del piloto."
+      - id: H12.2
+        titulo: Distribuir la app a los domiciliarios
+        como: domiciliario
+        quiero: "instalar la app desde una prueba cerrada"
+        para: "trabajar en el piloto"
+        areas: [app, infra]
+        prioridad: alta
+        requerimientos: [RF-80, RF-34]
+        criterios:
+          - "Hay una versión firmada en prueba cerrada (Google Play interno o AppGallery) o APK distribuido de forma controlada."
+          - "Los permisos de ubicación y notificaciones explican para qué se usan."
+          - "La versión apunta al entorno del piloto."
+      - id: H12.3
+        titulo: Términos, política de datos y textos de permisos
+        como: equipo de RapiChonta
+        quiero: "publicar términos de intermediación, política de datos y los textos de permisos"
+        para: "cumplir la ley y las reglas de las tiendas"
+        areas: [docs, web, app]
+        prioridad: media
+        requerimientos: [RF-07, RF-80]
+        criterios:
+          - "Términos y condiciones y política de tratamiento de datos (Ley 1581) publicados en la web y enlazados en la app."
+          - "Texto y video corto de justificación del permiso de ubicación en segundo plano."
+          - "Pendiente de revisión por un abogado, anotado en el issue."
+      - id: H12.4
+        titulo: Prueba de punta a punta del piloto
+        como: equipo de RapiChonta
+        quiero: "ensayar pedidos completos antes de abrir a clientes"
+        para: "encontrar fallos con nuestro equipo y no con los clientes"
+        areas: [docs]
+        prioridad: alta
+        requerimientos: [RF-22, RF-32, RF-60, RF-72]
+        criterios:
+          - "Hay un guion de prueba con los caminos principales: pedido normal, producto faltante, no lo recibí, entrega con foto, oferta vencida."
+          - "Cada camino se ejecuta en el entorno de pruebas con los 2 domiciliarios y los resultados quedan en el issue."
+          - "Las cajas del día de prueba cierran sin diferencias."
+
+  # ═══════════════════════════ FASES 3 a 5 ═══════════════════════════
+  - id: E13
+    titulo: Publicación y tiempo real
+    fase: 3
+    prioridad: baja
+    areas: [api, web, app]
+    objetivo: "Publicar la app en las tiendas y que las pantallas se actualicen al instante."
+    terminado: "La app está en Google Play, App Store y AppGallery y los estados llegan sin recargar."
+    docs: [Docs/07-roadmap.md]
+    historias:
+      - id: H13.1
+        titulo: Publicar en Google Play, App Store y AppGallery
+        como: cliente
+        quiero: "instalar RapiChonta desde la tienda de mi teléfono"
+        para: "pedir sin pasos extra"
+        areas: [app, infra]
+        prioridad: baja
+        requerimientos: [RF-80]
+        criterios:
+          - "Fichas de tienda en español e inglés con capturas."
+          - "Revisión del permiso de ubicación en segundo plano aprobada."
+          - "Publicación automatizada desde CI para nuevas versiones."
+      - id: H13.2
+        titulo: Actualizaciones en tiempo real
+        como: operador
+        quiero: "ver los cambios de pedidos al instante sin recargar"
+        para: "reaccionar más rápido"
+        areas: [api, web, app, infra]
+        prioridad: baja
+        requerimientos: [RF-81]
+        criterios:
+          - "Gateway de Socket.IO con autenticación por token y salas por pedido y por panel."
+          - "Redis como adaptador para varias instancias."
+          - "La consulta periódica de la Fase 2 se reemplaza sin perder eventos al reconectar."
+      - id: H13.3
+        titulo: Repetir pedido y favoritos
+        como: cliente
+        quiero: "repetir un pedido anterior en un toque y guardar mis locales favoritos"
+        para: "pedir lo de siempre más rápido"
+        areas: [api, web, app]
+        prioridad: baja
+        requerimientos: [RF-82]
+        criterios:
+          - "Repetir pedido arma el carrito con los productos disponibles y avisa los que ya no están."
+          - "Los favoritos aparecen primero en el mapa y en Mi cuenta."
+      - id: H13.4
+        titulo: Panel de métricas
+        como: administrador
+        quiero: "ver las métricas de éxito del MVP"
+        para: "tomar decisiones con datos"
+        areas: [api, web]
+        prioridad: baja
+        requerimientos: [RF-83]
+        criterios:
+          - "Muestra tiempo hasta aceptación, tiempo de entrega y desvío frente a la preparación estimada."
+          - "Muestra retrasos por local, porcentaje de producto faltante, incidencias y pedidos recurrentes a 30 días."
+          - "Se puede filtrar por rango de fechas."
+
+  - id: E14
+    titulo: Pagos en línea y crecimiento
+    fase: 4
+    prioridad: baja
+    areas: [api, web, app]
+    objetivo: "Cobrar en línea y sumar calificaciones, cupones y tarifas por distancia."
+    terminado: "Un cliente paga en línea, califica su pedido y usa un cupón."
+    docs: [Docs/07-roadmap.md]
+    historias:
+      - id: H14.1
+        titulo: Pago en línea
+        como: cliente
+        quiero: "pagar dentro de la app con PSE, Nequi o Daviplata"
+        para: "no manejar efectivo"
+        areas: [api, web, app]
+        prioridad: baja
+        requerimientos: [RF-90, RNF-05]
+        criterios:
+          - "Integración con una pasarela (Wompi o Mercado Pago) detrás de un puerto."
+          - "El pedido solo se ofrece a domiciliarios cuando el pago está aprobado."
+          - "Reembolsos ante cancelación documentados y probados."
+      - id: H14.2
+        titulo: Calificaciones
+        como: cliente
+        quiero: "calificar al domiciliario y al establecimiento"
+        para: "ayudar a mejorar el servicio"
+        areas: [api, web, app]
+        prioridad: baja
+        requerimientos: [RF-91]
+        criterios:
+          - "Se califica de 1 a 5 con comentario opcional tras un pedido entregado."
+          - "Solo se puede calificar una vez por pedido."
+      - id: H14.3
+        titulo: Cupones y promociones
+        como: administrador
+        quiero: "crear cupones con reglas de uso"
+        para: "atraer y retener clientes"
+        areas: [api, web, app]
+        prioridad: baja
+        requerimientos: [RF-92]
+        criterios:
+          - "Un cupón tiene código, valor o porcentaje, vigencia y límite de usos."
+          - "El total del pedido muestra el descuento aplicado."
+      - id: H14.4
+        titulo: Tarifa por distancia
+        como: administrador
+        quiero: "calcular la tarifa por distancia en lugar de zona fija cuando convenga"
+        para: "cobrar justo en recorridos largos"
+        areas: [api, web]
+        prioridad: baja
+        requerimientos: [RF-93]
+        criterios:
+          - "El modo de tarifa se elige en la configuración."
+          - "Los pedidos guardan la tarifa calculada y el modo usado."
+
+  - id: E15
+    titulo: Comercios aliados
+    fase: 5
+    prioridad: baja
+    areas: [api, web, app]
+    objetivo: "Integrar a los comercios para que reciban pedidos directos y RapiChonta ponga el domiciliario."
+    terminado: "Un comercio aliado recibe un pedido directo y el cliente elige el modo de cumplimiento."
+    docs: [Docs/01-vision-y-alcance.md, Docs/07-roadmap.md]
+    historias:
+      - id: H15.1
+        titulo: Portal del comercio
+        como: comercio aliado
+        quiero: "administrar mi menú y recibir pedidos en un portal"
+        para: "vender por RapiChonta sin intermediarios"
+        areas: [api, web]
+        prioridad: baja
+        requerimientos: [RF-95]
+        criterios:
+          - "El comercio tiene usuario propio con acceso solo a su establecimiento."
+          - "Recibe pedidos, los acepta y reporta el tiempo real de preparación."
+      - id: H15.2
+        titulo: Elegir pedido directo o compra por RapiChonta
+        como: cliente
+        quiero: "elegir si el comercio prepara mi pedido directo o si el domiciliario lo compra"
+        para: "usar la opción que más me convenga"
+        areas: [api, web, app]
+        prioridad: baja
+        requerimientos: [RF-96]
+        criterios:
+          - "En locales aliados el cliente ve ambas opciones; en los demás solo COURIER_PURCHASE."
+          - "El flujo de estados se adapta al modo (sin compra en el local en MERCHANT_DIRECT)."
+      - id: H15.3
+        titulo: Asignación automática de domiciliarios
+        como: operador
+        quiero: "que el sistema proponga o asigne el domiciliario según cercanía, carga y calificación"
+        para: "atender más pedidos con el mismo equipo"
+        areas: [api, web]
+        prioridad: baja
+        requerimientos: [RF-97]
+        criterios:
+          - "El algoritmo es configurable y el operador puede intervenir."
+          - "Se mide contra la asignación manual con las métricas del MVP."
+      - id: H15.4
+        titulo: Expansión a otros municipios
+        como: administrador
+        quiero: "operar en otros municipios del Putumayo"
+        para: "crecer más allá de Villagarzón"
+        areas: [api, web, app]
+        prioridad: baja
+        requerimientos: [RF-98]
+        criterios:
+          - "Zonas, tarifas, horario y equipo se configuran por municipio."
+          - "La app abre en el municipio del usuario."

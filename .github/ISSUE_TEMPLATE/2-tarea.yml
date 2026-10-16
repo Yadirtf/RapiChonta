@@ -1,0 +1,47 @@
+name: Tarea técnica
+description: Trabajo técnico que no es una historia de usuario (configuración, refactor, despliegue).
+labels: ["tipo: tarea", "estado: backlog"]
+body:
+  - type: input
+    id: padre
+    attributes:
+      label: Pertenece a
+      description: Número de la historia o épica (opcional).
+      placeholder: "#34"
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: Qué hay que hacer
+    validations:
+      required: true
+  - type: textarea
+    id: terminado
+    attributes:
+      label: Terminado cuando
+      value: |
+        - [ ] 
+    validations:
+      required: true
+  - type: dropdown
+    id: areas
+    attributes:
+      label: Áreas
+      multiple: true
+      options: [api, web, app, docs, infra]
+    validations:
+      required: true
+  - type: dropdown
+    id: fase
+    attributes:
+      label: Fase
+      options:
+        - Fase 1 · Catálogo y pedido del cliente
+        - Fase 2 · Operación del domiciliario y piloto
+        - Fase 3 · Publicación y tiempo real
+        - Fase 4 · Pagos y crecimiento
+        - Fase 5 · Comercios aliados
+  - type: dropdown
+    id: prioridad
+    attributes:
+      label: Prioridad
+      options: [Alta, Media, Baja]
