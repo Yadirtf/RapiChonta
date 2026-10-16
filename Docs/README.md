@@ -17,6 +17,7 @@ Esta carpeta es la fuente de verdad del proyecto: qué se construye, con qué, c
 | 11 | [Despliegue en SnapDeploy](11-despliegue-snapdeploy.md) | Cómo levantar el entorno de pruebas actual (un contenedor Docker + Neon) |
 | 12 | [Flujo de trabajo](12-flujo-de-trabajo.md) | Épicas, historias, estados automáticos con GitHub Actions, progreso y asignación a agentes |
 | 13 | [Requerimientos y backlog](13-requerimientos.md) | Catálogo de requerimientos y las épicas e historias del roadmap (generado desde `backlog/`) |
+| 14 | [Base de datos normalizada](14-base-de-datos/README.md) | Diseño objetivo de la base de datos por épica: tablas, relaciones, catálogos de estados, reglas de integridad y vistas |
 
 ## Resumen de decisiones
 

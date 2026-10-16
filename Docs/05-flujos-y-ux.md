@@ -96,13 +96,19 @@ stateDiagram-v2
   OFFERED --> PENDING_ASSIGNMENT: rechaza o no responde
   ACCEPTED --> AT_ESTABLISHMENT: entra al área del local (automático)
   AT_ESTABLISHMENT --> AWAITING_CUSTOMER: falta un producto / cambió el precio
-  AWAITING_CUSTOMER --> PREPARING: el cliente decide
+  AWAITING_CUSTOMER --> AT_ESTABLISHMENT: el cliente decide (o vence el plazo)
   AT_ESTABLISHMENT --> PREPARING: pedido pagado en el local
   PREPARING --> ON_THE_WAY: el domiciliario marca "listo"
   ON_THE_WAY --> ARRIVING: a pocos metros del cliente (automático)
   ARRIVING --> DELIVERED: el cliente confirma
   ARRIVING --> DISPUTED: el cliente reporta "no lo recibí"
+  ON_THE_WAY --> DELIVERED: el cliente confirma antes de la detección
   ON_THE_WAY --> DISPUTED
+  ARRIVING --> PENDING_REVIEW: entrega con foto
+  PENDING_REVIEW --> DELIVERED: el operador revisa
+  PENDING_REVIEW --> DISPUTED: el operador revisa
+  ACCEPTED --> PENDING_ASSIGNMENT: se reasigna
+  AT_ESTABLISHMENT --> PENDING_ASSIGNMENT: se reasigna
   DISPUTED --> DELIVERED: RapiChonta resuelve
   DISPUTED --> CANCELLED: RapiChonta resuelve
   PENDING_ASSIGNMENT --> CANCELLED
@@ -114,7 +120,7 @@ stateDiagram-v2
   CANCELLED --> [*]
 ```
 
-La máquina de estados está implementada y probada en `api/src/modules/orders/domain/entities/order-status.ts`. Desde `PREPARING` el pedido ya no se puede cancelar porque el dinero ya se gastó; cualquier problema posterior se maneja como incidencia.
+La lista completa de transiciones y quién puede hacer cada una está en [14 · E04](14-base-de-datos/E04-pedido-del-cliente.md#máquina-de-estados-del-pedido), donde vive como datos (`order_status_transitions`). Hoy está implementada en `api/src/modules/orders/domain/entities/order-status.ts`; al migrar a la base normalizada, ese archivo debe coincidir con la semilla del catálogo. Desde `PREPARING` el pedido ya no se puede cancelar porque el dinero ya se gastó; cualquier problema posterior se maneja como incidencia.
 
 ## Detección automática por ubicación (geocercas)
 
