@@ -97,10 +97,18 @@ export class AccountWriter {
   }
 
   /** Cierra las sesiones abiertas del usuario y consume sus tokens de refresco. */
-  async endSessions(tx: Tx, where: { userId?: string; sessionId?: string }, reason: SessionEndReasonCode = SESSION_END_REASONS.SIGN_OUT) {
+  async endSessions(
+    tx: Tx,
+    where: { userId?: string; sessionId?: string; exceptSessionId?: string },
+    reason: SessionEndReasonCode = SESSION_END_REASONS.SIGN_OUT,
+  ) {
     const reasonId = await this.ids.of('session_end_reasons', reason, tx);
     const sessions = await tx.session.findMany({
-      where: { ...(where.userId ? { userId: where.userId } : {}), ...(where.sessionId ? { id: where.sessionId } : {}), endedAt: null },
+      where: {
+        ...(where.userId ? { userId: where.userId } : {}),
+        ...(where.sessionId ? { id: where.sessionId } : where.exceptSessionId ? { id: { not: where.exceptSessionId } } : {}),
+        endedAt: null,
+      },
       select: { id: true },
     });
     if (!sessions.length) return;

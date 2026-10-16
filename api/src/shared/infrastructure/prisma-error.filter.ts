@@ -14,7 +14,8 @@ export class PrismaErrorFilter implements ExceptionFilter {
     const response = host.switchToHttp().getResponse<Response>();
     const [status, code] = this.classify(error);
     if (status === HttpStatus.INTERNAL_SERVER_ERROR) this.logger.error(error.message);
-    response.status(status).json({ statusCode: status, code, message: code });
+    const field = code === 'ALREADY_EXISTS' ? duplicatedField(error) : undefined;
+    response.status(status).json({ statusCode: status, code, message: code, ...(field ? { details: { field } } : {}) });
   }
 
   private classify(error: Prisma.PrismaClientKnownRequestError | Prisma.PrismaClientUnknownRequestError): [HttpStatus, string] {
@@ -30,4 +31,18 @@ export class PrismaErrorFilter implements ExceptionFilter {
     }
     return [HttpStatus.INTERNAL_SERVER_ERROR, 'INTERNAL_ERROR'];
   }
+}
+
+/** Campos repetidos que el cliente sabe nombrar ("esa placa ya está registrada"); el resto queda genérico. */
+const DUPLICATE_FIELDS: [RegExp, string][] = [
+  [/plate/, 'plate'],
+  [/document/, 'document'],
+  [/phone/, 'phone'],
+  [/account_number|accountNumber/, 'accountNumber'],
+];
+
+function duplicatedField(error: Prisma.PrismaClientKnownRequestError | Prisma.PrismaClientUnknownRequestError): string | undefined {
+  const target = error instanceof Prisma.PrismaClientKnownRequestError ? (error.meta as { target?: unknown } | undefined)?.target : undefined;
+  const text = `${Array.isArray(target) ? target.join(',') : String(target ?? '')} ${error.message}`;
+  return DUPLICATE_FIELDS.find(([pattern]) => pattern.test(text))?.[1];
 }

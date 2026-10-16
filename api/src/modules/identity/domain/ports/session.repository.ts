@@ -43,4 +43,6 @@ export abstract class SessionRepository {
   abstract setActiveRole(sessionId: string, role: RoleCode): Promise<void>;
   abstract end(sessionId: string, reason: SessionEndReasonCode): Promise<void>;
   abstract endAllForUser(userId: string, reason: SessionEndReasonCode): Promise<void>;
+  /** Cierra las demás sesiones del usuario (por ejemplo, al cambiar la contraseña). */
+  abstract endOthers(userId: string, keepSessionId: string, reason: SessionEndReasonCode): Promise<void>;
 }

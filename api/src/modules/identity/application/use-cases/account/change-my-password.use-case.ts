@@ -1,19 +1,24 @@
 import { Injectable } from '@nestjs/common';
-import { AUTH_FACTORS } from '../../../domain/identity.codes';
+import { AUTH_FACTORS, SESSION_END_REASONS } from '../../../domain/identity.codes';
 import { IdentityErrors } from '../../../domain/identity.errors';
 import { Principal } from '../../../domain/principal';
 import { AccountRepository } from '../../../domain/ports/account.repository';
 import { OtpChallengeRepository } from '../../../domain/ports/otp-challenge.repository';
 import { PasswordHasher } from '../../../domain/ports/password-hasher.port';
+import { SessionRepository } from '../../../domain/ports/session.repository';
 import { Password } from '../../../domain/value-objects/password';
 
-/** El personal y los domiciliarios cambian la contraseña que les asignó el administrador. */
+/**
+ * El personal y los domiciliarios cambian la contraseña que les asignó el administrador.
+ * Las demás sesiones abiertas se cierran: quien tuviera la contraseña anterior pierde el acceso.
+ */
 @Injectable()
 export class ChangeMyPasswordUseCase {
   constructor(
     private readonly accounts: AccountRepository,
     private readonly hasher: PasswordHasher,
     private readonly challenges: OtpChallengeRepository,
+    private readonly sessions: SessionRepository,
   ) {}
 
   async execute(principal: Principal, input: { currentPassword: string; newPassword: string; ipAddress?: string }): Promise<void> {
@@ -32,5 +37,6 @@ export class ChangeMyPasswordUseCase {
 
     const next = Password.create(input.newPassword);
     await this.accounts.setPasswordHash(account.userId, await this.hasher.hash(next.value));
+    await this.sessions.endOthers(account.userId, principal.sessionId, SESSION_END_REASONS.PASSWORD_CHANGED);
   }
 }

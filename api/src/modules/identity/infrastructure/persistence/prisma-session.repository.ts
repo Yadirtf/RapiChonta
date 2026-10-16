@@ -109,4 +109,8 @@ export class PrismaSessionRepository extends SessionRepository {
   async endAllForUser(userId: string, reason: SessionEndReasonCode): Promise<void> {
     await this.prisma.$transaction((tx) => this.writer.endSessions(tx, { userId }, reason));
   }
+
+  async endOthers(userId: string, keepSessionId: string, reason: SessionEndReasonCode): Promise<void> {
+    await this.prisma.$transaction((tx) => this.writer.endSessions(tx, { userId, exceptSessionId: keepSessionId }, reason));
+  }
 }

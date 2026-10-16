@@ -258,7 +258,7 @@ Semilla de `permissions` y `role_permissions`:
 | `device_id` | FK `devices` | sí | |
 | `created_at` | `timestamptz` | no | |
 | `ended_at` | `timestamptz` | sí | `CHECK ((ended_at IS NULL) = (end_reason_id IS NULL))` |
-| `end_reason_id` | FK `session_end_reasons` | sí | `SIGN_OUT`, `REFRESH_REUSE_DETECTED`, `ACCOUNT_DISABLED`, `ROLE_REVOKED`, `EXPIRED` |
+| `end_reason_id` | FK `session_end_reasons` | sí | `SIGN_OUT`, `REFRESH_REUSE_DETECTED`, `ACCOUNT_DISABLED`, `ROLE_REVOKED`, `EXPIRED`, `PASSWORD_CHANGED` |
 
 **`refresh_tokens`**: un token por rotación. El token vigente de una sesión es el que no tiene `consumed_at` (índice único parcial `(session_id) WHERE consumed_at IS NULL`). Si llega un token ya consumido, se cierra la sesión con `REFRESH_REUSE_DETECTED`.
 

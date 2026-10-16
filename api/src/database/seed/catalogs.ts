@@ -122,7 +122,7 @@ export const CATALOGS: CatalogSeed[] = [
     table: 'session_end_reasons',
     key: 'code',
     rows: ordered(
-      ['SIGN_OUT', 'REFRESH_REUSE_DETECTED', 'ACCOUNT_DISABLED', 'ROLE_REVOKED', 'EXPIRED'].map((code) => ({ code })),
+      ['SIGN_OUT', 'REFRESH_REUSE_DETECTED', 'ACCOUNT_DISABLED', 'ROLE_REVOKED', 'EXPIRED', 'PASSWORD_CHANGED'].map((code) => ({ code })),
     ),
   },
   { table: 'otp_purposes', key: 'code', rows: ordered(['SIGN_IN', 'STAFF_SIGN_IN', 'PHONE_CHANGE'].map((code) => ({ code }))) },

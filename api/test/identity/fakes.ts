@@ -215,6 +215,9 @@ export class InMemorySessions extends SessionRepository {
   async endAllForUser(userId: string, reason: SessionEndReasonCode) {
     for (const [id, s] of this.sessions) if (s.userId === userId) await this.end(id, reason);
   }
+  async endOthers(userId: string, keepSessionId: string, reason: SessionEndReasonCode) {
+    for (const [id, s] of this.sessions) if (s.userId === userId && id !== keepSessionId) await this.end(id, reason);
+  }
 }
 
 export class FakeTokens extends TokenService {
