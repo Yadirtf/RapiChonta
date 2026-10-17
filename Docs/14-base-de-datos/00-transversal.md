@@ -132,6 +132,17 @@ erDiagram
 
 Las URLs se firman al leer, con vencimiento (RNF-08); no se guardan.
 
+### Dónde se guardan los bytes
+
+La API habla con un puerto de almacenamiento con dos adaptadores, elegidos con `FILE_STORAGE`:
+
+| Modo | Bytes en | Cuándo |
+| --- | --- | --- |
+| `database` (por defecto) | `file_contents (file_id PK/FK → files, content bytea)`, 1:1 con `files`, `ON DELETE CASCADE` | Entorno de pruebas: no exige otro servicio. Sirve para fotos de menú comprimidas (la web las reduce a WebP de 1400 px como máximo y quita los metadatos) |
+| `s3` | Un bucket S3 compatible (Cloudflare R2) | Producción o cuando el volumen crezca. La tabla `file_contents` queda vacía |
+
+La subida es igual en los dos modos: 1) `POST /files` con propósito, tipo, tamaño y `sha256` → URL de subida firmada (si ya existe el mismo `sha256` para el propósito, se reutiliza); 2) `PUT` de los bytes a esa URL; 3) `POST /files/:id/complete`, que comprueba tamaño, huella y tipo real del contenido. Un archivo solo puede usarse (foto o logo) después de completarse. Las URLs de lectura vencen a las 6 horas y se redondean a ventanas para que el navegador las guarde en caché. Índice `(purpose_id, sha256)` para encontrar repetidos.
+
 ## Auditoría
 
 Registro de quién hizo qué en el panel (RNF-07, H07.5). Solo inserción.
