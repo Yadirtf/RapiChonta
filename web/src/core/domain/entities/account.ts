@@ -13,6 +13,10 @@ export const PERMISSIONS = {
   MANAGE_ESTABLISHMENTS: "establishments.manage",
   MANAGE_PRODUCTS: "products.manage",
   MANAGE_CATEGORIES: "categories.manage",
+  MANAGE_ZONES: "zones.manage",
+  MANAGE_HOURS: "hours.manage",
+  MANAGE_SETTINGS: "settings.manage",
+  MANAGE_COMMISSION: "commission.manage",
 } as const;
 
 export interface LegalDocumentVersion {
@@ -28,6 +32,8 @@ export interface Account {
   familyNames: string | null;
   phone: string | null;
   language: string;
+  /** Moneda del precio aproximado (H03.4); null = solo pesos. */
+  displayCurrency: "USD" | "EUR" | null;
   roles: RoleCode[];
   activeRole: RoleCode;
   permissions: string[];

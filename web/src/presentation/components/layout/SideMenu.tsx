@@ -11,6 +11,8 @@ import { LOCALES } from "@/i18n/config";
 import { useAuth } from "../../auth/AuthProvider";
 import { initials } from "../../format";
 import { CategoryIcon } from "../catalog/CategoryIcon";
+import { CurrencyPicker } from "../business/CurrencyPicker";
+import { OpeningSign } from "../business/OpeningSign";
 import { Logo } from "../ui/Logo";
 
 interface Props {
@@ -59,6 +61,9 @@ export function SideMenu({ categories, active, onToggle, onClear }: Props) {
       </nav>
 
       <div className="mt-auto flex flex-col gap-1 border-t border-white/10 px-3 py-4">
+        <div className="hidden px-3 pb-2 md:block" title={t("business.orderingHours")}>
+          <OpeningSign variant="dark" />
+        </div>
         {isStaffSession(account) && (
           <Link href="/panel" className={itemClass} title={t("menu.panel")}>
             <LayoutDashboard className="size-5" />
@@ -92,6 +97,7 @@ export function SideMenu({ categories, active, onToggle, onClear }: Props) {
             </button>
           ))}
         </div>
+        <CurrencyPicker className="px-3" />
         <Link href="/legal/politica-de-datos" className="mt-2 hidden px-3 text-[11px] text-white/35 hover:text-white/70 md:block">
           {t("menu.dataPolicy")}
         </Link>

@@ -231,3 +231,113 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* ───────────── Zonas de entrega (H03.1) ───────────── */
+
+/* Rótulo de zona en el mapa: el nombre del barrio y su tarifa, como un letrero pintado a mano. */
+.zone-label {
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  border-radius: 9999px;
+  border: 2px solid var(--color-chonta-strong);
+  background: white;
+  color: var(--color-ink);
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 4px 10px rgb(20 18 31 / 0.18);
+  cursor: pointer;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.zone-label > span {
+  padding: 5px 8px;
+  font-weight: 700;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.zone-label > strong {
+  padding: 5px 8px;
+  background: var(--color-brand);
+  font-family: var(--font-display);
+  font-weight: 800;
+}
+
+.zone-label.is-rural {
+  border-color: var(--color-leaf);
+}
+
+.zone-label.is-rural > strong {
+  background: var(--color-leaf);
+  color: white;
+}
+
+.zone-label:hover,
+.zone-label.is-selected {
+  transform: scale(1.08);
+  box-shadow: 0 8px 18px rgb(20 18 31 / 0.28);
+}
+
+.zone-label.is-selected {
+  outline: 3px solid rgb(255 197 49 / 0.6);
+}
+
+.zone-label.is-conflict {
+  border-color: var(--color-chonta);
+  animation: zone-shake 600ms ease 1;
+}
+
+.zone-label.is-conflict > strong {
+  background: var(--color-chonta);
+  color: white;
+}
+
+@keyframes zone-shake {
+  0%,
+  100% {
+    translate: 0;
+  }
+  25% {
+    translate: -3px;
+  }
+  75% {
+    translate: 3px;
+  }
+}
+
+.zone-vertex {
+  border-color: var(--color-chonta-strong);
+}
+
+/* El primer vértice invita a cerrar la figura. */
+.zone-vertex.is-closing {
+  width: 20px;
+  height: 20px;
+  background: var(--color-brand);
+  border-color: var(--color-ink);
+  cursor: pointer;
+  box-shadow: 0 0 0 6px rgb(255 197 49 / 0.35);
+}
+
+/* Punto de prueba: "¿cuánto cobro hasta aquí?". */
+.probe-pin {
+  width: 22px;
+  height: 30px;
+  background: var(--color-ink);
+  border: 3px solid var(--color-brand);
+  border-radius: 9999px 9999px 9999px 0;
+  transform: rotate(-45deg);
+  transform-origin: bottom left;
+  box-shadow: 0 6px 14px rgb(20 18 31 / 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zone-label,
+  .zone-label.is-conflict {
+    animation: none;
+    transition: none;
+  }
+}

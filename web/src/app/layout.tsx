@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Bricolage_Grotesque, Plus_Jakarta_Sans } from "next/font/google";
 import { AuthProvider } from "@/presentation/auth/AuthProvider";
+import { BusinessProvider } from "@/presentation/business/BusinessProvider";
 import { CartProvider } from "@/presentation/cart/CartProvider";
 import "./globals.css";
 
@@ -24,7 +25,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       <body className="font-sans antialiased">
         <NextIntlClientProvider>
           <AuthProvider>
-            <CartProvider>{children}</CartProvider>
+            <BusinessProvider>
+              <CartProvider>{children}</CartProvider>
+            </BusinessProvider>
           </AuthProvider>
         </NextIntlClientProvider>
       </body>

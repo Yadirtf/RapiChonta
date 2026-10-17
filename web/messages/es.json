@@ -103,7 +103,27 @@
     "UPLOAD_INVALID": "No pudimos subir la foto. Inténtalo de nuevo.",
     "FILE_CONTENT_MISMATCH": "El archivo no es la imagen que dice ser.",
     "FILE_NOT_UPLOADED": "La foto no terminó de subir. Inténtalo de nuevo.",
-    "FILE_NOT_FOUND": "No encontramos esa foto."
+    "FILE_NOT_FOUND": "No encontramos esa foto.",
+    "ZONE_OVERLAP": "La zona se cruza con otra. Ajusta el borde o recórtala.",
+    "ZONE_NAME_TAKEN": "Ya hay una zona con ese nombre en el municipio.",
+    "ZONE_TRIM_EMPTY": "Al recortar no queda nada: las demás zonas ya cubren esa área.",
+    "ZONE_TRIM_SPLIT": "Al recortar la zona queda partida en varios pedazos. Ajusta el borde a mano.",
+    "NO_COVERAGE": "Todavía no llegamos a ese punto de entrega.",
+    "ZONE_NOT_FOUND": "La zona ya no existe. Recarga la página.",
+    "MUNICIPALITY_NOT_FOUND": "No encontramos el municipio.",
+    "INVALID_TIME": "Hora no válida. Usa el formato 08:30.",
+    "INVALID_TIME_SLOT": "Cada franja debe cerrar después de abrir.",
+    "OVERLAPPING_TIME_SLOTS": "Hay franjas del mismo día que se cruzan.",
+    "TOO_MANY_TIME_SLOTS": "Máximo {max} franjas por día.",
+    "INVALID_DATE": "Fecha no válida.",
+    "DATE_IN_PAST": "La fecha ya pasó.",
+    "EXCEPTION_NOT_FOUND": "Ese día especial ya no existe.",
+    "OUTSIDE_OPERATING_HOURS": "Ahora no estamos recibiendo pedidos. Revisa a qué hora abrimos.",
+    "SETTING_NOT_FOUND": "Ese parámetro no existe.",
+    "SETTING_NOT_SCOPED": "Ese parámetro es igual para todos los municipios.",
+    "INVALID_SETTING_VALUE": "El valor está fuera del rango permitido.",
+    "INVALID_COMMISSION": "La comisión debe estar entre 0 y 99,99 %.",
+    "EXCHANGE_RATES_UNAVAILABLE": "No pudimos consultar las tasas de cambio. Se siguen usando las últimas guardadas."
   },
   "auth": {
     "signInTitle": "Entra con tu celular",
@@ -226,7 +246,10 @@
       "couriers": "Domiciliarios",
       "staff": "Personal",
       "establishments": "Establecimientos",
-      "categories": "Categorías"
+      "categories": "Categorías",
+      "zones": "Zonas",
+      "hours": "Horario",
+      "settings": "Configuración"
     },
     "viewSite": "Ver el sitio",
     "signOut": "Cerrar sesión",
@@ -567,7 +590,8 @@
     "quantityOf": "Cantidad de {name}",
     "remove": "Quitar {name}",
     "decrease": "Uno menos de {name}",
-    "increase": "Uno más de {name}"
+    "increase": "Uno más de {name}",
+    "payOnDelivery": "Pagas al recibir: efectivo, Nequi, Daviplata o transferencia."
   },
   "store": {
     "backToMap": "Volver al mapa",
@@ -790,5 +814,234 @@
     "drag": "Arrastra para ordenar",
     "establishments": "{count, plural, =0 {sin locales} one {# local} other {# locales}}",
     "activeLabel": "{name} visible en el mapa"
+  },
+  "business": {
+    "openNow": "Abierto",
+    "closedNow": "Cerrado",
+    "openUntil": "Pide hasta las {time}",
+    "opensToday": "Abrimos hoy a las {time}",
+    "opensTomorrow": "Abrimos mañana a las {time}",
+    "opensOn": "Abrimos el {day} a las {time}",
+    "noSchedule": "Aún no hay horario de atención",
+    "orderingHours": "Horario para pedir",
+    "currency": "Ver precios aproximados en",
+    "currencyHint": "Cobramos en pesos. El valor en dólares o euros es solo una referencia.",
+    "approxNote": "Valor aproximado con la tasa de hoy. Se cobra en pesos.",
+    "approxStale": "Valor aproximado con la tasa del {date}. Se cobra en pesos.",
+    "outsideCoverage": "Todavía no llegamos a tu ubicación. Revisa el punto de entrega antes de pedir.",
+    "feeOnConfirm": "El domicilio se calcula con tu dirección al confirmar",
+    "deliveryTo": "Domicilio a {zone}",
+    "estimatedTotal": "Total estimado"
+  },
+  "zones": {
+    "title": "Zonas de entrega",
+    "subtitle": "Barrios y veredas de {municipality} con su tarifa de domicilio",
+    "new": "Nueva zona",
+    "newTitle": "Nueva zona",
+    "editTitle": "Editar zona",
+    "editorHint": "Dibuja la zona en el mapa y ponle su tarifa fija.",
+    "kind": "Tipo de zona",
+    "kinds": {
+      "URBAN": "Barrio",
+      "RURAL": "Vereda"
+    },
+    "kindHints": {
+      "URBAN": "Casco urbano",
+      "RURAL": "Zona rural"
+    },
+    "groups": {
+      "URBAN": "Barrios",
+      "RURAL": "Veredas"
+    },
+    "name": "Nombre",
+    "namePlaceholder": {
+      "URBAN": "Ej.: Barrio Centro",
+      "RURAL": "Ej.: Vereda La Castellana"
+    },
+    "fee": "Tarifa del domicilio",
+    "feeInvalid": "Escribe un valor en pesos, por ejemplo 3.000",
+    "feeHint": "La paga el cliente. Cambiarla no afecta pedidos ya hechos.",
+    "draw": "Dibujar",
+    "redraw": "Volver a dibujar",
+    "adjust": "Ajustar",
+    "undo": "Deshacer",
+    "hintDraw": "Toca el mapa para poner cada esquina. Toca el primer punto para cerrar.",
+    "hintEdit": "Arrastra los puntos para ajustar el borde. Toca un punto intermedio para agregar uno; doble toque en un punto para quitarlo.",
+    "finish": "Terminar figura",
+    "vertices": "{count, plural, =0 {Sin puntos} one {# punto} other {# puntos}}",
+    "problems": {
+      "TOO_FEW_VERTICES": "Faltan puntos",
+      "TOO_MANY_VERTICES": "Demasiados puntos",
+      "SELF_INTERSECTION": "El borde se cruza consigo mismo",
+      "TOO_SMALL": "Muy pequeña (mínimo {min})",
+      "TOO_LARGE": "Muy grande (máximo {max})"
+    },
+    "overlapTitle": "Esta zona se cruza con otras",
+    "overlapBody": "Un punto de entrega solo puede tener una tarifa. Ajusta el borde o recorta la parte que ya cubren las demás zonas.",
+    "trimShow": "Ver cómo queda recortada",
+    "trimPreview": "Recortada queda de {area}, en verde en el mapa.",
+    "trimSave": "Recortar y guardar",
+    "save": "Guardar zona",
+    "saveNoteNew": "La zona empieza a cobrar apenas la guardes.",
+    "saveNoteEdit": "Los pedidos ya hechos conservan la tarifa con la que se crearon.",
+    "cancel": "Cancelar",
+    "feeHistory": "Historial de tarifas",
+    "feeHistoryNote": "Las tarifas no se borran: cada cambio queda registrado con su fecha y quién lo hizo.",
+    "current": "vigente",
+    "remove": "Quitar zona",
+    "removeTitle": "¿Quitar esta zona?",
+    "removeBody": "{name} deja de recibir domicilios. Los pedidos anteriores no cambian.",
+    "emptyTitle": "Aún no hay zonas",
+    "emptyBody": "Sin zonas nadie puede pedir domicilio. Empieza por el barrio central.",
+    "edit": "Editar",
+    "probe": "Probar tarifa",
+    "probeHint": "Toca un punto del mapa para ver qué tarifa se cobraría ahí.",
+    "probeOutside": "Ese punto está fuera de cobertura.",
+    "vertexHint": "Arrastra para mover; doble toque para quitar",
+    "midpointHint": "Agregar un punto aquí"
+  },
+  "schedule": {
+    "title": "Horario de atención",
+    "subtitle": "Cuándo se pueden hacer pedidos en {municipality}",
+    "weekTitle": "La semana",
+    "weekHint": "Hora de Colombia ({timeZone}). Puedes poner varias franjas por día.",
+    "openToggle": "Abrir el {day}",
+    "closedDay": "Cerrado",
+    "addSlot": "Franja",
+    "removeSlot": "Quitar franja",
+    "opensAt": "{day}, franja {n}: abre",
+    "closesAt": "{day}, franja {n}: cierra",
+    "midnightHint": "00:00 al cerrar significa medianoche",
+    "copy": "Copiar",
+    "copyWorkdays": "Copiar a lunes–viernes",
+    "copyAll": "Copiar a toda la semana",
+    "problems": {
+      "INVALID_TIME_SLOT": "Cada franja debe cerrar después de abrir.",
+      "OVERLAPPING_TIME_SLOTS": "Hay franjas que se cruzan."
+    },
+    "unsaved": "Tienes cambios sin guardar en el horario.",
+    "fixProblems": "Corrige las franjas marcadas para guardar.",
+    "saved": "Horario guardado. Ya rige para los clientes.",
+    "discard": "Descartar",
+    "save": "Guardar horario",
+    "dismiss": "Cerrar aviso",
+    "exceptionsTitle": "Días especiales",
+    "exceptionsHint": "Festivos, cierres o un horario distinto.",
+    "addException": "Agregar",
+    "noExceptions": "No hay días especiales próximos.",
+    "closedAllDay": "Cerrado todo el día",
+    "specialHours": "Horario especial",
+    "removeException": "Quitar día especial",
+    "exceptionTitle": "Día especial",
+    "exceptionBody": "Ese día manda sobre el horario de la semana.",
+    "exceptionKind": "Qué pasa ese día",
+    "date": "Fecha",
+    "reason": "Motivo (opcional)",
+    "reasonPlaceholder": "Ej.: Festivo de Todos los Santos",
+    "saveException": "Guardar día especial",
+    "cancel": "Cancelar"
+  },
+  "settings": {
+    "title": "Configuración del negocio",
+    "subtitle": "Reglas con las que opera RapiChonta en {municipality}",
+    "groups": {
+      "orders": "Pedidos",
+      "delivery": "Entregas",
+      "security": "Seguridad y datos",
+      "other": "Otros"
+    },
+    "keys": {
+      "orders_new_customer_max_cop": {
+        "label": "Tope para clientes nuevos",
+        "help": "Valor máximo del primer pedido de un cliente sin historial, para evitar pedidos falsos grandes."
+      },
+      "offers_timeout_seconds": {
+        "label": "Tiempo para aceptar un pedido",
+        "help": "Cuánto tiene el domiciliario para aceptar una oferta antes de pasarla a otro."
+      },
+      "adjustments_timeout_seconds": {
+        "label": "Tiempo para responder un cambio",
+        "help": "Cuánto espera el sistema la respuesta del cliente cuando falta un producto."
+      },
+      "delivery_arriving_meters": {
+        "label": "Distancia de \"llegando\"",
+        "help": "A cuántos metros del cliente se le avisa que el domiciliario está llegando."
+      },
+      "delivery_proof_after_seconds": {
+        "label": "Espera antes de pedir prueba",
+        "help": "Si el cliente no confirma la entrega en este tiempo, el domiciliario puede subir una prueba."
+      },
+      "geofence_consecutive_readings": {
+        "label": "Lecturas para confirmar llegada",
+        "help": "Ubicaciones seguidas dentro del área del local para dar por hecho que el domiciliario llegó."
+      },
+      "preparation_recheck_seconds": {
+        "label": "Revisión de la preparación",
+        "help": "Cada cuánto se le pregunta al local si el pedido ya está listo."
+      },
+      "location_retention_days": {
+        "label": "Guardar ubicaciones",
+        "help": "Días que se conservan las ubicaciones de los domiciliarios; luego se borran."
+      },
+      "otp_ttl_seconds": {
+        "label": "Vigencia del código SMS",
+        "help": "Cuánto dura el código que llega por mensaje de texto."
+      },
+      "otp_max_attempts": {
+        "label": "Intentos del código SMS",
+        "help": "Intentos permitidos antes de bloquear el código."
+      },
+      "otp_max_sends_per_hour": {
+        "label": "Códigos por hora",
+        "help": "Máximo de códigos que se envían a un mismo número en una hora."
+      },
+      "security_auth_log_retention_days": {
+        "label": "Guardar registros de acceso",
+        "help": "Días que se conservan los ingresos y fallos de inicio de sesión."
+      }
+    },
+    "units": {
+      "SECONDS": "{value} s",
+      "secondsLong": "{value} s ({minutes} min)",
+      "METERS": "{value} m",
+      "DAYS": "{value, plural, one {# día} other {# días}}",
+      "INTEGER": "{value}",
+      "MONEY_COP": "$ {value}"
+    },
+    "unitShort": {
+      "SECONDS": "seg",
+      "METERS": "m",
+      "DAYS": "días",
+      "INTEGER": "",
+      "MONEY_COP": "COP"
+    },
+    "defaultValue": "Predeterminado: {value}",
+    "range": "Entre {min} y {max}",
+    "rangeMin": "Mínimo {min}",
+    "changedBy": "Cambiado por {name} el {date}",
+    "overriddenHere": "{municipality} usa su propio valor: {value}",
+    "scope": "Dónde aplica",
+    "scopeGlobal": "Todos",
+    "scopeLocal": "Municipio",
+    "save": "Guardar",
+    "resetDefault": "Volver al predeterminado",
+    "outOfRange": "Fuera del rango permitido",
+    "history": "Historial",
+    "noHistory": "Sin cambios todavía.",
+    "close": "Cerrar",
+    "system": "Sistema",
+    "commissionKicker": "Comisión de RapiChonta",
+    "commissionTitle": "Porcentaje sobre los productos",
+    "commissionHelp": "Se descuenta del valor de los productos de cada pedido. Los pedidos ya hechos conservan el porcentaje con el que se crearon.",
+    "commissionInvalid": "Usa un porcentaje entre 0 y 99,99 con máximo dos decimales.",
+    "saveCommission": "Guardar comisión",
+    "commissionHistory": "Historial de comisión",
+    "commissionHistoryNote": "Cada cambio rige solo para los pedidos nuevos.",
+    "ratesKicker": "Tasas de cambio",
+    "ratesTitle": "Dólar y euro",
+    "refresh": "Actualizar",
+    "today": "Hoy",
+    "ratesHelp": "Se actualizan solas cada día. Última consulta: {date}. Solo sirven para mostrar un valor aproximado.",
+    "ratesEmpty": "Aún no hay tasas guardadas."
   }
 }
