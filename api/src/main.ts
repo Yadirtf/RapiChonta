@@ -2,6 +2,7 @@ import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
+import { raw } from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { DomainErrorFilter } from './shared/infrastructure/domain-error.filter';
@@ -17,6 +18,8 @@ async function bootstrap() {
   app.use(helmet());
   // La cookie de refresco de la web (HttpOnly, SameSite=Strict) se lee en /api/v1/auth/refresh.
   app.use(cookieParser());
+  // Bytes de las fotos en el modo FILE_STORAGE=database (PUT a la URL firmada). Solo esa ruta y con tope.
+  app.use('/api/v1/files/uploads', raw({ type: (req) => req.method === 'PUT', limit: '12mb' }));
   app.enableCors({
     origin: (process.env.CORS_ORIGIN ?? 'http://localhost:3001').split(',').map((o) => o.trim()),
     credentials: true,

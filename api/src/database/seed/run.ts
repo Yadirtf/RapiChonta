@@ -1,5 +1,6 @@
 import { Prisma, PrismaClient } from '@prisma/client';
 import { hash } from 'argon2';
+import { join } from 'node:path';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
 import {
   CATALOGS,
@@ -11,30 +12,34 @@ import {
   SETTINGS,
   TRANSITIONS,
 } from './catalogs';
+import { runImport } from '../catalog-import/run';
 
 /**
  * Semilla idempotente: se ejecuta en cada arranque del contenedor.
  * - Siempre: catálogos del sistema, geografía del piloto y parámetros iniciales.
  * - Con SEED_ADMIN_PHONE + SEED_ADMIN_PASSWORD: el primer administrador (solo si el número no existe).
- * - Con SEED_DEMO_DATA=true: establecimientos de ejemplo para probar el mapa.
+ * - Con SEED_DEMO_DATA=true: establecimientos de ejemplo con menú (prisma/catalog/demo), sin duplicar.
  */
 const prisma = new PrismaClient();
 const id = (name: string) => Prisma.raw(`"${name.replace(/"/g, '')}"`);
 
-async function upsertCatalog(table: string, key: string, rows: Record<string, unknown>[]) {
+async function upsertCatalog(table: string, key: string, rows: Record<string, unknown>[], insertOnly = false) {
   for (const row of rows) {
     const columns = Object.keys(row);
     const updates = columns.filter((c) => c !== key);
+    const onConflict = insertOnly
+      ? Prisma.sql`DO NOTHING`
+      : Prisma.sql`DO UPDATE SET ${Prisma.join(updates.map((c) => Prisma.sql`${id(c)} = EXCLUDED.${id(c)}`))}`;
     await prisma.$executeRaw`
       INSERT INTO ${id(table)} (${Prisma.join(columns.map(id))})
       VALUES (${Prisma.join(columns.map((c) => row[c]))})
-      ON CONFLICT (${id(key)}) DO UPDATE SET ${Prisma.join(updates.map((c) => Prisma.sql`${id(c)} = EXCLUDED.${id(c)}`))}
+      ON CONFLICT (${id(key)}) ${onConflict}
     `;
   }
 }
 
 async function seedCatalogs() {
-  for (const catalog of CATALOGS) await upsertCatalog(catalog.table, catalog.key, catalog.rows);
+  for (const catalog of CATALOGS) await upsertCatalog(catalog.table, catalog.key, catalog.rows, catalog.insertOnly);
 
   for (const { table, catalog, pairs } of TRANSITIONS) {
     for (const [from, to] of pairs) {
@@ -79,7 +84,7 @@ async function seedCatalogs() {
       await prisma.$executeRaw`
         INSERT INTO establishment_category_translations (category_id, language_id, name)
         SELECT c.id, l.id, ${name} FROM establishment_categories c, languages l WHERE c.code = ${code} AND l.code = ${language}
-        ON CONFLICT (category_id, language_id) DO UPDATE SET name = EXCLUDED.name
+        ON CONFLICT (category_id, language_id) DO NOTHING
       `;
     }
   }
@@ -155,39 +160,17 @@ async function seedAdmin() {
   console.log(`Administrador inicial creado (${e164.slice(0, 4)}…${e164.slice(-2)})`);
 }
 
-const DEMO_ESTABLISHMENTS = [
-  { name: 'Burger Demo', category: 'FAST_FOOD', address: 'Dirección de ejemplo 1', lat: 1.0294, lng: -76.6165 },
-  { name: 'Pizza Demo', category: 'FAST_FOOD', address: 'Dirección de ejemplo 2', lat: 1.0322, lng: -76.6133 },
-  { name: 'Súper Demo', category: 'SUPERMARKET', address: 'Dirección de ejemplo 3', lat: 1.0259, lng: -76.6199 },
-];
-
+/** Catálogo de ejemplo (locales "Demo" con menú) para probar el mapa y la ficha. Usa la misma carga que H02.6. */
 async function seedDemoData() {
   if (process.env.SEED_DEMO_DATA !== 'true') return;
-  const [{ count }] = await prisma.$queryRaw<{ count: bigint }[]>`SELECT count(*) FROM establishments`;
-  if (count > 0n) return;
-
-  const [admin] = await prisma.$queryRaw<{ user_id: string }[]>`
-    SELECT user_id FROM v_active_user_roles WHERE role_code = 'ADMIN' ORDER BY granted_at LIMIT 1`;
-  if (!admin) {
-    console.warn('Datos de ejemplo omitidos: defina SEED_ADMIN_PHONE y SEED_ADMIN_PASSWORD para crear el administrador');
-    return;
+  try {
+    const report = await runImport(prisma, join(__dirname, '../../../prisma/catalog/demo'));
+    const { establishments: e, products: p } = report;
+    console.log(`Datos de ejemplo: ${e.created} locales nuevos, ${e.updated} actualizados; ${p.created} productos nuevos, ${p.newVersions} con versión nueva`);
+    report.errors.forEach((error) => console.warn(`Datos de ejemplo: ${error}`));
+  } catch (error) {
+    console.warn(`Datos de ejemplo omitidos: ${error instanceof Error ? error.message : error}`);
   }
-
-  for (const e of DEMO_ESTABLISHMENTS) {
-    await prisma.$transaction(async (tx) => {
-      const point = Prisma.sql`ST_SetSRID(ST_MakePoint(${e.lng}, ${e.lat}), 4326)::geography`;
-      const [row] = await tx.$queryRaw<{ id: string }[]>`
-        INSERT INTO establishments (municipality_id, name, address_line, location, area, status_id, created_by_user_id)
-        SELECT m.id, ${e.name}, ${e.address}, ${point}, ST_Buffer(${point}, 25), s.id, ${admin.user_id}::uuid
-        FROM municipalities m, establishment_statuses s
-        WHERE m.dane_code = ${GEOGRAPHY.municipality.daneCode} AND s.code = 'ACTIVE'
-        RETURNING id`;
-      await tx.$executeRaw`
-        INSERT INTO establishment_category_links (establishment_id, category_id, is_primary)
-        SELECT ${row.id}::uuid, id, true FROM establishment_categories WHERE code = ${e.category}`;
-    });
-  }
-  console.log(`Datos de ejemplo: ${DEMO_ESTABLISHMENTS.length} establecimientos`);
 }
 
 async function main() {

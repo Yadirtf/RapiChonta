@@ -2,7 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { EstablishmentsModule } from './modules/establishments/establishments.module';
+import { CatalogModule } from './modules/catalog/catalog.module';
+import { FilesModule } from './modules/files/files.module';
 import { HealthModule } from './modules/health/health.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { PrismaModule } from './shared/infrastructure/prisma/prisma.module';
@@ -16,7 +17,8 @@ import { PrismaModule } from './shared/infrastructure/prisma/prisma.module';
     HealthModule,
     // IdentityModule registra los guards globales de sesión y permisos: va antes que los módulos de negocio.
     IdentityModule,
-    EstablishmentsModule,
+    FilesModule,
+    CatalogModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

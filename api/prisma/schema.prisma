@@ -137,8 +137,19 @@ model File {
   collectionAccountQrs  CourierCollectionAccount[]
   establishmentLogos    Establishment[]
   productImages         ProductImage[]
+  content               FileContent?
 
+  @@index([purposeId, sha256])
   @@map("files")
+}
+
+/// Bytes del archivo cuando el almacenamiento es la base de datos (FILE_STORAGE=database). 1:1 con files.
+model FileContent {
+  fileId  String @id @map("file_id") @db.Uuid
+  content Bytes
+  file    File   @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@map("file_contents")
 }
 
 model AuditAction {
@@ -830,17 +841,30 @@ model CourierCollectionAccount {
 // ═══════════════════════════ E02 · Establecimientos y menús ═══════════════════════════
 
 model EstablishmentStatus {
-  id             Int             @id @default(autoincrement()) @db.SmallInt
-  code           String          @unique @db.VarChar(40)
-  sortOrder      Int             @map("sort_order") @db.SmallInt
-  deactivatedAt  DateTime?       @map("deactivated_at") @db.Timestamptz(6)
-  isInitial      Boolean         @map("is_initial")
-  isTerminal     Boolean         @map("is_terminal")
-  isVisibleOnMap Boolean         @map("is_visible_on_map")
-  acceptsOrders  Boolean         @map("accepts_orders")
-  establishments Establishment[]
+  id              Int                             @id @default(autoincrement()) @db.SmallInt
+  code            String                          @unique @db.VarChar(40)
+  sortOrder       Int                             @map("sort_order") @db.SmallInt
+  deactivatedAt   DateTime?                       @map("deactivated_at") @db.Timestamptz(6)
+  isInitial       Boolean                         @map("is_initial")
+  isTerminal      Boolean                         @map("is_terminal")
+  isVisibleOnMap  Boolean                         @map("is_visible_on_map")
+  acceptsOrders   Boolean                         @map("accepts_orders")
+  establishments  Establishment[]
+  transitionsFrom EstablishmentStatusTransition[] @relation("EstablishmentTransitionFrom")
+  transitionsTo   EstablishmentStatusTransition[] @relation("EstablishmentTransitionTo")
 
   @@map("establishment_statuses")
+}
+
+/// Cambios de estado permitidos del establecimiento (nivel simple: el cambio queda en audit_logs).
+model EstablishmentStatusTransition {
+  fromStatusId Int                 @map("from_status_id") @db.SmallInt
+  toStatusId   Int                 @map("to_status_id") @db.SmallInt
+  fromStatus   EstablishmentStatus @relation("EstablishmentTransitionFrom", fields: [fromStatusId], references: [id], onDelete: Restrict)
+  toStatus     EstablishmentStatus @relation("EstablishmentTransitionTo", fields: [toStatusId], references: [id], onDelete: Restrict)
+
+  @@id([fromStatusId, toStatusId])
+  @@map("establishment_status_transitions")
 }
 
 model Establishment {
@@ -944,17 +968,30 @@ model MenuSectionTranslation {
 }
 
 model ProductStatus {
-  id            Int       @id @default(autoincrement()) @db.SmallInt
-  code          String    @unique @db.VarChar(40)
-  sortOrder     Int       @map("sort_order") @db.SmallInt
-  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
-  isInitial     Boolean   @map("is_initial")
-  isTerminal    Boolean   @map("is_terminal")
-  isVisible     Boolean   @map("is_visible")
-  isOrderable   Boolean   @map("is_orderable")
-  products      Product[]
+  id              Int                       @id @default(autoincrement()) @db.SmallInt
+  code            String                    @unique @db.VarChar(40)
+  sortOrder       Int                       @map("sort_order") @db.SmallInt
+  deactivatedAt   DateTime?                 @map("deactivated_at") @db.Timestamptz(6)
+  isInitial       Boolean                   @map("is_initial")
+  isTerminal      Boolean                   @map("is_terminal")
+  isVisible       Boolean                   @map("is_visible")
+  isOrderable     Boolean                   @map("is_orderable")
+  products        Product[]
+  transitionsFrom ProductStatusTransition[] @relation("ProductTransitionFrom")
+  transitionsTo   ProductStatusTransition[] @relation("ProductTransitionTo")
 
   @@map("product_statuses")
+}
+
+/// Cambios de disponibilidad permitidos del producto.
+model ProductStatusTransition {
+  fromStatusId Int           @map("from_status_id") @db.SmallInt
+  toStatusId   Int           @map("to_status_id") @db.SmallInt
+  fromStatus   ProductStatus @relation("ProductTransitionFrom", fields: [fromStatusId], references: [id], onDelete: Restrict)
+  toStatus     ProductStatus @relation("ProductTransitionTo", fields: [toStatusId], references: [id], onDelete: Restrict)
+
+  @@id([fromStatusId, toStatusId])
+  @@map("product_status_transitions")
 }
 
 model Product {
@@ -962,6 +999,8 @@ model Product {
   establishmentId String           @map("establishment_id") @db.Uuid
   menuSectionId   String           @map("menu_section_id") @db.Uuid
   statusId        Int              @map("status_id") @db.SmallInt
+  /// Orden dentro de su sección (H02.2).
+  sortOrder       Int              @default(0) @map("sort_order") @db.SmallInt
   createdByUserId String           @map("created_by_user_id") @db.Uuid
   createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   establishment   Establishment    @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
@@ -972,6 +1011,7 @@ model Product {
   images          ProductImage[]
 
   @@index([establishmentId])
+  @@index([menuSectionId, sortOrder])
   @@map("products")
 }
 

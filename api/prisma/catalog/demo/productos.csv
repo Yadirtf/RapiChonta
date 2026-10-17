@@ -1,0 +1,22 @@
+establecimiento,seccion,seccion_en,nombre,nombre_en,descripcion,descripcion_en,precio,minutos_preparacion,disponible
+Burger Demo,Hamburguesas,Burgers,Hamburguesa sencilla,Classic burger,"Carne de res, queso, lechuga y tomate","Beef patty, cheese, lettuce and tomato",14000,15,si
+Burger Demo,Hamburguesas,Burgers,Hamburguesa doble,Double burger,"Doble carne, doble queso y tocineta","Double patty, double cheese and bacon",21000,18,si
+Burger Demo,Acompañamientos,Sides,Papas a la francesa,French fries,Porción mediana,Medium portion,6000,8,si
+Burger Demo,Bebidas,Drinks,Gaseosa 400 ml,Soda 400 ml,,,3500,0,si
+Burger Demo,Bebidas,Drinks,Jugo natural,Fresh juice,"Mora, lulo o maracuyá","Blackberry, lulo or passion fruit",5000,5,no
+Pizza Demo,Pizzas,Pizzas,Pizza hawaiana personal,Personal Hawaiian pizza,Jamón y piña,Ham and pineapple,16000,25,si
+Pizza Demo,Pizzas,Pizzas,Pizza de pollo y champiñones,Chicken and mushroom pizza,Mediana (6 porciones),Medium (6 slices),32000,30,si
+Pizza Demo,Bebidas,Drinks,Limonada de coco,Coconut lemonade,,,7000,5,si
+Súper Demo,Despensa,Pantry,Arroz 1 kg,Rice 1 kg,,,4800,0,si
+Súper Demo,Despensa,Pantry,Aceite 1 L,Cooking oil 1 L,,,11500,0,si
+Súper Demo,Lácteos,Dairy,Leche entera 1 L,Whole milk 1 L,,,4200,0,si
+Súper Demo,Aseo,Cleaning,Jabón de loza,Dish soap,500 g,500 g,6900,0,si
+Asadero Demo,Asados,Grill,Medio pollo asado,Half roast chicken,"Con papa salada, arepa y ají","With boiled potato, arepa and hot sauce",19000,20,si
+Asadero Demo,Asados,Grill,Pollo entero,Whole roast chicken,"Para 4 personas, con acompañantes","Serves 4, with sides",36000,25,si
+Asadero Demo,Típicos,Local dishes,Gamitana frita,Fried gamitana fish,Pescado amazónico con patacón y arroz,Amazonian fish with plantain and rice,28000,30,si
+Droguería Demo,Botiquín,First aid,Acetaminofén 500 mg x 10,Acetaminophen 500 mg x 10,Venta libre,Over the counter,3000,0,si
+Droguería Demo,Botiquín,First aid,Suero oral,Oral rehydration salts,,,4500,0,si
+Droguería Demo,Cuidado personal,Personal care,Repelente de insectos,Insect repellent,120 ml,120 ml,18000,0,si
+Tienda Demo,Mecato,Snacks,Papas de paquete,Potato chips,,,2500,0,si
+Tienda Demo,Mecato,Snacks,Chocolatina,Chocolate bar,,,2000,0,si
+Tienda Demo,Bebidas,Drinks,Agua 600 ml,Water 600 ml,,,2000,0,si
