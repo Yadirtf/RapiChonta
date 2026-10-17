@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/brand_logo.dart';
 import '../../../../app/theme.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../business/presentation/business_widgets.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../providers/establishments_providers.dart';
 import 'category_icon.dart';
@@ -53,6 +54,8 @@ class SideMenu extends ConsumerWidget {
               ),
             ),
             const Divider(color: Colors.white12),
+            const Padding(padding: EdgeInsets.fromLTRB(24, 8, 16, 4), child: OpeningSign(dark: true)),
+            const Padding(padding: EdgeInsets.fromLTRB(20, 4, 16, 4), child: CurrencyPicker()),
             _MenuItem(icon: Icons.delivery_dining_rounded, label: l10n.menuMyOrders, onTap: () {}),
             _MenuItem(
               icon: Icons.person_rounded,

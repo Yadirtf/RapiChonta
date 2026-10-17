@@ -12,6 +12,7 @@ class AccountModel {
         roles: (json['roles'] as List).map((r) => RoleX.fromApi(r as String)).whereType<Role>().toList(),
         activeRole: RoleX.fromApi(json['activeRole'] as String) ?? Role.customer,
         pendingConsents: legalList(json['pendingConsents']),
+        displayCurrency: json['displayCurrency'] as String?,
       );
 
   static List<LegalDocument> legalList(Object? json) => (json as List? ?? const [])

@@ -7,6 +7,7 @@ import '../format/money.dart';
 import 'cart_bar.dart';
 import 'category_icon.dart';
 import 'storefront.dart';
+import '../../../business/presentation/business_widgets.dart';
 
 /// Producto con su etiqueta de precio colgada y el tiempo de preparación; agotado = sello encima.
 class ProductCard extends StatelessWidget {
@@ -50,7 +51,13 @@ class ProductCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                PriceTag(label: formatPesos(product.priceCents, language), muted: soldOut),
+                Row(
+                  children: [
+                    PriceTag(label: formatPesos(product.priceCents, language), muted: soldOut),
+                    const SizedBox(width: 8),
+                    Flexible(child: ApproxPrice(cents: product.priceCents)),
+                  ],
+                ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 10, 8, 0),
                   child: Column(

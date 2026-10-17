@@ -7,6 +7,8 @@ import '../../../../l10n/app_localizations.dart';
 import '../format/money.dart';
 import '../providers/establishments_providers.dart';
 import 'storefront.dart';
+import '../../../business/presentation/business_providers.dart';
+import '../../../business/presentation/business_widgets.dart';
 
 /// Barra con borde de recibo: cuántos productos van y cuánto suman. Toca para ver la canasta.
 class CartBar extends ConsumerWidget {
@@ -17,6 +19,9 @@ class CartBar extends ConsumerWidget {
     final cart = ref.watch(cartProvider);
     final l10n = AppLocalizations.of(context);
     final language = Localizations.localeOf(context).languageCode;
+    final status = ref.watch(businessStatusProvider).value;
+    // Fuera de horario la barra dice cuándo abrimos, en vez del nombre del local (H03.2).
+    final closed = status == null || status.open ? null : openingText(l10n, status, language).detail;
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 250),
       transitionBuilder: (child, animation) => SlideTransition(
@@ -58,7 +63,10 @@ class CartBar extends ConsumerWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(l10n.cartView, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-                                  Text(cart.establishmentName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+                                  Text(closed ?? cart.establishmentName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(color: closed == null ? Colors.white60 : AppColors.brand, fontSize: 12, fontWeight: closed == null ? null : FontWeight.w700)),
                                 ],
                               ),
                             ),
@@ -138,7 +146,13 @@ class _CartSheet extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(line.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
-                        Text(formatPesos(line.priceCents, language), style: const TextStyle(color: Colors.black54)),
+                        Row(
+                          children: [
+                            Text(formatPesos(line.priceCents, language), style: const TextStyle(color: Colors.black54)),
+                            const SizedBox(width: 6),
+                            Flexible(child: ApproxPrice(cents: line.priceCents, fontSize: 11)),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -156,7 +170,13 @@ class _CartSheet extends ConsumerWidget {
                 Row(
                   children: [
                     Expanded(child: Text(l10n.cartSubtotal(cart.count), style: const TextStyle(fontWeight: FontWeight.w600))),
-                    Text(formatPesos(cart.subtotalCents, language), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(formatPesos(cart.subtotalCents, language), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                        ApproxPrice(cents: cart.subtotalCents),
+                      ],
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -165,6 +185,8 @@ class _CartSheet extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
+          const OpeningSign(),
+          const SizedBox(height: 12),
           FilledButton(onPressed: null, child: Text(l10n.cartCheckout)),
           const SizedBox(height: 6),
           Center(child: Text(l10n.cartCheckoutSoon, style: const TextStyle(fontSize: 12, color: Colors.black45))),
