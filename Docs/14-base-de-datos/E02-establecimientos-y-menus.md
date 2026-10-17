@@ -52,6 +52,7 @@ erDiagram
     uuid establishment_id FK
     uuid menu_section_id FK
     smallint status_id FK
+    smallint sort_order
     uuid created_by_user_id FK
     timestamptz created_at
   }
@@ -101,7 +102,9 @@ Ya no existe `is_partner`: ser comercio aliado es un hecho con fechas ([E15](E13
 | `TEMPORARILY_CLOSED` | no | sí | no | Cerrado hoy, vacaciones, reformas |
 | `INACTIVE` | no | no | no | Ya no trabaja con RapiChonta |
 
-Estado de [nivel simple](README.md#catálogo-de-estados--historial--estado-actual): el dominio permite `DRAFT→ACTIVE`, `ACTIVE↔TEMPORARILY_CLOSED`, `ACTIVE→INACTIVE`, `TEMPORARILY_CLOSED→INACTIVE` e `INACTIVE→ACTIVE`, y cada cambio queda en `audit_logs` (`ESTABLISHMENT_CHANGED`).
+Estado de [nivel simple](README.md#catálogo-de-estados--historial--estado-actual). Los cambios permitidos son datos, no código: `establishment_status_transitions (from_status_id, to_status_id)` con PK compuesta, sembrada con `DRAFT→ACTIVE`, `DRAFT→INACTIVE`, `ACTIVE↔TEMPORARILY_CLOSED`, `ACTIVE→INACTIVE`, `TEMPORARILY_CLOSED→INACTIVE` e `INACTIVE→ACTIVE`. Publicar (`DRAFT→ACTIVE` o volver a `ACTIVE`) exige además al menos un producto disponible, regla del caso de uso. Cada cambio queda en `audit_logs` (`ESTABLISHMENT_CHANGED`).
+
+El nombre es único por municipio sin distinguir mayúsculas: índice único `(municipality_id, lower(name))`. Así la carga desde CSV reconoce el local al repetirse. Otras reglas de la base: `CHECK (ST_IsValid(area::geometry))` (el área no se cruza) y nombre y dirección no vacíos.
 
 ### Categorías (H02.4, RF-12)
 
@@ -121,7 +124,7 @@ Estado de [nivel simple](README.md#catálogo-de-estados--historial--estado-actua
 | --- | --- | --- |
 | `menu_sections` | `id`, `establishment_id`, `sort_order`, `created_at`, `deactivated_at` | `UNIQUE (id, establishment_id)` para la llave compuesta de `products` |
 | `menu_section_translations` | `menu_section_id`, `language_id`, `name` | PK compuesta; "Hamburguesas", "Bebidas" |
-| `products` | `id`, `establishment_id`, `menu_section_id`, `status_id`, `created_by_user_id`, `created_at` | FK compuesta `(menu_section_id, establishment_id)` → `menu_sections (id, establishment_id)`: la sección debe ser del mismo local |
+| `products` | `id`, `establishment_id`, `menu_section_id`, `status_id`, `sort_order`, `created_by_user_id`, `created_at` | `sort_order` ordena el producto dentro de su sección (índice `(menu_section_id, sort_order)`). FK compuesta `(menu_section_id, establishment_id)` → `menu_sections (id, establishment_id)`: la sección debe ser del mismo local |
 | `product_images` | `product_id`, `file_id`, `sort_order` | PK `(product_id, file_id)`; la de menor `sort_order` es la principal (H02.3) |
 
 ### Productos versionados
@@ -142,7 +145,8 @@ Estado de [nivel simple](README.md#catálogo-de-estados--historial--estado-actua
 
 - Cambiar el precio o el nombre = insertar una versión nueva. Lo vigente se lee en `v_current_product_versions`.
 - Los pedidos apuntan a la versión ([E04](E04-pedido-del-cliente.md#order_items)): el pedido conserva lo que el cliente aceptó **sin copiar** nombre, precio ni tiempo (reemplaza la copia que hacía `OrderItem` en el esquema provisional).
-- Las versiones son inmutables (disparador que rechaza `UPDATE` y `DELETE`).
+- Las versiones y sus textos son inmutables (disparador `fn_immutable` que rechaza `UPDATE` y `DELETE` en `product_versions` y `product_version_texts`).
+- Guardar sin cambiar precio, tiempo ni textos no crea versión.
 
 ### Disponibilidad del producto
 
@@ -156,14 +160,14 @@ La disponibilidad cambia varias veces al día y no altera lo que el cliente pidi
 | `SOLD_OUT` | no | sí | no |
 | `DISCONTINUED` | no | no | no |
 
-Estado de nivel simple: el dominio permite `AVAILABLE↔SOLD_OUT` y `→DISCONTINUED` (terminal). Cambia varias veces al día, así que no lleva historial; la métrica de producto faltante por local (RF-83) sale de los reportes de [E09](E09-producto-faltante.md).
+Estado de nivel simple, con sus cambios en `product_status_transitions` (misma forma que la de establecimientos): `AVAILABLE↔SOLD_OUT` y `AVAILABLE|SOLD_OUT→DISCONTINUED` (terminal). Cambia varias veces al día, así que no lleva historial; la métrica de producto faltante por local (RF-83) sale de los reportes de [E09](E09-producto-faltante.md).
 
 ## Vistas
 
 | Vista | Contenido |
 | --- | --- |
 | `v_current_product_versions` | `DISTINCT ON (product_id) ... ORDER BY product_id, created_at DESC` |
-| `v_menu` | Establecimiento, sección, producto, versión vigente con textos, foto principal, estado; solo `is_visible` |
+| `v_menu` | Una fila por producto visible y texto: establecimiento, sección y su orden, producto y su orden, versión vigente (precio, tiempo), idioma, nombre, detalle, foto principal y si se puede pedir (`is_orderable` del producto y `accepts_orders` del local). La API elige el idioma pedido con respaldo en `es` |
 | `v_map_establishments` | Establecimientos cuyo estado `is_visible_on_map`, con `location`, `accepts_orders` y categoría principal, en municipios con `launched_at` (incluye los cerrados temporalmente, que se ven sin poder pedir) |
 
 ## Consultas clave
@@ -193,4 +197,14 @@ SELECT ST_Covers(area, :posicion) FROM establishments WHERE id = :id;
 
 ## Carga inicial (H02.6)
 
-La semilla del piloto crea cada local en `DRAFT`, sus secciones, productos y primera versión con texto en `es`, y al final pasa los locales listos a `ACTIVE`.
+Dos caminos, los dos con las mismas reglas del dominio:
+
+- **Panel** (`/panel/establecimientos`): crear el local (queda en `DRAFT`), dibujar su área, armar el menú y publicar.
+- **CSV**: `npm run catalog:import -- <carpeta>` (en desarrollo `npm run catalog:import:dev -- <carpeta>`) con `establecimientos.csv` y `productos.csv`. Se puede repetir sin duplicar: el local se reconoce por su nombre en el municipio, la sección y el producto por su nombre en español dentro del local; si cambió precio, tiempo o textos se crea una versión nueva. Cada local va en su propia transacción y el informe final lista lo creado, lo versionado y los errores por línea. Los locales con `activo=si` y al menos un producto disponible pasan a `ACTIVE`.
+
+| Archivo | Columnas |
+| --- | --- |
+| `establecimientos.csv` | `nombre`, `categorias` (códigos separados por `\|`, la primera es la principal), `direccion`, `latitud`, `longitud`, `area` (opcional: `lng lat; lng lat; …` o WKT `POLYGON`), `radio_area_m` (sin área: cuadrado de ese tamaño alrededor del punto, 12 por defecto), `telefonos` (separados por `\|`), `activo` (`si`/`no`) |
+| `productos.csv` | `establecimiento`, `seccion`, `seccion_en`, `nombre`, `nombre_en`, `descripcion`, `descripcion_en`, `precio` (pesos, `14000` o `14000.50`), `minutos_preparacion`, `disponible` (`si`/`no`) |
+
+Acepta coma o punto y coma como separador (Excel en español) y el BOM de Excel. Variables: `DATABASE_URL`; `CATALOG_IMPORT_USER_ID` (quién queda como autor; por defecto el primer administrador) y `CATALOG_IMPORT_MUNICIPALITY` (código DANE, por defecto `86885`, Villagarzón). Ejemplo: `api/prisma/catalog/demo`, que es lo que carga `SEED_DEMO_DATA=true`.

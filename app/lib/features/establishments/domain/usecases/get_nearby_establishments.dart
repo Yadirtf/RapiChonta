@@ -6,8 +6,9 @@ class GetNearbyEstablishments {
 
   final EstablishmentRepository _repository;
 
-  Future<List<Establishment>> call(GeoPoint origin, List<EstablishmentCategory> categories) async {
-    final result = await _repository.findNearby(origin: origin, categories: categories);
+  /// Sin categorías elegidas se muestran todas.
+  Future<List<Establishment>> call(GeoPoint origin, Iterable<String> categories) async {
+    final result = await _repository.findNearby(origin: origin, categories: categories.toList());
     return [...result]..sort((a, b) => a.distanceMeters.compareTo(b.distanceMeters));
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Bike, LayoutDashboard, Loader2, LogOut, Map, ShieldAlert, Users } from "lucide-react";
+import { Bike, LayoutDashboard, Loader2, LogOut, Map, ShieldAlert, Store, Tags, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -18,6 +18,8 @@ import { useErrorMessage } from "../../hooks/useErrorMessage";
 
 const NAV = [
   { href: "/panel", key: "home", icon: LayoutDashboard, permission: null },
+  { href: "/panel/establecimientos", key: "establishments", icon: Store, permission: PERMISSIONS.MANAGE_ESTABLISHMENTS },
+  { href: "/panel/categorias", key: "categories", icon: Tags, permission: PERMISSIONS.MANAGE_CATEGORIES },
   { href: "/panel/domiciliarios", key: "couriers", icon: Bike, permission: PERMISSIONS.MANAGE_COURIERS },
   { href: "/panel/personal", key: "staff", icon: Users, permission: PERMISSIONS.MANAGE_STAFF },
 ] as const;

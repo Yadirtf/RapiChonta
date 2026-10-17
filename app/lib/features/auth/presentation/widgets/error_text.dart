@@ -31,6 +31,7 @@ String errorText(AppLocalizations l10n, Object error) {
     'PASSWORD_REQUIRED' => l10n.errPasswordRequired,
     'SAME_PHONE' => l10n.errSamePhone,
     'PASSWORD_NOT_SET' => l10n.errPasswordNotSet,
+    'ESTABLISHMENT_NOT_FOUND' => l10n.errEstablishmentNotFound,
     _ => l10n.errUnknown,
   };
 }

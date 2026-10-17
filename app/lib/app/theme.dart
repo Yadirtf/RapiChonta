@@ -6,6 +6,8 @@ class AppColors {
   static const brandStrong = Color(0xFFE08A00);
   static const ink = Color(0xFF14121F);
   static const surface = Color(0xFFF4F2EE);
+  static const cream = Color(0xFFFFF7E2);
+  static const leaf = Color(0xFF1F7A4D);
 }
 
 class AppTheme {

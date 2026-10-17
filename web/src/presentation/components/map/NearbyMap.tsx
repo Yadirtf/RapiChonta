@@ -3,20 +3,30 @@
 import maplibregl, { type Map as MapLibreMap, type Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef } from "react";
+import { createRoot, type Root } from "react-dom/client";
 import type { Establishment, GeoPoint } from "@/core/domain/entities/establishment";
+import { CategoryIcon } from "../catalog/CategoryIcon";
 
 const STYLE_URL = process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? "https://tiles.openfreemap.org/styles/liberty";
 
 interface Props {
   center: GeoPoint;
   establishments: Establishment[];
+  selectedId?: string | null;
   onSelect?: (establishment: Establishment) => void;
 }
 
-export function NearbyMap({ center, establishments, onSelect }: Props) {
+interface PlaceMarker {
+  id: string;
+  marker: Marker;
+  root: Root;
+  element: HTMLButtonElement;
+}
+
+export function NearbyMap({ center, establishments, selectedId, onSelect }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
-  const markersRef = useRef<Marker[]>([]);
+  const markersRef = useRef<PlaceMarker[]>([]);
   const userMarkerRef = useRef<Marker | null>(null);
 
   useEffect(() => {
@@ -45,16 +55,41 @@ export function NearbyMap({ center, establishments, onSelect }: Props) {
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    markersRef.current.forEach((m) => m.remove());
+    const previous = markersRef.current;
     markersRef.current = establishments.map((e) => {
-      const el = document.createElement("button");
-      el.className = "place-pin";
-      el.setAttribute("aria-label", e.name);
-      el.textContent = e.name.charAt(0);
-      el.addEventListener("click", () => onSelect?.(e));
-      return new maplibregl.Marker({ element: el }).setLngLat([e.location.lng, e.location.lat]).addTo(map);
+      const element = document.createElement("button");
+      element.type = "button";
+      element.className = e.acceptsOrders ? "place-marker" : "place-marker is-closed";
+      element.setAttribute("aria-label", e.name);
+      element.title = e.name;
+      element.addEventListener("click", (event) => {
+        event.stopPropagation();
+        onSelect?.(e);
+      });
+      // El ícono de la categoría es un componente de React dentro de un marcador de MapLibre.
+      const root = createRoot(element);
+      root.render(
+        <span className="place-pin">
+          <span>
+            <CategoryIcon name={e.categoryIcon} className="size-[18px]" strokeWidth={2.4} />
+          </span>
+        </span>,
+      );
+      const marker = new maplibregl.Marker({ element, anchor: "bottom" }).setLngLat([e.location.lng, e.location.lat]).addTo(map);
+      return { id: e.id, marker, root, element };
     });
+    // Desmontar fuera del render en curso evita la advertencia de React por desmontaje síncrono.
+    queueMicrotask(() =>
+      previous.forEach(({ marker, root }) => {
+        marker.remove();
+        root.unmount();
+      }),
+    );
   }, [establishments, onSelect]);
+
+  useEffect(() => {
+    markersRef.current.forEach(({ id, element }) => element.setAttribute("aria-pressed", String(id === selectedId)));
+  }, [selectedId, establishments]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 }

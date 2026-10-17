@@ -3,31 +3,28 @@
 import { motion } from "framer-motion";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
-import { useTransition } from "react";
-import { Bike, Home, LayoutDashboard, Package, Pill, ShoppingBasket, Store, User, UtensilsCrossed } from "lucide-react";
+import { useTransition, type ReactNode } from "react";
+import { Bike, LayoutDashboard, LayoutGrid, User } from "lucide-react";
 import { isStaffSession } from "@/core/domain/entities/account";
-import type { EstablishmentCategory } from "@/core/domain/entities/establishment";
+import { localized, type Category } from "@/core/domain/entities/establishment";
 import { LOCALES } from "@/i18n/config";
 import { useAuth } from "../../auth/AuthProvider";
 import { initials } from "../../format";
+import { CategoryIcon } from "../catalog/CategoryIcon";
 import { Logo } from "../ui/Logo";
 
-const CATEGORIES: { id: EstablishmentCategory; icon: typeof Home }[] = [
-  { id: "FAST_FOOD", icon: UtensilsCrossed },
-  { id: "RESTAURANT", icon: Store },
-  { id: "SUPERMARKET", icon: ShoppingBasket },
-  { id: "STORE", icon: Package },
-  { id: "PHARMACY", icon: Pill },
-];
-
 interface Props {
-  active: EstablishmentCategory[];
-  onToggle: (category: EstablishmentCategory) => void;
+  /** Catálogo de categorías (null mientras carga). */
+  categories: Category[] | null;
+  /** Códigos elegidos; vacío = todas. */
+  active: string[];
+  onToggle: (code: string) => void;
+  onClear: () => void;
 }
 
 const itemClass = "flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-white/70 transition-colors hover:bg-white/5 hover:text-white";
 
-export function SideMenu({ active, onToggle }: Props) {
+export function SideMenu({ categories, active, onToggle, onClear }: Props) {
   const t = useTranslations();
   const locale = useLocale();
   const { account, changeLanguage } = useAuth();
@@ -45,25 +42,20 @@ export function SideMenu({ active, onToggle }: Props) {
       </div>
 
       <p className="hidden px-5 pb-2 text-xs font-semibold uppercase tracking-widest text-white/40 md:block">{t("menu.explore")}</p>
-      <nav className="flex flex-col gap-1 px-3">
-        {CATEGORIES.map(({ id, icon: Icon }) => {
-          const isActive = active.includes(id);
-          return (
-            <button
-              key={id}
-              onClick={() => onToggle(id)}
-              aria-pressed={isActive}
-              title={t(`categories.${id}`)}
-              className="relative flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors hover:bg-white/5"
-            >
-              {isActive && (
-                <motion.span layoutId={`pill-${id}`} className="absolute inset-0 rounded-xl bg-brand/15 ring-1 ring-brand/40" />
-              )}
-              <Icon className={`relative size-5 ${isActive ? "text-brand" : "text-white/70"}`} />
-              <span className="relative hidden md:inline">{t(`categories.${id}`)}</span>
-            </button>
-          );
-        })}
+      <nav className="no-scrollbar flex min-h-0 flex-col gap-1 overflow-y-auto px-3">
+        <CategoryButton id="all" label={t("menu.all")} active={active.length === 0} onClick={onClear} icon={<LayoutGrid className="size-5" />} />
+        {categories === null
+          ? Array.from({ length: 5 }, (_, i) => <span key={i} className="mx-1 my-1.5 h-9 animate-pulse rounded-xl bg-white/5" />)
+          : categories.map((c) => (
+              <CategoryButton
+                key={c.code}
+                id={c.code}
+                label={localized(c.names, locale)}
+                active={active.includes(c.code)}
+                onClick={() => onToggle(c.code)}
+                icon={<CategoryIcon name={c.icon} />}
+              />
+            ))}
       </nav>
 
       <div className="mt-auto flex flex-col gap-1 border-t border-white/10 px-3 py-4">
@@ -105,5 +97,20 @@ export function SideMenu({ active, onToggle }: Props) {
         </Link>
       </div>
     </aside>
+  );
+}
+
+function CategoryButton({ id, label, active, onClick, icon }: { id: string; label: string; active: boolean; onClick: () => void; icon: ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      title={label}
+      className="relative flex shrink-0 items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors hover:bg-white/5"
+    >
+      {active && <motion.span layoutId={`pill-${id}`} className="absolute inset-0 rounded-xl bg-brand/15 ring-1 ring-brand/40" />}
+      <span className={`relative ${active ? "text-brand" : "text-white/70"}`}>{icon}</span>
+      <span className="relative hidden truncate md:inline">{label}</span>
+    </button>
   );
 }

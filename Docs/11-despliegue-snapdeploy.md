@@ -50,7 +50,9 @@ SnapDeploy permite **un contenedor por repositorio y rama**. Si ya existe un con
    | `SEED_ADMIN_PHONE` | Celular del primer administrador, por ejemplo `3001234567` | Se crea al arrancar si el número no existe |
    | `SEED_ADMIN_PASSWORD` | Contraseña de al menos 10 caracteres | Secreto. Después de crear el administrador se puede borrar la variable |
    | `SEED_ADMIN_NAME` | Nombre del administrador | |
-   | `SEED_DEMO_DATA` | `true` | Carga los establecimientos de ejemplo si la tabla está vacía (exige el administrador inicial). Se puede borrar después |
+   | `SEED_DEMO_DATA` | `true` | Carga los establecimientos de ejemplo con su menú (`api/prisma/catalog/demo`) sin duplicar (exige el administrador inicial). Se puede borrar después |
+   | `FILE_STORAGE` | `database` (o no definirla) | Fotos de productos y logos en la base de datos (Neon). Con `s3` van a Cloudflare R2; ver "Fotos en R2" abajo |
+   | `FILES_SIGNING_SECRET` | Otra cadena aleatoria (`openssl rand -hex 32`) | Secreto. Opcional; firma las URLs de las fotos. Si falta se deriva de `JWT_SECRET` |
 
    La cookie de la sesión web va con `Secure` porque el `Dockerfile` usa `NODE_ENV=production`; solo para probar la imagen en local por `http://` se define `COOKIE_SECURE=false`.
 
@@ -70,6 +72,22 @@ CREATE SCHEMA public;
 ```
 
 Al arrancar, el contenedor vuelve a crear las extensiones, las tablas, los catálogos y el administrador inicial.
+
+Las migraciones siguientes (E02 en adelante, `20261017000000_catalog_e02`) son aditivas: el contenedor las aplica solo al arrancar, sin borrar datos.
+
+### Fotos en R2 (opcional)
+
+Mientras haya pocas fotos, guardarlas en Neon es suficiente. Para pasarlas a Cloudflare R2:
+
+1. Crear un bucket y un token de API de R2 con permiso de lectura y escritura sobre ese bucket.
+2. En el bucket, **Settings → CORS policy**, permitir el origen del contenedor: `[{"AllowedOrigins":["https://<contenedor>.containers.snapdeploy.app"],"AllowedMethods":["PUT","GET"],"AllowedHeaders":["content-type"],"MaxAgeSeconds":3600}]`. Sin esto el navegador no puede subir la foto.
+3. Variables: `FILE_STORAGE=s3`, `S3_ENDPOINT=https://<cuenta>.r2.cloudflarestorage.com`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` (secretos) y `S3_REGION=auto`. Si falta alguna, la API no arranca y lo dice en el log.
+
+Las fotos subidas antes en modo `database` siguen en Neon; el cambio aplica a las nuevas.
+
+### Catálogo del piloto
+
+Los locales se cargan desde el panel (`/panel/establecimientos`) o, para muchos a la vez, desde CSV con `npm run catalog:import -- <carpeta>` contra la `DATABASE_URL` de Neon. Columnas y reglas en [E02 · Carga inicial](14-base-de-datos/E02-establecimientos-y-menus.md#carga-inicial-h026).
 
 ## Despliegues siguientes
 

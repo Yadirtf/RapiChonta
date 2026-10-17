@@ -1,0 +1,7 @@
+nombre,categorias,direccion,latitud,longitud,area,radio_area_m,telefonos,activo
+Burger Demo,FAST_FOOD,Dirección de ejemplo 1,1.0294,-76.6165,,12,3001112233,si
+Pizza Demo,FAST_FOOD|RESTAURANT,Dirección de ejemplo 2,1.0322,-76.6133,,14,3001112234,si
+Súper Demo,SUPERMARKET|STORE,Dirección de ejemplo 3,1.0259,-76.6199,,20,3001112235,si
+Asadero Demo,RESTAURANT,Dirección de ejemplo 4,1.0308,-76.6182,"-76.61835 1.03068; -76.61805 1.03068; -76.61805 1.03092; -76.61835 1.03092",,3001112236,si
+Droguería Demo,PHARMACY,Dirección de ejemplo 5,1.0281,-76.6148,,10,3001112237,si
+Tienda Demo,STORE,Dirección de ejemplo 6,1.0337,-76.6171,,10,,si

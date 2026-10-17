@@ -11,6 +11,8 @@ export interface CatalogSeed {
   /** Columna única por la que se hace el upsert (casi siempre `code`). */
   key: string;
   rows: Row[];
+  /** Catálogo del negocio: la semilla solo agrega lo que falta y nunca pisa lo que el administrador cambió. */
+  insertOnly?: boolean;
 }
 
 const ordered = (rows: Row[]): Row[] => rows.map((row, index) => ({ sort_order: index + 1, ...row }));
@@ -87,6 +89,7 @@ export const CATALOGS: CatalogSeed[] = [
         'COMMISSION_CHANGED',
         'PRODUCT_CHANGED',
         'ESTABLISHMENT_CHANGED',
+        'CATEGORY_CHANGED',
       ].map((code) => ({ code })),
     ),
   },
@@ -183,6 +186,7 @@ export const CATALOGS: CatalogSeed[] = [
     // Catálogo del negocio: el administrador lo amplía. Esta es solo la lista inicial.
     table: 'banks',
     key: 'code',
+    insertOnly: true,
     rows: ordered(
       [
         ['BANCOLOMBIA', 'Bancolombia'],
@@ -211,8 +215,10 @@ export const CATALOGS: CatalogSeed[] = [
     ]),
   },
   {
+    // Catálogo del negocio (H02.4): el administrador cambia nombres, íconos y orden desde el panel.
     table: 'establishment_categories',
     key: 'code',
+    insertOnly: true,
     rows: ordered([
       { code: 'FAST_FOOD', icon: 'utensils-crossed' },
       { code: 'RESTAURANT', icon: 'store' },
@@ -267,6 +273,30 @@ export const TRANSITIONS: { table: string; catalog: string; pairs: [string, stri
       ['REJECTED', 'PENDING'],
     ],
   },
+  {
+    // DRAFT → ACTIVE exige además al menos un producto disponible (lo valida el caso de uso).
+    table: 'establishment_status_transitions',
+    catalog: 'establishment_statuses',
+    pairs: [
+      ['DRAFT', 'ACTIVE'],
+      ['DRAFT', 'INACTIVE'],
+      ['ACTIVE', 'TEMPORARILY_CLOSED'],
+      ['TEMPORARILY_CLOSED', 'ACTIVE'],
+      ['ACTIVE', 'INACTIVE'],
+      ['TEMPORARILY_CLOSED', 'INACTIVE'],
+      ['INACTIVE', 'ACTIVE'],
+    ],
+  },
+  {
+    table: 'product_status_transitions',
+    catalog: 'product_statuses',
+    pairs: [
+      ['AVAILABLE', 'SOLD_OUT'],
+      ['SOLD_OUT', 'AVAILABLE'],
+      ['AVAILABLE', 'DISCONTINUED'],
+      ['SOLD_OUT', 'DISCONTINUED'],
+    ],
+  },
 ];
 
 const CUSTOMER_PERMISSIONS = ['orders.create', 'orders.read_own', 'orders.confirm_delivery', 'adjustments.decide', 'incidents.report'];
@@ -293,6 +323,7 @@ const ADMIN_PERMISSIONS = [
   'cash.adjust',
   'audit.read',
   'legal.manage',
+  'categories.manage',
 ];
 
 /** Permisos por rol (Docs/14-base-de-datos/E01-identidad-y-acceso.md). */

@@ -91,3 +91,12 @@ export async function apiRequest<T>(method: string, path: string, options: Reque
 }
 
 export const apiGet = <T>(path: string, query: Query = {}, auth = false) => apiRequest<T>("GET", path, { query, auth });
+
+/**
+ * Las URLs de archivos que manda la API pueden ser relativas ("/api/v1/files/…", almacenamiento en la base)
+ * o absolutas (R2/S3). Las relativas se resuelven contra el origen de la API, no el de la página.
+ */
+export function resolveApiAsset(url: string | null): string | null {
+  if (!url || !url.startsWith("/")) return url;
+  return new URL(url, apiUrl("").origin).toString();
+}

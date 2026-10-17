@@ -15,6 +15,8 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "node dist/database/seed/run.js",
     "seed:dev": "ts-node src/database/seed/run.ts",
+    "catalog:import": "node dist/database/catalog-import/run.js",
+    "catalog:import:dev": "ts-node src/database/catalog-import/run.ts",
     "test:db": "jest --config test/jest-db.json --runInBand"
   },
   "engines": {

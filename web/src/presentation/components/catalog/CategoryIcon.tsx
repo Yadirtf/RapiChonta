@@ -1,0 +1,60 @@
+import {
+  Apple,
+  Beef,
+  Beer,
+  BookOpen,
+  CakeSlice,
+  Coffee,
+  Croissant,
+  Dog,
+  Flower,
+  Gift,
+  Hammer,
+  IceCreamCone,
+  type LucideIcon,
+  Package,
+  Pill,
+  Pizza,
+  Salad,
+  Sandwich,
+  Shirt,
+  ShoppingBasket,
+  Smartphone,
+  Sparkles,
+  Store,
+  Fish,
+  UtensilsCrossed,
+} from "lucide-react";
+
+/** Íconos que el administrador puede elegir para una categoría (la misma lista cerrada de la API). */
+export const CATEGORY_ICON_COMPONENTS: Record<string, LucideIcon> = {
+  "utensils-crossed": UtensilsCrossed,
+  store: Store,
+  "shopping-basket": ShoppingBasket,
+  package: Package,
+  pill: Pill,
+  pizza: Pizza,
+  beef: Beef,
+  coffee: Coffee,
+  croissant: Croissant,
+  "ice-cream-cone": IceCreamCone,
+  beer: Beer,
+  sandwich: Sandwich,
+  fish: Fish,
+  salad: Salad,
+  apple: Apple,
+  "cake-slice": CakeSlice,
+  shirt: Shirt,
+  hammer: Hammer,
+  dog: Dog,
+  flower: Flower,
+  gift: Gift,
+  smartphone: Smartphone,
+  "book-open": BookOpen,
+  sparkles: Sparkles,
+};
+
+export function CategoryIcon({ name, className = "size-5", strokeWidth }: { name: string | null | undefined; className?: string; strokeWidth?: number }) {
+  const Icon = (name && CATEGORY_ICON_COMPONENTS[name]) || Store;
+  return <Icon className={className} strokeWidth={strokeWidth} aria-hidden />;
+}
