@@ -86,6 +86,8 @@ export const CATALOGS: CatalogSeed[] = [
         'CASH_ADJUSTED',
         'SETTING_CHANGED',
         'FEE_CHANGED',
+        'ZONE_CHANGED',
+        'HOURS_CHANGED',
         'COMMISSION_CHANGED',
         'PRODUCT_CHANGED',
         'ESTABLISHMENT_CHANGED',

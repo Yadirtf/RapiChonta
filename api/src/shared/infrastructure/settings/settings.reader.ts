@@ -18,6 +18,11 @@ export class SettingsReader {
     return values.get(key) ?? fallback;
   }
 
+  /** El panel la llama al guardar un cambio: esta instancia lo ve de inmediato, sin esperar el minuto. */
+  invalidate(): void {
+    this.cache = undefined;
+  }
+
   private async load(): Promise<Map<string, number>> {
     if (this.cache && Date.now() - this.cache.at < CACHE_MS) return this.cache.values;
     const rows = await this.prisma.$queryRaw<{ key: string; value: string }[]>`

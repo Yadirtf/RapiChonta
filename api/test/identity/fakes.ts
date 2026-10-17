@@ -109,6 +109,7 @@ export class InMemoryAccounts extends AccountRepository {
       passwordHash: null,
       roles: [{ code: 'CUSTOMER', municipalityId: null, requiresPassword: false }],
       language: 'es',
+      displayCurrency: null,
       ...partial,
     };
     this.accounts.set(account.userId, account);
@@ -134,6 +135,9 @@ export class InMemoryAccounts extends AccountRepository {
   }
   async setLanguage(userId: string, language: string) {
     this.accounts.get(userId)!.language = language;
+  }
+  async setDisplayCurrency(userId: string, currency: string | null) {
+    this.accounts.get(userId)!.displayCurrency = currency;
   }
   async replacePrimaryPhone(userId: string, phone: PhoneNumber) {
     this.accounts.get(userId)!.phone = phone;

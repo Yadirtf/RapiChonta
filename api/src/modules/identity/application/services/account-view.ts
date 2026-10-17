@@ -9,6 +9,7 @@ export interface AccountView {
   familyNames: string | null;
   phone: string | null;
   language: string;
+  displayCurrency: string | null;
   roles: RoleCode[];
   activeRole: RoleCode;
   permissions: string[];
@@ -26,6 +27,7 @@ export const toAccountView = (
   familyNames: account.familyNames,
   phone: account.phone?.e164 ?? null,
   language: account.language,
+  displayCurrency: account.displayCurrency,
   roles: account.roles.map((r) => r.code),
   activeRole,
   permissions: [...permissions].sort(),

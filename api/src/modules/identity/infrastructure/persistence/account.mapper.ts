@@ -8,7 +8,7 @@ export const ACCOUNT_INCLUDE = {
   person: { include: { phones: { where: { isPrimary: true } } } },
   status: true,
   roles: { where: { revokedAt: null }, include: { role: true } },
-  preference: { include: { language: true } },
+  preference: { include: { language: true, displayCurrency: true } },
 } satisfies Prisma.UserInclude;
 
 export type UserWithAccount = Prisma.UserGetPayload<{ include: typeof ACCOUNT_INCLUDE }>;
@@ -33,5 +33,6 @@ export function toAccount(user: UserWithAccount): Account {
         requiresPassword: ur.role.requiresPassword,
       })),
     language: user.preference?.language.code ?? 'es',
+    displayCurrency: user.preference?.displayCurrency?.code ?? null,
   };
 }

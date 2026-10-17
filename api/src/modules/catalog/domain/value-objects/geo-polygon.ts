@@ -3,6 +3,7 @@ import { GeoPoint } from './geo-point';
 
 /** Límites del área de un local: cubre el local y su entrada, no una manzana entera (geocerca de H08.3). */
 export const AREA_LIMITS = { minVertices: 3, maxVertices: 100, minSquareMeters: 4, maxSquareMeters: 40_000 } as const;
+export type PolygonLimits = { readonly [K in keyof typeof AREA_LIMITS]: number };
 
 /**
  * Polígono simple (un solo anillo, sin cruces) dibujado a mano en el mapa (H02.1, RF-10).
@@ -11,21 +12,24 @@ export const AREA_LIMITS = { minVertices: 3, maxVertices: 100, minSquareMeters: 
 export class GeoPolygon {
   private constructor(readonly vertices: readonly GeoPoint[]) {}
 
-  /** `ring`: vértices [lng, lat] (orden GeoJSON). Si el último repite el primero, se quita. */
-  static fromRing(ring: readonly (readonly [number, number])[]): GeoPolygon {
-    if (!Array.isArray(ring) || ring.length > AREA_LIMITS.maxVertices + 1) throw CatalogErrors.invalidArea(Array.isArray(ring) ? 'TOO_MANY_VERTICES' : 'FORMAT');
+  /**
+   * `ring`: vértices [lng, lat] (orden GeoJSON). Si el último repite el primero, se quita.
+   * `limits`: por defecto los del área de un local; las zonas de entrega (E03) usan otros más amplios.
+   */
+  static fromRing(ring: readonly (readonly [number, number])[], limits: PolygonLimits = AREA_LIMITS): GeoPolygon {
+    if (!Array.isArray(ring) || ring.length > limits.maxVertices + 1) throw CatalogErrors.invalidArea(Array.isArray(ring) ? 'TOO_MANY_VERTICES' : 'FORMAT');
     if (!ring.every((v) => Array.isArray(v) && v.length === 2 && v.every((n) => typeof n === 'number'))) throw CatalogErrors.invalidArea('FORMAT');
     const points = ring.map(([lng, lat]) => GeoPoint.create(lat, lng));
     if (points.length > 1 && points[0].equals(points[points.length - 1])) points.pop();
     const unique = points.filter((p, i) => i === 0 || !p.equals(points[i - 1]));
 
-    if (unique.length < AREA_LIMITS.minVertices) throw CatalogErrors.invalidArea('TOO_FEW_VERTICES');
-    if (unique.length > AREA_LIMITS.maxVertices) throw CatalogErrors.invalidArea('TOO_MANY_VERTICES');
+    if (unique.length < limits.minVertices) throw CatalogErrors.invalidArea('TOO_FEW_VERTICES');
+    if (unique.length > limits.maxVertices) throw CatalogErrors.invalidArea('TOO_MANY_VERTICES');
     const polygon = new GeoPolygon(unique);
     if (polygon.selfIntersects()) throw CatalogErrors.invalidArea('SELF_INTERSECTION');
     const area = polygon.squareMeters();
-    if (area < AREA_LIMITS.minSquareMeters) throw CatalogErrors.invalidArea('TOO_SMALL');
-    if (area > AREA_LIMITS.maxSquareMeters) throw CatalogErrors.invalidArea('TOO_LARGE');
+    if (area < limits.minSquareMeters) throw CatalogErrors.invalidArea('TOO_SMALL');
+    if (area > limits.maxSquareMeters) throw CatalogErrors.invalidArea('TOO_LARGE');
     return polygon;
   }
 

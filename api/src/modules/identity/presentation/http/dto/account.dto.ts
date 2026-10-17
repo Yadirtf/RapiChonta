@@ -18,6 +18,13 @@ export class SetLanguageDto {
   language: LanguageCode;
 }
 
+/** null = mostrar solo pesos. Las monedas salen del catálogo `currencies` (H03.4). */
+export class SetDisplayCurrencyDto {
+  @IsOptional()
+  @IsIn(['USD', 'EUR'])
+  currency: 'USD' | 'EUR' | null;
+}
+
 export class AcceptConsentsDto {
   @IsArray()
   @ArrayMinSize(1)
