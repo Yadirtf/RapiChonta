@@ -5,17 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/theme.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../domain/entities/establishment.dart';
 import '../providers/establishments_providers.dart';
-import 'category_label.dart';
-
-const _icons = {
-  EstablishmentCategory.fastFood: Icons.fastfood_rounded,
-  EstablishmentCategory.restaurant: Icons.restaurant_rounded,
-  EstablishmentCategory.supermarket: Icons.local_grocery_store_rounded,
-  EstablishmentCategory.store: Icons.storefront_rounded,
-  EstablishmentCategory.pharmacy: Icons.local_pharmacy_rounded,
-};
+import 'category_icon.dart';
 
 /// Menú lateral. En teléfonos se muestra como Drawer; en tabletas, fijo a la izquierda (igual que la web).
 class SideMenu extends ConsumerWidget {
@@ -24,7 +15,9 @@ class SideMenu extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selected = ref.watch(selectedCategoriesProvider);
+    final categories = ref.watch(categoriesProvider);
     final l10n = AppLocalizations.of(context);
+    final language = Localizations.localeOf(context).languageCode;
     final account = ref.watch(sessionProvider).value;
 
     return Container(
@@ -44,14 +37,29 @@ class SideMenu extends ConsumerWidget {
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
               ),
             ),
-            for (final category in EstablishmentCategory.values)
-              _MenuItem(
-                icon: _icons[category]!,
-                label: category.label(l10n),
-                active: selected.contains(category),
-                onTap: () => ref.read(selectedCategoriesProvider.notifier).toggle(category),
+            _MenuItem(
+              icon: Icons.grid_view_rounded,
+              label: l10n.categoryAll,
+              active: selected.isEmpty,
+              onTap: () => ref.read(selectedCategoriesProvider.notifier).clear(),
+            ),
+            // Categorías del catálogo: las define el administrador desde el panel.
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  for (final category in categories.value ?? const [])
+                    _MenuItem(
+                      icon: categoryIcon(category.icon),
+                      label: category.name(language),
+                      active: selected.contains(category.code),
+                      onTap: () => ref.read(selectedCategoriesProvider.notifier).toggle(category.code),
+                    ),
+                  if (categories.isLoading)
+                    const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.brand))),
+                ],
               ),
-            const Spacer(),
+            ),
             const Divider(color: Colors.white12),
             _MenuItem(icon: Icons.delivery_dining_rounded, label: l10n.menuMyOrders, onTap: () {}),
             _MenuItem(

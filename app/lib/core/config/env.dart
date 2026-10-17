@@ -10,4 +10,11 @@ class Env {
   /// Web pública (documentos legales). Por defecto, el mismo origen de la API (contenedor único).
   static const _webUrl = String.fromEnvironment('WEB_URL');
   static String get webUrl => _webUrl.isNotEmpty ? _webUrl : apiUrl.replaceFirst(RegExp(r'/api/v\d+/?$'), '');
+
+  /// Las URLs de archivos pueden venir relativas ("/api/v1/files/…", almacenamiento en la base de datos)
+  /// o absolutas (R2/S3). Las relativas se resuelven contra el origen de la API.
+  static String? resolveAsset(String? url) {
+    if (url == null || url.isEmpty) return null;
+    return url.startsWith('/') ? Uri.parse(apiUrl).resolve(url).toString() : url;
+  }
 }

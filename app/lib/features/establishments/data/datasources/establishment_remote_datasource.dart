@@ -13,8 +13,18 @@ class EstablishmentRemoteDataSource {
   }) async {
     final response = await _dio.get<List<dynamic>>(
       '/establishments/nearby',
-      queryParameters: {'lat': lat, 'lng': lng, 'radius': radius, 'categories': categories.join(',')},
+      queryParameters: {'lat': lat, 'lng': lng, 'radius': radius, if (categories.isNotEmpty) 'categories': categories.join(',')},
     );
     return (response.data ?? []).cast<Map<String, dynamic>>();
+  }
+
+  Future<List<Map<String, dynamic>>> fetchCategories() async {
+    final response = await _dio.get<List<dynamic>>('/catalog/categories');
+    return (response.data ?? []).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> fetchDetail(String id, {required String language}) async {
+    final response = await _dio.get<Map<String, dynamic>>('/establishments/${Uri.encodeComponent(id)}', queryParameters: {'lang': language});
+    return response.data ?? const {};
   }
 }

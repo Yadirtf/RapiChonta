@@ -3,11 +3,6 @@
   "appTitle": "RapiChonta",
   "menuMyOrders": "Mis pedidos",
   "menuMyAccount": "Mi cuenta",
-  "categoryFastFood": "Comida rápida",
-  "categoryRestaurant": "Restaurantes",
-  "categorySupermarket": "Supermercados",
-  "categoryStore": "Tiendas",
-  "categoryPharmacy": "Farmacias",
   "locationError": "No pudimos obtener tu ubicación",
   "nearbyError": "No pudimos cargar los establecimientos cercanos.",
   "orderHere": "Pedir aquí",
@@ -127,6 +122,39 @@
   "switchToCourierAction": "Volver a modo domiciliario",
   "twoSteps": "Verificación en dos pasos: contraseña y código por SMS.",
   "verify": "Verificar",
+  "categoryAll": "Todo",
+  "closedSeeMenu": "Cerrado por ahora · ver menú",
+  "storeOpen": "Abierto",
+  "storeClosed": "Cerrado",
+  "storeOpenHint": "Recibe pedidos",
+  "storeClosedHint": "No recibe pedidos ahora",
+  "storeClosedBody": "Este local no está recibiendo pedidos en este momento. Puedes mirar su menú y volver más tarde.",
+  "storeEmptyMenu": "Este local todavía no tiene productos en su menú.",
+  "storeNotFound": "No encontramos este local",
+  "storeNotFoundBody": "Puede que ya no esté en RapiChonta. Busca otro en el mapa.",
+  "storeLoadError": "No pudimos abrir el menú",
+  "retry": "Reintentar",
+  "backToMap": "Volver al mapa",
+  "storeCourierNote": "Un domiciliario de RapiChonta va al local, compra por ti y te lo lleva. Los precios son los del local.",
+  "prepMinutes": "~{minutes} min",
+  "soldOut": "Agotado",
+  "addToCart": "Agregar {name} a la canasta",
+  "searchMenu": "Buscar en el menú",
+  "noMatches": "Nada en el menú coincide con «{query}».",
+  "cartTitle": "Tu canasta",
+  "cartView": "Ver canasta",
+  "cartSubtotal": "{count, plural, =1{Subtotal (1 producto)} other{Subtotal ({count} productos)}}",
+  "cartFeeLater": "El valor del domicilio se suma al confirmar. Pagas al recibir.",
+  "cartCheckout": "Confirmar pedido",
+  "cartCheckoutSoon": "Muy pronto podrás confirmar tu pedido desde aquí.",
+  "cartClear": "Vaciar canasta",
+  "cartSwitchTitle": "¿Empezar una canasta nueva?",
+  "cartSwitchBody": "Tu canasta tiene productos de {current}. Un domiciliario compra en un solo local por pedido; si sigues, la vaciamos y empiezas con {next}.",
+  "cartSwitchConfirm": "Vaciar y agregar",
+  "cartSwitchKeep": "Mantener mi canasta",
+  "cartRemoved": "Quitamos de tu canasta lo que ya no se puede pedir: {names}.",
+  "cartRepriced": "Cambió el precio de: {names}. Tu canasta ya tiene el precio nuevo.",
+  "errEstablishmentNotFound": "No encontramos ese establecimiento.",
   "@acceptPrefix": {
     "placeholders": {
       "type": {
@@ -201,6 +229,58 @@
     "placeholders": {
       "seconds": {
         "type": "int"
+      }
+    }
+  },
+  "@prepMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "@addToCart": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "@noMatches": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "@cartSubtotal": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@cartSwitchBody": {
+    "placeholders": {
+      "current": {
+        "type": "String"
+      },
+      "next": {
+        "type": "String"
+      }
+    }
+  },
+  "@cartRemoved": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "@cartRepriced": {
+    "placeholders": {
+      "names": {
+        "type": "String"
       }
     }
   }

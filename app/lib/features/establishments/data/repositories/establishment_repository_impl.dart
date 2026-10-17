@@ -1,6 +1,4 @@
-import 'package:dio/dio.dart';
-
-import '../../../../core/error/failure.dart';
+import '../../../../core/network/api_failure.dart';
 import '../../domain/entities/establishment.dart';
 import '../../domain/repositories/establishment_repository.dart';
 import '../datasources/establishment_remote_datasource.dart';
@@ -12,21 +10,30 @@ class EstablishmentRepositoryImpl implements EstablishmentRepository {
   final EstablishmentRemoteDataSource _remote;
 
   @override
-  Future<List<Establishment>> findNearby({
-    required GeoPoint origin,
-    required List<EstablishmentCategory> categories,
-    int radiusMeters = 3000,
-  }) async {
+  Future<List<Establishment>> findNearby({required GeoPoint origin, List<String> categories = const [], int radiusMeters = 3000}) async {
     try {
-      final rows = await _remote.fetchNearby(
-        lat: origin.lat,
-        lng: origin.lng,
-        radius: radiusMeters,
-        categories: categories.map((c) => c.apiValue).toList(),
-      );
+      final rows = await _remote.fetchNearby(lat: origin.lat, lng: origin.lng, radius: radiusMeters, categories: categories);
       return rows.map(EstablishmentModel.fromJson).toList();
-    } on DioException {
-      throw const Failure('No pudimos cargar los establecimientos cercanos.');
+    } catch (e) {
+      throw toFailure(e);
+    }
+  }
+
+  @override
+  Future<List<Category>> categories() async {
+    try {
+      return (await _remote.fetchCategories()).map(EstablishmentModel.categoryFromJson).toList();
+    } catch (e) {
+      throw toFailure(e);
+    }
+  }
+
+  @override
+  Future<EstablishmentDetail> findById(String id, {required String language}) async {
+    try {
+      return EstablishmentModel.detailFromJson(await _remote.fetchDetail(id, language: language));
+    } catch (e) {
+      throw toFailure(e);
     }
   }
 }

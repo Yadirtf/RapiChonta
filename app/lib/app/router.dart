@@ -7,6 +7,7 @@ import '../features/auth/presentation/pages/account_page.dart';
 import '../features/auth/presentation/pages/consents_page.dart';
 import '../features/auth/presentation/pages/sign_in_page.dart';
 import '../features/auth/presentation/providers/auth_providers.dart';
+import '../features/establishments/presentation/pages/establishment_page.dart';
 import '../features/establishments/presentation/pages/home_page.dart';
 
 /// Rutas que exigen sesión. El mapa es público: el ingreso se pide solo al confirmar el pedido (H01.1).
@@ -40,6 +41,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/', builder: (context, state) => const HomePage()),
+      GoRoute(path: '/local/:id', builder: (context, state) => EstablishmentPage(id: state.pathParameters['id']!)),
       GoRoute(path: '/ingresar', builder: (context, state) => SignInPage(next: _safeNext(state.uri.queryParameters['next']))),
       GoRoute(path: '/cuenta', builder: (context, state) => const AccountPage()),
       GoRoute(path: '/consentimientos', builder: (context, state) => const ConsentsPage()),
