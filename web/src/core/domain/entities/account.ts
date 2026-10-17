@@ -10,6 +10,9 @@ export const PERMISSIONS = {
   MANAGE_STAFF: "users.manage_staff",
   MANAGE_COURIERS: "couriers.manage",
   VERIFY_COURIERS: "couriers.verify",
+  MANAGE_ESTABLISHMENTS: "establishments.manage",
+  MANAGE_PRODUCTS: "products.manage",
+  MANAGE_CATEGORIES: "categories.manage",
 } as const;
 
 export interface LegalDocumentVersion {

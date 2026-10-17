@@ -6,7 +6,10 @@
   --color-brand-strong: #e08a00;
   --color-ink: #14121f;
   --color-surface: #f4f2ee;
+  --color-cream: #fff7e2;
+  --color-leaf: #1f7a4d;
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-jakarta), ui-sans-serif, sans-serif;
 }
 
 body {
@@ -23,19 +26,203 @@ body {
   box-shadow: 0 0 0 8px rgb(37 99 235 / 0.2);
 }
 
+/*
+ * Marcador del mapa: una gota con el ícono de la categoría. MapLibre mueve el botón con `transform`,
+ * así que la gota rotada es un elemento interno. Los locales que no reciben pedidos ahora se ven
+ * apagados (siguen en el mapa para que el cliente sepa que existen).
+ */
+.place-marker {
+  padding: 0 0 6px;
+  cursor: pointer;
+}
+
 .place-pin {
-  width: 36px;
-  height: 36px;
-  border-radius: 9999px 9999px 9999px 4px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px 9999px 9999px 6px;
   transform: rotate(-45deg);
   background: var(--color-ink);
   color: var(--color-brand);
-  font-weight: 800;
-  border: 2px solid var(--color-brand);
-  cursor: pointer;
-  transition: transform 150ms ease;
+  border: 2.5px solid var(--color-brand);
+  box-shadow: 0 6px 14px rgb(20 18 31 / 0.35);
+  transition: transform 150ms ease, box-shadow 150ms ease;
 }
 
-.place-pin:hover {
+.place-pin > span {
+  display: grid;
+  transform: rotate(45deg);
+}
+
+.place-marker:hover .place-pin,
+.place-marker:focus-visible .place-pin,
+.place-marker[aria-pressed="true"] .place-pin {
   transform: rotate(-45deg) scale(1.15);
+  box-shadow: 0 10px 22px rgb(20 18 31 / 0.4);
+}
+
+.place-marker[aria-pressed="true"] .place-pin {
+  background: var(--color-brand);
+  color: var(--color-ink);
+  border-color: var(--color-ink);
+}
+
+.place-marker.is-closed .place-pin {
+  background: #6b6875;
+  color: #e9e7ee;
+  border-color: #e9e7ee;
+}
+
+/* ───────────── Lenguaje visual del catálogo: la tienda de barrio ───────────── */
+
+/*
+ * Toldo a rayas con borde festoneado, como el de las tiendas y fruterías del pueblo. Cada festón toma
+ * el color de su raya. `--awning-a` y `--awning-b` permiten toldos de otros colores (estado del local).
+ */
+.awning {
+  --awning-a: var(--color-brand);
+  --awning-b: var(--color-cream);
+  --stripe: 28px;
+  position: relative;
+  background: repeating-linear-gradient(90deg, var(--awning-a) 0 var(--stripe), var(--awning-b) var(--stripe) calc(var(--stripe) * 2));
+}
+
+.awning::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 100%;
+  height: calc(var(--stripe) / 2);
+  background:
+    radial-gradient(circle at calc(var(--stripe) / 2) 0, var(--awning-a) calc(var(--stripe) / 2 - 0.5px), transparent calc(var(--stripe) / 2)) 0 0 / calc(var(--stripe) * 2) 100% repeat-x,
+    radial-gradient(circle at calc(var(--stripe) * 1.5) 0, var(--awning-b) calc(var(--stripe) / 2 - 0.5px), transparent calc(var(--stripe) / 2)) 0 0 / calc(var(--stripe) * 2) 100% repeat-x;
+  filter: drop-shadow(0 3px 2px rgb(20 18 31 / 0.12));
+  pointer-events: none;
+}
+
+.awning-sm {
+  --stripe: 14px;
+}
+
+/* Etiqueta de precio colgada, con su ojal. */
+.price-tag {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.75rem 0.3rem 1.15rem;
+  background: var(--color-brand);
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  clip-path: polygon(10px 0, 100% 0, 100% 100%, 10px 100%, 0 50%);
+}
+
+.price-tag::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 9999px;
+  background: var(--tag-hole, white);
+}
+
+/* Borde de recibo (dientes de sierra) arriba de la canasta. */
+.receipt-edge {
+  position: relative;
+}
+
+.receipt-edge::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 100%;
+  height: 10px;
+  background:
+    linear-gradient(45deg, transparent 33.33%, var(--receipt, white) 33.33% 66.66%, transparent 66.66%),
+    linear-gradient(-45deg, transparent 33.33%, var(--receipt, white) 33.33% 66.66%, transparent 66.66%);
+  background-size: 20px 40px;
+  background-position: 0 -20px;
+}
+
+/* Aviso de puerta "Abierto / Cerrado" colgado de un cordón. */
+.door-sign {
+  position: relative;
+  margin-top: 14px;
+}
+
+.door-sign::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  width: 36px;
+  height: 14px;
+  transform: translateX(-50%);
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 14'><path d='M2 14 18 2l16 12' fill='none' stroke='%2314121f' stroke-opacity='.45' stroke-width='1.5'/><circle cx='18' cy='2' r='2' fill='%2314121f' fill-opacity='.6'/></svg>") center / contain no-repeat;
+}
+
+/* Pizarra del menú en el panel: tiza sobre fondo oscuro. */
+.chalkboard {
+  background:
+    radial-gradient(1200px 400px at 10% -10%, rgb(255 255 255 / 0.06), transparent 60%),
+    radial-gradient(800px 300px at 110% 120%, rgb(255 197 49 / 0.07), transparent 60%),
+    #1b1a26;
+}
+
+/* Cuadrícula de plano para el editor de áreas mientras carga el mapa. */
+.blueprint {
+  background-color: #eef3f1;
+  background-image:
+    linear-gradient(rgb(31 122 77 / 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(31 122 77 / 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.area-vertex {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: white;
+  border: 3px solid var(--color-leaf);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.25);
+  cursor: grab;
+}
+
+.area-vertex:active {
+  cursor: grabbing;
+}
+
+.area-midpoint {
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.85);
+  border: 2px dashed var(--color-leaf);
+  cursor: copy;
+}
+
+.store-pin {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--color-ink);
+  color: var(--color-brand);
+  border: 3px solid var(--color-brand);
+  box-shadow: 0 8px 18px rgb(20 18 31 / 0.35);
+  cursor: grab;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

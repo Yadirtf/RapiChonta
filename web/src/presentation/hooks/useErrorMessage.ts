@@ -6,7 +6,8 @@ import { ApiError } from "@/infrastructure/http/api-client";
 
 /**
  * Traduce un error de la API por su `code` (messages → errors.<code>). Los textos pueden usar
- * {minutes} (espera antes de reintentar), {remaining} (intentos que quedan) y {field} (dato repetido).
+ * {minutes} (espera antes de reintentar), {remaining} (intentos que quedan), {field} (dato repetido o
+ * incompleto), {reason} (por qué no sirve un área dibujada) y {max} (límite).
  */
 export function useErrorMessage() {
   const t = useTranslations("errors");
@@ -19,6 +20,8 @@ export function useErrorMessage() {
         minutes: Math.max(1, Math.ceil((retry ?? 60) / 60)),
         remaining: typeof details?.remainingAttempts === "number" ? details.remainingAttempts : 0,
         field: typeof details?.field === "string" ? details.field : "other",
+        reason: typeof details?.reason === "string" ? details.reason : "other",
+        max: typeof details?.max === "number" ? details.max : 0,
       };
       return t.has(code) ? t(code, values) : t("UNKNOWN");
     },
