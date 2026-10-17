@@ -14,6 +14,7 @@
   "map": {
     "nearYou": "Near you",
     "enableLocation": "Turn on your location to see what's nearby",
+    "outsideArea": "We're not in your area yet · Villagarzón",
     "searching": "searching…",
     "places": "{count, plural, =0 {no places} one {# place} other {# places}}"
   },
@@ -696,6 +697,15 @@
       "deactivateTitle": "Deactivate this store?",
       "deactivateBody": "{name} will leave the map and stop receiving orders. Its history is kept and you can reactivate it later.",
       "cancel": "Cancel"
+    },
+    "visibility": {
+      "title": "Not on the map yet",
+      "draftBody": "Customers will see it once you finish these steps.",
+      "inactiveBody": "It's deactivated: customers can't see it or order from it.",
+      "stepMenu": "Add at least one available product",
+      "goToMenu": "Go to menu",
+      "stepPublish": "Tap “Publish” above",
+      "stepReopen": "Tap “Open” above to show it again"
     }
   },
   "menuEditor": {

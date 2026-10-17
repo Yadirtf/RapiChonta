@@ -12,6 +12,9 @@ import '../../domain/usecases/get_nearby_establishments.dart';
 /// Centro de Villagarzón (Putumayo), ciudad de lanzamiento del MVP. Se usa sin permiso de ubicación.
 const defaultCenter = GeoPoint(1.0294, -76.6165);
 
+/// Más lejos que esto del centro no hay locales que mostrar: el mapa se abre en Villagarzón.
+const serviceRadiusMeters = 15000.0;
+
 // Inyección de dependencias: aquí se conectan los adaptadores con los casos de uso.
 final establishmentRepositoryProvider = Provider<EstablishmentRepository>(
   (ref) => EstablishmentRepositoryImpl(EstablishmentRemoteDataSource(buildApiClient())),
@@ -44,6 +47,8 @@ final userLocationProvider = FutureProvider<GeoPoint>((ref) async {
     return defaultCenter;
   }
   final position = await Geolocator.getCurrentPosition();
+  final distance = Geolocator.distanceBetween(position.latitude, position.longitude, defaultCenter.lat, defaultCenter.lng);
+  if (distance > serviceRadiusMeters) return defaultCenter;
   return GeoPoint(position.latitude, position.longitude);
 });
 
