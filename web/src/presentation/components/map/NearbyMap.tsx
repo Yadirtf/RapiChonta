@@ -6,8 +6,7 @@ import { useEffect, useRef } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { Establishment, GeoPoint } from "@/core/domain/entities/establishment";
 import { CategoryIcon } from "../catalog/CategoryIcon";
-
-const STYLE_URL = process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? "https://tiles.openfreemap.org/styles/liberty";
+import { createBrandMap } from "./mapStyle";
 
 interface Props {
   center: GeoPoint;
@@ -31,9 +30,8 @@ export function NearbyMap({ center, establishments, selectedId, onSelect }: Prop
 
   useEffect(() => {
     if (!containerRef.current) return;
-    const map = new maplibregl.Map({
+    const map = createBrandMap({
       container: containerRef.current,
-      style: STYLE_URL,
       center: [center.lng, center.lat],
       zoom: 15,
     });

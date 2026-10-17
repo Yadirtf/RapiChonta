@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/brand_logo.dart';
 import '../../../../app/theme.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../../l10n/app_localizations.dart';
@@ -27,16 +28,7 @@ class SideMenu extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 24, 20, 16),
-              child: Text.rich(
-                TextSpan(children: [
-                  TextSpan(text: 'Rapi', style: TextStyle(color: Colors.white)),
-                  TextSpan(text: 'Chonta', style: TextStyle(color: AppColors.brand)),
-                ]),
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
-              ),
-            ),
+            const Padding(padding: EdgeInsets.fromLTRB(20, 24, 20, 16), child: BrandLogo()),
             _MenuItem(
               icon: Icons.grid_view_rounded,
               label: l10n.categoryAll,

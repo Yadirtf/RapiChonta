@@ -3,7 +3,13 @@ import 'package:flutter/material.dart';
 /// Mismos tokens de marca que la web (web/src/app/globals.css).
 class AppColors {
   static const brand = Color(0xFFFFC531);
-  static const brandStrong = Color(0xFFE08A00);
+  /// Chontaduro (Bactris gasipaes): el fruto que da nombre a la marca.
+  static const chonta = Color(0xFFE4572E);
+  static const chontaStrong = Color(0xFFB83A1B);
+  static const chontaSoft = Color(0xFFFDE4D8);
+
+  /// Acento sobre fondo claro: el chontaduro maduro.
+  static const brandStrong = chontaStrong;
   static const ink = Color(0xFF14121F);
   static const surface = Color(0xFFF4F2EE);
   static const cream = Color(0xFFFFF7E2);
