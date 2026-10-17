@@ -1,0 +1,110 @@
+# Compila la app Flutter (app/) como APK de Android para instalarla y probar los entornos.
+# - En cada PR que toca app/: compila y deja el APK como artefacto del run.
+# - En cada push a develop (y a mano desde Actions): además publica el APK en la pre-release
+#   "app-develop", que se descarga directo desde el teléfono sin iniciar sesión en GitHub.
+# La URL de la API se inyecta al compilar (--dart-define=API_URL); se puede cambiar con la
+# variable del repositorio API_URL o con el campo "api_url" al lanzarlo a mano.
+name: App Android
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - "app/**"
+      - ".github/workflows/app-android.yml"
+  pull_request:
+    paths:
+      - "app/**"
+      - ".github/workflows/app-android.yml"
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: "URL de la API (vacío = entorno de prueba en SnapDeploy)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: app-android-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Entorno de prueba: contenedor único en SnapDeploy (la web reenvía /api/* a NestJS).
+  DEFAULT_API_URL: https://rapichonta-2bb49.containers.snapdeploy.app/api/v1
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: URL de la API
+        id: api
+        env:
+          INPUT_URL: ${{ inputs.api_url }}
+          REPO_URL: ${{ vars.API_URL }}
+        run: |
+          url="${INPUT_URL:-${REPO_URL:-$DEFAULT_API_URL}}"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "API_URL=$url" >> "$GITHUB_STEP_SUMMARY"
+
+      # android/ no se versiona todavía (ver app/README.md): se genera en cada build.
+      - name: Generar plataforma Android
+        run: flutter create . --org com.rapichonta --project-name rapichonta --platforms=android
+
+      # El manifiesto principal no trae INTERNET (solo el de debug); la ubicación la usa geolocator.
+      - name: Permisos de Android
+        run: |
+          manifest=android/app/src/main/AndroidManifest.xml
+          for p in INTERNET ACCESS_FINE_LOCATION ACCESS_COARSE_LOCATION; do
+            grep -q "android.permission.$p\"" "$manifest" || \
+              sed -i "s|<application|<uses-permission android:name=\"android.permission.$p\"/>\n    <application|" "$manifest"
+          done
+          cat "$manifest"
+
+      - run: flutter pub get
+
+      # Release firmado con la clave de debug que genera flutter create: sirve para instalar y probar,
+      # no para publicar en tiendas.
+      - name: Compilar APK
+        run: |
+          flutter build apk --release \
+            --build-number=${{ github.run_number }} \
+            --dart-define=API_URL=${{ steps.api.outputs.url }}
+          mkdir -p ../dist
+          cp build/app/outputs/flutter-apk/app-release.apk ../dist/rapichonta-${{ github.run_number }}.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rapichonta-apk-${{ github.run_number }}
+          path: dist/*.apk
+          retention-days: 14
+
+      - name: Publicar en la pre-release app-develop
+        if: github.ref == 'refs/heads/develop' && github.event_name != 'pull_request'
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+          API_URL: ${{ steps.api.outputs.url }}
+        run: |
+          gh release delete app-develop --cleanup-tag --yes || true
+          gh release create app-develop dist/*.apk \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "App de prueba (develop #${{ github.run_number }})" \
+            --notes "APK de prueba compilado desde develop (${GITHUB_SHA::7}). API: $API_URL"
