@@ -180,14 +180,23 @@ El administrador define el horario por día. Fuera de horario la app muestra el 
 
 ## Sistema visual
 
+La marca sale del chontaduro (*Bactris gasipaes*), el fruto de palma del Putumayo que le da nombre a RapiChonta: su piel va de rojo a naranja y amarillo al madurar.
+
 | Token | Valor | Uso |
 | --- | --- | --- |
-| `brand` | `#FFC531` | Acción principal, elementos activos |
-| `brand-strong` | `#E08A00` | Textos de acento sobre fondo claro |
-| `ink` | `#14121F` | Menú lateral, textos, marcadores |
+| `brand` | `#FFC531` | Acción principal, elementos activos, placa del logo |
+| `chonta` | `#E4572E` | Chontaduro: logo, marcadores del mapa, "Chonta" del nombre, vías troncales |
+| `chonta-strong` | `#B83A1B` | Textos e íconos de acento sobre fondo claro (`brand-strong` apunta a este color) |
+| `chonta-soft` | `#FDE4D8` | Fondos suaves de acento |
+| `leaf` | `#1F7A4D` | Verde de la palma: estados abiertos, áreas de entrega, cáliz del logo |
+| `ink` | `#14121F` | Menú lateral, textos, contornos |
 | `surface` | `#F4F2EE` | Fondo general |
 
-Tipografía: Plus Jakarta Sans (web). Bordes redondeados generosos (16–24 px), sombras suaves, marcadores con forma de gota en color `ink` con la inicial del lugar. Los mismos tokens están en `web/src/app/globals.css` y `app/lib/app/theme.dart`.
+**Logo:** un chontaduro con su racimo cuya silueta es un pin de mapa (la chonta que llega a tu ubicación), con líneas de velocidad ("Rapi"), sobre la placa amarilla. Archivo: `web/public/brand/logo-mark.svg` (también es el favicon, `web/src/app/icon.svg`); en la app se dibuja con `app/lib/app/brand_logo.dart`.
+
+**Mapa:** mismos datos de OpenStreetMap (calles, ríos y lugares sin cambios), pintados con la paleta de la marca. En la web, el estilo gratuito "liberty" de OpenFreeMap (sin clave) se repinta al cargarlo (`web/src/presentation/components/map/mapStyle.ts`): tierra crema, selva y parques en verdes vivos, ríos en azul intenso, troncales en chontaduro, vías principales en amarillo y edificios en terracota. En la app, las teselas raster de OSM pasan por un filtro más saturado y cálido (los mapas vectoriales en Flutter dependen de una librería que todavía está en beta para la versión de `flutter_map` que usamos).
+
+Tipografía: Plus Jakarta Sans (web) y Bricolage Grotesque para letreros y el nombre. Bordes redondeados generosos (16–24 px), sombras suaves, marcadores con forma de gota color chontaduro con el ícono de la categoría. Los mismos tokens están en `web/src/app/globals.css` y `app/lib/app/theme.dart`.
 
 **Ideas para diferenciar la experiencia** (a validar en diseño):
 - Línea de tiempo del pedido animada, con la cuenta regresiva de preparación y la foto de la factura visible para el cliente (transparencia total del dinero).

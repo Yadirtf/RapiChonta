@@ -22,7 +22,12 @@ class NearbyMap extends StatelessWidget {
     return FlutterMap(
       options: MapOptions(initialCenter: LatLng(center.lat, center.lng), initialZoom: 15),
       children: [
-        TileLayer(urlTemplate: Env.mapTilesUrl, userAgentPackageName: 'com.rapichonta.app'),
+        TileLayer(
+          urlTemplate: Env.mapTilesUrl,
+          userAgentPackageName: 'com.rapichonta.app',
+          // Mismas calles de OSM, con colores más cálidos y vivos (en línea con la paleta de la web).
+          tileBuilder: (context, tile, _) => ColorFiltered(colorFilter: _brandTint, child: tile),
+        ),
         MarkerLayer(
           markers: [
             Marker(
@@ -56,7 +61,16 @@ class NearbyMap extends StatelessWidget {
   }
 }
 
-/// Gota con el ícono de la categoría (igual que en la web). Apagada si el local no recibe pedidos.
+/// Saturación ×1,25 (verdes y ríos más vivos) y un toque cálido: el fondo gris de OSM queda crema.
+const _brandTint = ColorFilter.matrix(<double>[
+  1.1969, -0.1788, -0.0181, 0, 4, //
+  -0.0524, 1.0551, -0.0178, 0, 0, //
+  -0.0505, -0.1699, 1.1704, 0, 0, //
+  0, 0, 0, 1, 0,
+]);
+
+/// Gota color chontaduro con el ícono de la categoría (igual que en la web y que el logo).
+/// Apagada si el local no recibe pedidos.
 class PlacePin extends StatelessWidget {
   const PlacePin({super.key, required this.icon, required this.open, this.selected = false});
 
@@ -66,8 +80,8 @@ class PlacePin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final background = !open ? const Color(0xFF6B6875) : (selected ? AppColors.brand : AppColors.ink);
-    final foreground = !open ? const Color(0xFFE9E7EE) : (selected ? AppColors.ink : AppColors.brand);
+    final background = !open ? const Color(0xFF6B6875) : (selected ? AppColors.brand : AppColors.chonta);
+    final foreground = !open ? const Color(0xFFE9E7EE) : (selected ? AppColors.ink : Colors.white);
     return AnimatedScale(
       scale: selected ? 1.15 : 1,
       duration: const Duration(milliseconds: 150),
@@ -87,7 +101,7 @@ class PlacePin extends StatelessWidget {
                 bottomRight: Radius.circular(19),
                 bottomLeft: Radius.circular(5),
               ),
-              border: Border.all(color: selected ? AppColors.ink : (open ? AppColors.brand : foreground), width: 2.5),
+              border: Border.all(color: selected ? AppColors.ink : (open ? Colors.white : foreground), width: 2.5),
               boxShadow: [BoxShadow(color: AppColors.ink.withValues(alpha: 0.35), blurRadius: 10, offset: const Offset(0, 4))],
             ),
             child: Transform.rotate(angle: math.pi / 4, child: Icon(categoryIcon(icon), size: 18, color: foreground)),

@@ -9,9 +9,9 @@ import { createRoot } from "react-dom/client";
 import type { LngLat } from "@/core/domain/entities/catalog-admin";
 import type { GeoPoint } from "@/core/domain/entities/establishment";
 import { areaProblem, midpoint, roundVertex, squareAround, squareMeters, type AreaLimits } from "@/core/domain/entities/geo-area";
+import { createBrandMap } from "../../../components/map/mapStyle";
 import { useCatalogFormat } from "../../../hooks/useCatalogFormat";
 
-const STYLE_URL = process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? "https://tiles.openfreemap.org/styles/liberty";
 const LEAF = "#1f7a4d";
 const DANGER = "#dc2626";
 /** Mitad del lado de los cuadrados rápidos, en metros (tienda pequeña, mediana, supermercado). */
@@ -67,7 +67,7 @@ export function AreaEditor({ value, fallbackCenter, limits, onChange }: Props) {
   useEffect(() => {
     if (!container.current) return;
     const start = value.location ?? fallbackCenter;
-    const map = new maplibregl.Map({ container: container.current, style: STYLE_URL, center: [start.lng, start.lat], zoom: value.location ? 18 : 15, maxZoom: 20.5 });
+    const map = createBrandMap({ container: container.current, center: [start.lng, start.lat], zoom: value.location ? 18 : 15, maxZoom: 20.5 });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
     map.doubleClickZoom.disable();
     map.on("load", () => {
