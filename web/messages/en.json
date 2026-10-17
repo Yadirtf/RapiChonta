@@ -104,7 +104,27 @@
     "UPLOAD_INVALID": "We couldn't upload the photo. Try again.",
     "FILE_CONTENT_MISMATCH": "The file isn't the image it claims to be.",
     "FILE_NOT_UPLOADED": "The photo didn't finish uploading. Try again.",
-    "FILE_NOT_FOUND": "We couldn't find that photo."
+    "FILE_NOT_FOUND": "We couldn't find that photo.",
+    "ZONE_OVERLAP": "The zone overlaps another. Adjust the edge or trim it.",
+    "ZONE_NAME_TAKEN": "There's already a zone with that name in the municipality.",
+    "ZONE_TRIM_EMPTY": "Nothing is left after trimming: other zones already cover that area.",
+    "ZONE_TRIM_SPLIT": "Trimming splits the zone into several pieces. Adjust the edge by hand.",
+    "NO_COVERAGE": "We don't deliver to that point yet.",
+    "ZONE_NOT_FOUND": "The zone no longer exists. Reload the page.",
+    "MUNICIPALITY_NOT_FOUND": "We couldn't find the municipality.",
+    "INVALID_TIME": "Invalid time. Use the format 08:30.",
+    "INVALID_TIME_SLOT": "Each slot must close after it opens.",
+    "OVERLAPPING_TIME_SLOTS": "Some slots on the same day overlap.",
+    "TOO_MANY_TIME_SLOTS": "Up to {max} slots per day.",
+    "INVALID_DATE": "Invalid date.",
+    "DATE_IN_PAST": "That date has passed.",
+    "EXCEPTION_NOT_FOUND": "That special day no longer exists.",
+    "OUTSIDE_OPERATING_HOURS": "We're not taking orders right now. Check when we open.",
+    "SETTING_NOT_FOUND": "That setting doesn't exist.",
+    "SETTING_NOT_SCOPED": "That setting is the same for every municipality.",
+    "INVALID_SETTING_VALUE": "The value is outside the allowed range.",
+    "INVALID_COMMISSION": "The commission must be between 0 and 99.99%.",
+    "EXCHANGE_RATES_UNAVAILABLE": "We couldn't fetch exchange rates. The last stored ones are still in use."
   },
   "auth": {
     "signInTitle": "Sign in with your phone",
@@ -227,7 +247,10 @@
       "couriers": "Couriers",
       "staff": "Staff",
       "establishments": "Stores",
-      "categories": "Categories"
+      "categories": "Categories",
+      "zones": "Zones",
+      "hours": "Hours",
+      "settings": "Settings"
     },
     "viewSite": "View site",
     "signOut": "Sign out",
@@ -568,7 +591,8 @@
     "quantityOf": "Quantity of {name}",
     "remove": "Remove {name}",
     "decrease": "One less {name}",
-    "increase": "One more {name}"
+    "increase": "One more {name}",
+    "payOnDelivery": "Pay on delivery: cash, Nequi, Daviplata or bank transfer."
   },
   "store": {
     "backToMap": "Back to map",
@@ -800,5 +824,234 @@
     "drag": "Drag to reorder",
     "establishments": "{count, plural, =0 {no stores} one {# store} other {# stores}}",
     "activeLabel": "{name} visible on the map"
+  },
+  "business": {
+    "openNow": "Open",
+    "closedNow": "Closed",
+    "openUntil": "Order until {time}",
+    "opensToday": "We open today at {time}",
+    "opensTomorrow": "We open tomorrow at {time}",
+    "opensOn": "We open on {day} at {time}",
+    "noSchedule": "No ordering hours yet",
+    "orderingHours": "Ordering hours",
+    "currency": "Show approximate prices in",
+    "currencyHint": "We charge in pesos. Dollar or euro amounts are only a reference.",
+    "approxNote": "Approximate value at today's rate. Charged in pesos.",
+    "approxStale": "Approximate value at the {date} rate. Charged in pesos.",
+    "outsideCoverage": "We don't deliver to your location yet. Check the delivery point before ordering.",
+    "feeOnConfirm": "Delivery is calculated from your address when you confirm",
+    "deliveryTo": "Delivery to {zone}",
+    "estimatedTotal": "Estimated total"
+  },
+  "zones": {
+    "title": "Delivery zones",
+    "subtitle": "Neighborhoods and rural areas of {municipality} with their delivery fee",
+    "new": "New zone",
+    "newTitle": "New zone",
+    "editTitle": "Edit zone",
+    "editorHint": "Draw the zone on the map and give it a flat fee.",
+    "kind": "Zone type",
+    "kinds": {
+      "URBAN": "Neighborhood",
+      "RURAL": "Rural area"
+    },
+    "kindHints": {
+      "URBAN": "Town center",
+      "RURAL": "Countryside"
+    },
+    "groups": {
+      "URBAN": "Neighborhoods",
+      "RURAL": "Rural areas"
+    },
+    "name": "Name",
+    "namePlaceholder": {
+      "URBAN": "e.g. Centro",
+      "RURAL": "e.g. La Castellana"
+    },
+    "fee": "Delivery fee",
+    "feeInvalid": "Enter an amount in pesos, e.g. 3,000",
+    "feeHint": "Paid by the customer. Changing it doesn't affect existing orders.",
+    "draw": "Draw",
+    "redraw": "Redraw",
+    "adjust": "Adjust",
+    "undo": "Undo",
+    "hintDraw": "Tap the map to place each corner. Tap the first point to close.",
+    "hintEdit": "Drag points to adjust the edge. Tap a midpoint to add one; double-tap a point to remove it.",
+    "finish": "Finish shape",
+    "vertices": "{count, plural, =0 {No points} one {# point} other {# points}}",
+    "problems": {
+      "TOO_FEW_VERTICES": "Not enough points",
+      "TOO_MANY_VERTICES": "Too many points",
+      "SELF_INTERSECTION": "The edge crosses itself",
+      "TOO_SMALL": "Too small (min {min})",
+      "TOO_LARGE": "Too large (max {max})"
+    },
+    "overlapTitle": "This zone overlaps others",
+    "overlapBody": "A delivery point can only have one fee. Adjust the edge or trim the part other zones already cover.",
+    "trimShow": "Preview trimmed zone",
+    "trimPreview": "Trimmed, it covers {area} (green on the map).",
+    "trimSave": "Trim and save",
+    "save": "Save zone",
+    "saveNoteNew": "The zone starts charging as soon as you save it.",
+    "saveNoteEdit": "Existing orders keep the fee they were created with.",
+    "cancel": "Cancel",
+    "feeHistory": "Fee history",
+    "feeHistoryNote": "Fees are never deleted: each change is recorded with its date and author.",
+    "current": "current",
+    "remove": "Remove zone",
+    "removeTitle": "Remove this zone?",
+    "removeBody": "{name} will stop receiving deliveries. Past orders don't change.",
+    "emptyTitle": "No zones yet",
+    "emptyBody": "Without zones nobody can order delivery. Start with the town center.",
+    "edit": "Edit",
+    "probe": "Test fee",
+    "probeHint": "Tap a point on the map to see which fee would apply there.",
+    "probeOutside": "That point is outside coverage.",
+    "vertexHint": "Drag to move; double-tap to remove",
+    "midpointHint": "Add a point here"
+  },
+  "schedule": {
+    "title": "Opening hours",
+    "subtitle": "When orders can be placed in {municipality}",
+    "weekTitle": "The week",
+    "weekHint": "Colombia time ({timeZone}). You can set several time slots per day.",
+    "openToggle": "Open on {day}",
+    "closedDay": "Closed",
+    "addSlot": "Slot",
+    "removeSlot": "Remove slot",
+    "opensAt": "{day}, slot {n}: opens",
+    "closesAt": "{day}, slot {n}: closes",
+    "midnightHint": "00:00 as closing time means midnight",
+    "copy": "Copy",
+    "copyWorkdays": "Copy to Mon–Fri",
+    "copyAll": "Copy to whole week",
+    "problems": {
+      "INVALID_TIME_SLOT": "Each slot must close after it opens.",
+      "OVERLAPPING_TIME_SLOTS": "Some slots overlap."
+    },
+    "unsaved": "You have unsaved changes to the schedule.",
+    "fixProblems": "Fix the highlighted slots to save.",
+    "saved": "Schedule saved. Customers see it now.",
+    "discard": "Discard",
+    "save": "Save schedule",
+    "dismiss": "Dismiss",
+    "exceptionsTitle": "Special days",
+    "exceptionsHint": "Holidays, closures or different hours.",
+    "addException": "Add",
+    "noExceptions": "No upcoming special days.",
+    "closedAllDay": "Closed all day",
+    "specialHours": "Special hours",
+    "removeException": "Remove special day",
+    "exceptionTitle": "Special day",
+    "exceptionBody": "This day overrides the weekly schedule.",
+    "exceptionKind": "What happens that day",
+    "date": "Date",
+    "reason": "Reason (optional)",
+    "reasonPlaceholder": "e.g. All Saints' Day",
+    "saveException": "Save special day",
+    "cancel": "Cancel"
+  },
+  "settings": {
+    "title": "Business settings",
+    "subtitle": "Rules RapiChonta runs on in {municipality}",
+    "groups": {
+      "orders": "Orders",
+      "delivery": "Deliveries",
+      "security": "Security and data",
+      "other": "Other"
+    },
+    "keys": {
+      "orders_new_customer_max_cop": {
+        "label": "New customer limit",
+        "help": "Maximum value of a first order from a customer with no history, to prevent large fake orders."
+      },
+      "offers_timeout_seconds": {
+        "label": "Time to accept an order",
+        "help": "How long a courier has to accept an offer before it moves to another."
+      },
+      "adjustments_timeout_seconds": {
+        "label": "Time to answer a change",
+        "help": "How long the system waits for the customer's answer when a product is missing."
+      },
+      "delivery_arriving_meters": {
+        "label": "\"Arriving\" distance",
+        "help": "How many meters from the customer they're told the courier is arriving."
+      },
+      "delivery_proof_after_seconds": {
+        "label": "Wait before asking for proof",
+        "help": "If the customer doesn't confirm delivery within this time, the courier can upload proof."
+      },
+      "geofence_consecutive_readings": {
+        "label": "Readings to confirm arrival",
+        "help": "Consecutive locations inside the store area needed to count the courier as arrived."
+      },
+      "preparation_recheck_seconds": {
+        "label": "Preparation check",
+        "help": "How often the store is asked whether the order is ready."
+      },
+      "location_retention_days": {
+        "label": "Keep locations",
+        "help": "Days courier locations are kept before being deleted."
+      },
+      "otp_ttl_seconds": {
+        "label": "SMS code validity",
+        "help": "How long the text message code lasts."
+      },
+      "otp_max_attempts": {
+        "label": "SMS code attempts",
+        "help": "Attempts allowed before the code is locked."
+      },
+      "otp_max_sends_per_hour": {
+        "label": "Codes per hour",
+        "help": "Maximum codes sent to the same number in one hour."
+      },
+      "security_auth_log_retention_days": {
+        "label": "Keep access logs",
+        "help": "Days sign-ins and failed attempts are kept."
+      }
+    },
+    "units": {
+      "SECONDS": "{value} s",
+      "secondsLong": "{value} s ({minutes} min)",
+      "METERS": "{value} m",
+      "DAYS": "{value, plural, one {# day} other {# days}}",
+      "INTEGER": "{value}",
+      "MONEY_COP": "$ {value}"
+    },
+    "unitShort": {
+      "SECONDS": "sec",
+      "METERS": "m",
+      "DAYS": "days",
+      "INTEGER": "",
+      "MONEY_COP": "COP"
+    },
+    "defaultValue": "Default: {value}",
+    "range": "Between {min} and {max}",
+    "rangeMin": "Minimum {min}",
+    "changedBy": "Changed by {name} on {date}",
+    "overriddenHere": "{municipality} uses its own value: {value}",
+    "scope": "Where it applies",
+    "scopeGlobal": "Everywhere",
+    "scopeLocal": "Municipality",
+    "save": "Save",
+    "resetDefault": "Back to default",
+    "outOfRange": "Outside the allowed range",
+    "history": "History",
+    "noHistory": "No changes yet.",
+    "close": "Close",
+    "system": "System",
+    "commissionKicker": "RapiChonta commission",
+    "commissionTitle": "Percentage on products",
+    "commissionHelp": "Taken from the product total of each order. Existing orders keep the percentage they were created with.",
+    "commissionInvalid": "Use a percentage between 0 and 99.99 with up to two decimals.",
+    "saveCommission": "Save commission",
+    "commissionHistory": "Commission history",
+    "commissionHistoryNote": "Each change only applies to new orders.",
+    "ratesKicker": "Exchange rates",
+    "ratesTitle": "Dollar and euro",
+    "refresh": "Refresh",
+    "today": "Today",
+    "ratesHelp": "Updated automatically every day. Last check: {date}. Only used to show an approximate value.",
+    "ratesEmpty": "No rates stored yet."
   }
 }

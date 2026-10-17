@@ -283,5 +283,62 @@
         "type": "String"
       }
     }
+  },
+  "businessOpen": "Abierto",
+  "businessClosed": "Cerrado",
+  "businessOpenUntil": "Pide hasta las {time}",
+  "businessOpensToday": "Abrimos hoy a las {time}",
+  "businessOpensTomorrow": "Abrimos mañana a las {time}",
+  "businessOpensOn": "Abrimos el {day} a las {time}",
+  "businessNoSchedule": "Aún no hay horario de atención",
+  "businessOrderingHours": "Horario para pedir",
+  "weekdayMonday": "lunes",
+  "weekdayTuesday": "martes",
+  "weekdayWednesday": "miércoles",
+  "weekdayThursday": "jueves",
+  "weekdayFriday": "viernes",
+  "weekdaySaturday": "sábado",
+  "weekdaySunday": "domingo",
+  "approxNote": "Valor aproximado con la tasa de hoy. Se cobra en pesos.",
+  "approxStale": "Valor aproximado con la tasa del {date}. Se cobra en pesos.",
+  "currencyLabel": "Ver precios aproximados en",
+  "currencyHint": "Cobramos en pesos. El valor en dólares o euros es solo una referencia.",
+  "@businessOpenUntil": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "@businessOpensToday": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "@businessOpensTomorrow": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "@businessOpensOn": {
+    "placeholders": {
+      "day": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "@approxStale": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
   }
 }

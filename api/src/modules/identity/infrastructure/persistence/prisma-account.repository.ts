@@ -80,6 +80,16 @@ export class PrismaAccountRepository extends AccountRepository {
     });
   }
 
+  async setDisplayCurrency(userId: string, currency: string | null): Promise<void> {
+    const displayCurrencyId = currency ? await this.ids.of('currencies', currency) : null;
+    const languageId = await this.ids.of('languages', 'es');
+    await this.prisma.userPreference.upsert({
+      where: { userId },
+      create: { userId, languageId, displayCurrencyId },
+      update: { displayCurrencyId },
+    });
+  }
+
   async replacePrimaryPhone(userId: string, phone: PhoneNumber): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { personId: true } });

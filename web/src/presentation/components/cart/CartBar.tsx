@@ -5,6 +5,7 @@ import { ShoppingBasket } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { cartCount, cartSubtotalCents } from "@/core/domain/entities/cart";
+import { useBusiness, useOpeningText } from "../../business/BusinessProvider";
 import { useCart } from "../../cart/CartProvider";
 import { useCatalogFormat } from "../../hooks/useCatalogFormat";
 import { CartDrawer } from "./CartDrawer";
@@ -16,6 +17,8 @@ export function CartBar({ className = "" }: { className?: string }) {
   const money = useCatalogFormat();
   const { cart } = useCart();
   const [open, setOpen] = useState(false);
+  const { status } = useBusiness();
+  const opening = useOpeningText()(status);
   const count = cartCount(cart);
 
   return (
@@ -46,7 +49,11 @@ export function CartBar({ className = "" }: { className?: string }) {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-bold">{t("view")}</span>
-                <span className="block truncate text-xs text-white/60">{cart?.establishmentName}</span>
+                {opening?.tone === "closed" ? (
+                  <span className="block truncate text-xs font-semibold text-brand">{opening.detail}</span>
+                ) : (
+                  <span className="block truncate text-xs text-white/60">{cart?.establishmentName}</span>
+                )}
               </span>
               <span className="font-display text-lg font-extrabold tabular-nums text-brand">{money.cents(cartSubtotalCents(cart))}</span>
             </button>

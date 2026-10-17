@@ -12,3 +12,13 @@ export class SetMyLanguageUseCase {
     return this.accounts.setLanguage(principal.userId, language);
   }
 }
+
+/** H03.4: moneda del precio aproximado (USD, EUR o ninguna), guardada en user_preferences. */
+@Injectable()
+export class SetMyDisplayCurrencyUseCase {
+  constructor(private readonly accounts: AccountRepository) {}
+
+  execute(principal: Principal, currency: 'USD' | 'EUR' | null): Promise<void> {
+    return this.accounts.setDisplayCurrency(principal.userId, currency);
+  }
+}

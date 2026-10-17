@@ -42,6 +42,7 @@ class Account extends Equatable {
     required this.roles,
     required this.activeRole,
     required this.pendingConsents,
+    this.displayCurrency,
   });
 
   final String userId;
@@ -52,6 +53,9 @@ class Account extends Equatable {
   final List<Role> roles;
   final Role activeRole;
   final List<LegalDocument> pendingConsents;
+
+  /// Moneda del precio aproximado ('USD', 'EUR') o null para ver solo pesos (H03.4).
+  final String? displayCurrency;
 
   String get fullName => [givenNames, if (familyNames != null) familyNames].join(' ');
   String get initials => [givenNames, familyNames ?? '']
@@ -66,5 +70,5 @@ class Account extends Equatable {
   bool get canSwitchMode => roles.contains(Role.courier) && roles.contains(Role.customer);
 
   @override
-  List<Object?> get props => [userId, givenNames, familyNames, phone, language, roles, activeRole, pendingConsents];
+  List<Object?> get props => [userId, givenNames, familyNames, phone, language, roles, activeRole, pendingConsents, displayCurrency];
 }

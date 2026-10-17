@@ -1,23 +1,31 @@
 "use client";
 
-import { ShoppingBasket, Store } from "lucide-react";
+import { Clock3, ShoppingBasket, Store } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { cartCount, cartSubtotalCents } from "@/core/domain/entities/cart";
+import { toCents } from "@/core/domain/entities/money";
+import { useBusiness, useOpeningText } from "../../business/BusinessProvider";
 import { useCart } from "../../cart/CartProvider";
 import { useCatalogFormat } from "../../hooks/useCatalogFormat";
+import { ApproxPrice } from "../business/ApproxPrice";
+import { OpeningSign } from "../business/OpeningSign";
 import { Button } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
+import { DeliveryEstimate } from "./DeliveryEstimate";
 import { QuantityStepper } from "./QuantityStepper";
 
 /**
- * La canasta como un recibo de tienda: líneas, subtotal y el aviso de que el domicilio se suma al
- * confirmar. La confirmación del pedido llega con la épica de pedidos (E04).
+ * La canasta como un recibo de tienda: líneas, subtotal, domicilio estimado a la ubicación actual (E03) y
+ * el botón de pedir, que fuera de horario muestra la próxima apertura. La confirmación llega con E04.
  */
 export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useTranslations("cart");
   const money = useCatalogFormat();
   const { cart, setQuantity, clear } = useCart();
+  const { status } = useBusiness();
+  const opening = useOpeningText()(status);
+  const closed = opening?.tone === "closed";
   const count = cartCount(cart);
 
   return (
@@ -53,26 +61,43 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{line.name}</p>
-                  <p className="text-sm text-ink/55">{money.price(line.price)}</p>
+                  <p className="flex flex-wrap items-baseline gap-x-2 text-sm text-ink/55">
+                    {money.price(line.price)}
+                    <ApproxPrice cents={toCents(line.price)} />
+                  </p>
                 </div>
                 <QuantityStepper quantity={line.quantity} name={line.name} onChange={(q) => setQuantity(line.productId, q)} />
               </li>
             ))}
           </ul>
 
-          <div className="rounded-3xl bg-cream p-4 [--tag-hole:var(--color-cream)]">
+          <div className="flex flex-col gap-3 rounded-3xl bg-cream p-4 [--tag-hole:var(--color-cream)]">
             <div className="flex items-baseline justify-between">
               <span className="text-sm font-semibold text-ink/70">{t("subtotal", { count })}</span>
-              <span className="font-display text-2xl font-extrabold tabular-nums">{money.cents(cartSubtotalCents(cart))}</span>
+              <span className="flex flex-col items-end">
+                <span className="font-display text-xl font-extrabold tabular-nums">{money.cents(cartSubtotalCents(cart))}</span>
+                <ApproxPrice cents={cartSubtotalCents(cart)} />
+              </span>
             </div>
-            <p className="mt-1 text-xs text-ink/55">{t("feeLater")}</p>
+            <DeliveryEstimate establishmentId={cart.establishmentId} subtotalCents={cartSubtotalCents(cart)} />
+            <p className="text-xs text-ink/55">{t("payOnDelivery")}</p>
           </div>
 
           <div className="flex flex-col gap-2">
-            <Button size="lg" block disabled>
-              {t("checkout")}
-            </Button>
-            <p className="text-center text-xs text-ink/50">{t("checkoutSoon")}</p>
+            <OpeningSign className="justify-center" />
+            {closed ? (
+              // Fuera de horario el botón de pedir dice cuándo abrimos (RF-15); el menú se sigue viendo.
+              <Button size="lg" block disabled variant="dark" className="!opacity-100">
+                <Clock3 className="size-5 text-brand" aria-hidden /> {opening?.detail}
+              </Button>
+            ) : (
+              <>
+                <Button size="lg" block disabled>
+                  {t("checkout")}
+                </Button>
+                <p className="text-center text-xs text-ink/50">{t("checkoutSoon")}</p>
+              </>
+            )}
             <Button variant="ghost" block onClick={clear}>
               {t("clear")}
             </Button>

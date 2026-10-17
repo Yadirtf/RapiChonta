@@ -10,7 +10,7 @@ import { ChangeMyPasswordUseCase } from './application/use-cases/account/change-
 import { ChangeMyPhoneUseCase } from './application/use-cases/account/change-my-phone.use-case';
 import { DeleteMyDataUseCase } from './application/use-cases/account/delete-my-data.use-case';
 import { GetMyAccountUseCase } from './application/use-cases/account/get-my-account.use-case';
-import { SetMyLanguageUseCase } from './application/use-cases/account/set-my-language.use-case';
+import { SetMyDisplayCurrencyUseCase, SetMyLanguageUseCase } from './application/use-cases/account/set-my-language.use-case';
 import { UpdateMyProfileUseCase } from './application/use-cases/account/update-my-profile.use-case';
 import { ChangeCourierVerificationUseCase } from './application/use-cases/admin/change-courier-verification.use-case';
 import { ChangeUserStatusUseCase } from './application/use-cases/admin/change-user-status.use-case';
@@ -127,6 +127,7 @@ function otpProviderFactory(config: ConfigService): OtpProvider {
     GetMyAccountUseCase,
     UpdateMyProfileUseCase,
     SetMyLanguageUseCase,
+    SetMyDisplayCurrencyUseCase,
     ChangeMyPhoneUseCase,
     AcceptConsentsUseCase,
     ChangeMyPasswordUseCase,

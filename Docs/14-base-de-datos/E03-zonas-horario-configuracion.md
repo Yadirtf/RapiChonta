@@ -96,7 +96,7 @@ erDiagram
 | `delivery_zones` | `municipality_id` | FK | no | |
 | | `zone_kind_id` | FK `zone_kinds` | no | |
 | | `name` | `varchar(80)` | no | Índice único parcial `(municipality_id, name) WHERE deactivated_at IS NULL` (una zona dada de baja puede renacer con el mismo nombre y otro polígono) |
-| | `area` | `geography(Polygon)` | no | GIST. Dos zonas activas del mismo municipio no se pueden superponer (disparador con `ST_Intersects` y área de intersección > 0) |
+| | `area` | `geography(Polygon)` | no | GIST. Dos zonas activas del mismo municipio no se pueden superponer (disparador con `ST_Intersects` y área de intersección ≥ 1 m²; el margen absorbe el redondeo a 6 decimales de los vértices compartidos) |
 | | `sort_order` | `smallint` | no | |
 | | `deactivated_at` | `timestamptz` | sí | Una zona se da de baja, no se borra (hay pedidos que apuntan a sus tarifas) |
 | `delivery_zone_fees` | `delivery_zone_id` | FK | no | |
@@ -106,6 +106,7 @@ erDiagram
 
 - Si el polígono de una zona cambia, se da de baja la zona y se crea otra (los pedidos viejos conservan la zona y el área con que se calcularon).
 - "Cambiar la tarifa" = insertar en `delivery_zone_fees`. La vigente está en `v_current_zone_fees`.
+- Al guardar, la API avisa con `ZONE_OVERLAP` qué zonas pisa y cuántos m². El panel ofrece recortarla: con `trimOverlaps` la API guarda `ST_Difference` contra las zonas activas calculado en SQL a precisión completa (si queda vacía o partida en varias piezas responde `ZONE_TRIM_EMPTY` / `ZONE_TRIM_SPLIT`).
 - El pedido guarda solo `delivery_zone_fee_id`. La zona del pedido se obtiene a través de la tarifa; no se guarda `delivery_zone_id` en el pedido (sería redundante).
 
 Tarifa para una dirección (H04.2):
@@ -127,7 +128,7 @@ WHERE z.deactivated_at IS NULL
 | `operating_hours` | Varias franjas por día (`08:00–14:00` y `16:00–22:00`). `CHECK (closes_at > opens_at)`: una franja que cruza la medianoche se registra como dos. Franjas del mismo día y municipio no se superponen: restricción `EXCLUDE` con el tipo `timerange` ([README](README.md#concurrencia)). Cambiar el horario = dar de baja la franja (`deactivated_at`) y crear otra; quién lo hizo queda en `audit_logs` |
 | `operating_hour_exceptions` | Festivos y cierres: `on_date`, `opens_at` y `closes_at` ambos nulos = cerrado todo el día; ambos llenos = horario especial. `CHECK ((opens_at IS NULL) = (closes_at IS NULL))`. `UNIQUE (municipality_id, on_date, opens_at) NULLS NOT DISTINCT`; un día no puede mezclar "cerrado" con franjas especiales (disparador, bloqueando el municipio) |
 
-Las horas se interpretan en `municipalities.time_zone`. La "próxima hora de apertura" que muestra el botón de pedir se calcula en el caso de uso a partir de estas dos tablas.
+Las horas se interpretan en `municipalities.time_zone`. La "próxima hora de apertura" que muestra el botón de pedir se calcula en el caso de uso (`OpeningCalendar`) a partir de estas dos tablas: une franjas contiguas (también las que cruzan la medianoche) y busca hasta 14 días adelante. `GET /business/status` la expone; E04 rechaza pedidos fuera de horario con `EnsureOpenForOrders` (`OUTSIDE_OPERATING_HOURS`). En la API, "24:00" como cierre significa fin del día.
 
 ## Parámetros del negocio (H03.3, RF-16)
 
@@ -174,6 +175,8 @@ Es una tabla propia y no un parámetro porque **el pedido la referencia** con `o
 ## Tasas de cambio (H03.4, RF-17)
 
 `exchange_rates`: `id`, `currency_id` FK `currencies`, `cop_per_unit numeric(14,4)` con `CHECK (> 0)`, `source varchar(60)`, `fetched_at`, `UNIQUE (currency_id, fetched_at)`. Una fila por consulta diaria; la vigente es la última (`v_current_exchange_rates`). Se usa solo para mostrar el aproximado; nunca para cobrar.
+
+La API consulta las tasas una vez al día (open.er-api.com y, si falla, la API de monedas en jsDelivr) solo si aún no hay tasa de hoy en Bogotá. Si ninguna fuente responde, el cliente sigue viendo la última tasa con su fecha (`isToday: false`). `EXCHANGE_RATES_ENABLED=false` apaga la consulta automática; el panel puede forzarla. La moneda que prefiere cada cliente va en `user_preferences.display_currency_id` (`PUT /me/display-currency`).
 
 ## Vistas
 

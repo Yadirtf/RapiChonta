@@ -19,6 +19,8 @@ export interface Account {
   passwordHash: string | null;
   roles: AccountRole[];
   language: string;
+  /** Moneda del precio aproximado (H03.4): USD, EUR o null (solo pesos). */
+  displayCurrency: string | null;
 }
 
 export interface NewCustomer {
@@ -40,6 +42,7 @@ export abstract class AccountRepository {
   abstract markPhoneVerified(phone: PhoneNumber): Promise<void>;
   abstract updateNames(userId: string, givenNames: string, familyNames: string | null): Promise<void>;
   abstract setLanguage(userId: string, language: string): Promise<void>;
+  abstract setDisplayCurrency(userId: string, currency: string | null): Promise<void>;
   abstract replacePrimaryPhone(userId: string, phone: PhoneNumber): Promise<void>;
   abstract setPasswordHash(userId: string, passwordHash: string): Promise<void>;
   /** Cambia el estado por el historial; si el estado nuevo no permite entrar, cierra las sesiones abiertas. */

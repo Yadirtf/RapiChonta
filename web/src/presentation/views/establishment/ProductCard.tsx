@@ -4,7 +4,9 @@ import { motion } from "framer-motion";
 import { CookingPot, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { MenuProduct } from "@/core/domain/entities/establishment";
+import { toCents } from "@/core/domain/entities/money";
 import { QuantityStepper } from "../../components/cart/QuantityStepper";
+import { ApproxPrice } from "../../components/business/ApproxPrice";
 import { CategoryIcon } from "../../components/catalog/CategoryIcon";
 import { useCatalogFormat } from "../../hooks/useCatalogFormat";
 
@@ -32,7 +34,10 @@ export function ProductCard({ product, quantity, canOrder, placeholderIcon, onAd
       className={`relative flex gap-4 rounded-[26px] bg-white p-4 pt-5 shadow-[0_1px_0_rgb(20_18_31/0.06),0_8px_24px_-12px_rgb(20_18_31/0.18)] ${quantity > 0 ? "ring-2 ring-brand" : ""}`}
     >
       <div className="flex min-w-0 flex-1 flex-col">
-        <span className={`price-tag -ml-4 self-start text-[15px] ${soldOut ? "grayscale" : ""}`}>{format.price(product.price)}</span>
+        <span className="-ml-4 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className={`price-tag text-[15px] ${soldOut ? "grayscale" : ""}`}>{format.price(product.price)}</span>
+          <ApproxPrice cents={toCents(product.price)} />
+        </span>
         <h3 className="mt-2.5 font-display text-[17px] font-extrabold leading-snug text-ink">{product.name}</h3>
         {product.description && <p className="mt-1 line-clamp-2 text-sm text-ink/60">{product.description}</p>}
         <div className="mt-auto flex items-center gap-2 pt-3">
