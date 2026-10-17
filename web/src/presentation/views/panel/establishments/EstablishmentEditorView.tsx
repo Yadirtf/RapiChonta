@@ -15,6 +15,7 @@ import { useErrorMessage } from "../../../hooks/useErrorMessage";
 import { useResource } from "../../../hooks/useResource";
 import { MenuEditor } from "../menu/MenuEditor";
 import { EstablishmentForm } from "./EstablishmentForm";
+import { MapVisibilityNotice } from "./MapVisibilityNotice";
 import { StatusControl } from "./StatusControl";
 
 type Tab = "place" | "menu";
@@ -98,6 +99,8 @@ export function EstablishmentEditorView({ id }: { id?: string }) {
               </nav>
             )}
           </header>
+
+          {data && <MapVisibilityNotice establishment={data} onOpenMenu={() => setTab("menu")} />}
 
           {tab === "place" || !data ? (
             <EstablishmentForm

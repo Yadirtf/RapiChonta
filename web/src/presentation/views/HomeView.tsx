@@ -49,7 +49,7 @@ export function HomeView() {
         <header className="pointer-events-none absolute inset-x-0 top-0 flex justify-center p-4">
           <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm shadow-lg backdrop-blur">
             <MapPin className="size-4 text-brand-strong" />
-            {status === "denied" ? t("map.enableLocation") : t("map.nearYou")}
+            {status === "denied" ? t("map.enableLocation") : status === "outside" ? t("map.outsideArea") : t("map.nearYou")}
             <span className="font-semibold">· {loading ? t("map.searching") : t("map.places", { count: data.length })}</span>
           </div>
         </header>

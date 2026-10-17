@@ -14,6 +14,7 @@
   "map": {
     "nearYou": "Cerca de ti",
     "enableLocation": "Activa tu ubicación para ver lo más cercano",
+    "outsideArea": "Aún no llegamos a tu zona · Villagarzón",
     "searching": "buscando…",
     "places": "{count, plural, =0 {sin lugares} one {# lugar} other {# lugares}}"
   },
@@ -696,6 +697,15 @@
       "deactivateTitle": "¿Dar de baja este local?",
       "deactivateBody": "{name} saldrá del mapa y no recibirá pedidos. Su historial se conserva y puedes reactivarlo después.",
       "cancel": "Cancelar"
+    },
+    "visibility": {
+      "title": "Todavía no aparece en el mapa",
+      "draftBody": "Los clientes lo verán cuando completes estos pasos.",
+      "inactiveBody": "Está dado de baja: los clientes no lo ven ni pueden pedirle.",
+      "stepMenu": "Agrega al menos un producto disponible",
+      "goToMenu": "Ir al menú",
+      "stepPublish": "Toca «Publicar» arriba",
+      "stepReopen": "Toca «Abrir» arriba para volver a mostrarlo"
     }
   },
   "menuEditor": {
