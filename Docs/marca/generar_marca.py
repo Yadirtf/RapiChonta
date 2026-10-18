@@ -89,7 +89,7 @@ def main() -> None:
     brand.mkdir(parents=True, exist_ok=True)
     em.save(brand / "emblem.webp", quality=92, method=6)
     mk.resize((192, 192), Image.LANCZOS).save(brand / "mark.webp", quality=92, method=6)
-    bg.save(WEB / "public/brand/sidebar-scene.webp", quality=78, method=6)
+    bg.save(brand / "sidebar-scene.webp", quality=78, method=6)
     mk.resize((96, 96), Image.LANCZOS).save(WEB / "src/app/icon.png", optimize=True)
     square_on_cream(mk, 180, 0.94).convert("RGB").save(WEB / "src/app/apple-icon.png", optimize=True)
 

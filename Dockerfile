@@ -46,6 +46,8 @@ COPY api/package.json api/tsconfig.json ./api/
 # Web: servidor standalone de Next.js.
 COPY --from=build /app/web/.next/standalone ./web
 COPY --from=build /app/web/.next/static ./web/.next/static
+# El modo standalone no incluye public/: sin esta línea no se sirven las imágenes de marca.
+COPY --from=build /app/web/public ./web/public
 COPY start.sh ./
 RUN chmod +x start.sh
 USER node
