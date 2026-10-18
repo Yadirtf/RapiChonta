@@ -67,6 +67,13 @@ jobs:
       - name: Generar plataforma Android
         run: flutter create . --org com.rapichonta --project-name rapichonta --platforms=android
 
+      # Ícono del lanzador y nombre visible: los recursos versionados en app/branding/android/res
+      # (generados por Docs/marca/generar_marca.py) reemplazan los de la plantilla de flutter create.
+      - name: Ícono y nombre de la app
+        run: |
+          cp -R branding/android/res/. android/app/src/main/res/
+          sed -i 's|android:label="rapichonta"|android:label="RapiChonta"|' android/app/src/main/AndroidManifest.xml
+
       # El manifiesto principal no trae INTERNET (solo el de debug); la ubicación la usa geolocator.
       - name: Permisos de Android
         run: |

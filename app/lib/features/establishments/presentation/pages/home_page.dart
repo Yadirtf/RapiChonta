@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/brand_logo.dart';
 import '../../../../app/theme.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/establishment.dart';
@@ -48,7 +49,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       appBar: isTablet
           ? null
           : AppBar(
-              title: Text(l10n.appTitle, style: const TextStyle(fontWeight: FontWeight.w800)),
+              title: const BrandLogo(size: 34, onDark: false),
               backgroundColor: AppColors.surface,
             ),
       body: Row(

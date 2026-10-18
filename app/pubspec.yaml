@@ -37,5 +37,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # Marca: emblema, mascota y paisaje del menú lateral (ver Docs/marca/generar_marca.py).
+  assets:
+    - assets/brand/
   # Genera AppLocalizations desde lib/l10n/*.arb
   generate: true

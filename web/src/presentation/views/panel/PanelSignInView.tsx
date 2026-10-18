@@ -15,7 +15,8 @@ import { looksLikeMobile, PhoneInput, phoneDigits } from "../../components/auth/
 import { Alert } from "../../components/ui/Alert";
 import { Button } from "../../components/ui/Button";
 import { TextField } from "../../components/ui/Field";
-import { Logo } from "../../components/ui/Logo";
+import { SidebarBackdrop } from "../../components/layout/SidebarBackdrop";
+import { Logo, LogoEmblem } from "../../components/ui/Logo";
 import { useErrorMessage } from "../../hooks/useErrorMessage";
 
 /** Solo se vuelve a rutas del panel (evita redirecciones abiertas con ?next=). */
@@ -77,15 +78,14 @@ export function PanelSignInView() {
 
   return (
     <main className="grid min-h-dvh bg-surface lg:grid-cols-[1.1fr_1fr]">
-      <section className="relative hidden overflow-hidden bg-ink p-12 text-white lg:flex lg:flex-col">
-        <Logo />
+      <section className="relative isolate hidden overflow-hidden bg-ink p-12 text-white lg:flex lg:flex-col">
+        <SidebarBackdrop />
+        <LogoEmblem priority className="w-40" />
         <div className="mt-auto max-w-md">
           <p className="text-sm font-semibold uppercase tracking-widest text-brand">{t("eyebrow")}</p>
           <h1 className="mt-3 text-4xl font-extrabold leading-tight tracking-tight">{t("headline")}</h1>
-          <p className="mt-4 text-white/60">{t("body")}</p>
+          <p className="mt-4 text-white/80">{t("body")}</p>
         </div>
-        <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 size-96 rounded-full bg-brand/10 blur-3xl" />
-        <div aria-hidden className="pointer-events-none absolute -bottom-32 left-10 size-80 rounded-full bg-brand/5 blur-3xl" />
       </section>
 
       <section className="flex flex-col px-5 py-8 sm:px-10">

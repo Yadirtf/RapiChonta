@@ -16,7 +16,7 @@ export function CurrencyPicker({ className = "" }: { className?: string }) {
           key={code ?? "COP"}
           onClick={() => setDisplayCurrency(code)}
           aria-pressed={displayCurrency === code}
-          className={`rounded-lg px-2 py-1 text-xs font-bold ${displayCurrency === code ? "bg-white text-ink" : "text-white/60 hover:bg-white/5"}`}
+          className={`whitespace-nowrap rounded-lg px-1.5 py-1 text-xs font-bold md:px-2 ${displayCurrency === code ? "bg-white text-ink" : "text-white/75 hover:bg-white/10"}`}
         >
           {code ? `≈ ${code}` : "COP"}
         </button>

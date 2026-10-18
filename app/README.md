@@ -37,6 +37,8 @@ Después de `flutter create`, agregar los permisos de ubicación:
 - **Android** (`android/app/src/main/AndroidManifest.xml`): `ACCESS_FINE_LOCATION` y `ACCESS_COARSE_LOCATION`.
 - **iOS** (`ios/Runner/Info.plist`): `NSLocationWhenInUseUsageDescription`.
 
+Ícono de Android: copiar `branding/android/res/` sobre `android/app/src/main/res/` (el workflow lo hace solo).
+
 ## APK de prueba (GitHub Actions)
 
 El workflow `App Android` (`.github/workflows/app-android.yml`) compila un APK apuntando al entorno de prueba en SnapDeploy (`https://rapichonta-2bb49.containers.snapdeploy.app/api/v1`):

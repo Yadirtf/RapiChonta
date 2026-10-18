@@ -13,7 +13,8 @@ import { initials } from "../../format";
 import { CategoryIcon } from "../catalog/CategoryIcon";
 import { CurrencyPicker } from "../business/CurrencyPicker";
 import { OpeningSign } from "../business/OpeningSign";
-import { Logo } from "../ui/Logo";
+import { LogoEmblem } from "../ui/Logo";
+import { SidebarBackdrop } from "./SidebarBackdrop";
 
 interface Props {
   /** Catálogo de categorías (null mientras carga). */
@@ -24,7 +25,7 @@ interface Props {
   onClear: () => void;
 }
 
-const itemClass = "flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-white/70 transition-colors hover:bg-white/5 hover:text-white";
+const itemClass = "flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-white/75 transition-colors hover:bg-white/10 hover:text-white";
 
 export function SideMenu({ categories, active, onToggle, onClear }: Props) {
   const t = useTranslations();
@@ -33,21 +34,17 @@ export function SideMenu({ categories, active, onToggle, onClear }: Props) {
   const [pending, startTransition] = useTransition();
 
   return (
-    <aside className="flex h-full w-20 shrink-0 flex-col bg-ink text-white md:w-64">
-      <div className="px-4 py-6">
-        <span className="md:hidden">
-          <Logo compact />
-        </span>
-        <span className="hidden md:inline">
-          <Logo />
-        </span>
+    <aside className="relative isolate flex h-full w-20 shrink-0 flex-col bg-ink text-white md:w-64">
+      <SidebarBackdrop />
+      <div className="mx-auto px-2 pb-3 pt-5 md:pb-4 md:pt-6">
+        <LogoEmblem priority className="w-14 md:w-32" />
       </div>
 
-      <p className="hidden px-5 pb-2 text-xs font-semibold uppercase tracking-widest text-white/40 md:block">{t("menu.explore")}</p>
+      <p className="hidden px-5 pb-2 text-xs font-semibold uppercase tracking-widest text-white/70 md:block">{t("menu.explore")}</p>
       <nav className="no-scrollbar flex min-h-0 flex-col gap-1 overflow-y-auto px-3">
         <CategoryButton id="all" label={t("menu.all")} active={active.length === 0} onClick={onClear} icon={<LayoutGrid className="size-5" />} />
         {categories === null
-          ? Array.from({ length: 5 }, (_, i) => <span key={i} className="mx-1 my-1.5 h-9 animate-pulse rounded-xl bg-white/5" />)
+          ? Array.from({ length: 5 }, (_, i) => <span key={i} className="mx-1 my-1.5 h-9 animate-pulse rounded-xl bg-white/10" />)
           : categories.map((c) => (
               <CategoryButton
                 key={c.code}
@@ -60,7 +57,7 @@ export function SideMenu({ categories, active, onToggle, onClear }: Props) {
             ))}
       </nav>
 
-      <div className="mt-auto flex flex-col gap-1 border-t border-white/10 px-3 py-4">
+      <div className="mt-auto flex flex-col gap-1 border-t border-white/15 px-3 py-4">
         <div className="hidden px-3 pb-2 md:block" title={t("business.orderingHours")}>
           <OpeningSign variant="dark" />
         </div>
@@ -91,14 +88,14 @@ export function SideMenu({ categories, active, onToggle, onClear }: Props) {
               disabled={pending}
               onClick={() => startTransition(() => changeLanguage(l))}
               aria-pressed={l === locale}
-              className={`rounded-lg px-2 py-1 text-xs font-bold uppercase ${l === locale ? "bg-brand text-ink" : "text-white/60 hover:bg-white/5"}`}
+              className={`rounded-lg px-2 py-1 text-xs font-bold uppercase ${l === locale ? "bg-brand text-ink" : "text-white/75 hover:bg-white/10"}`}
             >
               {l}
             </button>
           ))}
         </div>
-        <CurrencyPicker className="px-3" />
-        <Link href="/legal/politica-de-datos" className="mt-2 hidden px-3 text-[11px] text-white/35 hover:text-white/70 md:block">
+        <CurrencyPicker className="md:px-3" />
+        <Link href="/legal/politica-de-datos" className="mt-2 hidden px-3 text-[11px] text-white/70 hover:text-white md:block">
           {t("menu.dataPolicy")}
         </Link>
       </div>
@@ -112,10 +109,10 @@ function CategoryButton({ id, label, active, onClick, icon }: { id: string; labe
       onClick={onClick}
       aria-pressed={active}
       title={label}
-      className="relative flex shrink-0 items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors hover:bg-white/5"
+      className="relative flex shrink-0 items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors hover:bg-white/10"
     >
       {active && <motion.span layoutId={`pill-${id}`} className="absolute inset-0 rounded-xl bg-brand/15 ring-1 ring-brand/40" />}
-      <span className={`relative ${active ? "text-brand" : "text-white/70"}`}>{icon}</span>
+      <span className={`relative ${active ? "text-brand" : "text-white/75"}`}>{icon}</span>
       <span className="relative hidden truncate md:inline">{label}</span>
     </button>
   );
