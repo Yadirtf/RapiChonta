@@ -10,13 +10,13 @@ export function CurrencyPicker({ className = "" }: { className?: string }) {
   const { displayCurrency, setDisplayCurrency } = useBusiness();
   const options = [null, ...DISPLAY_CURRENCIES] as const;
   return (
-    <div role="group" aria-label={t("currency")} title={t("currencyHint")} className={`flex flex-col gap-1 md:flex-row ${className}`}>
+    <div role="group" aria-label={t("currency")} title={t("currencyHint")} className={`flex flex-col items-center gap-1.5 md:flex-row ${className}`}>
       {options.map((code) => (
         <button
           key={code ?? "COP"}
           onClick={() => setDisplayCurrency(code)}
           aria-pressed={displayCurrency === code}
-          className={`whitespace-nowrap rounded-lg px-1.5 py-1 text-xs font-bold md:px-2 ${displayCurrency === code ? "bg-white text-ink" : "text-white/75 hover:bg-white/10"}`}
+          className={`whitespace-nowrap rounded-full px-2 py-1 text-xs font-bold ring-1 transition-colors md:px-3 md:py-1.5 ${displayCurrency === code ? "bg-white text-ink ring-white" : "text-white/85 ring-white/30 hover:bg-white/10"}`}
         >
           {code ? `≈ ${code}` : "COP"}
         </button>

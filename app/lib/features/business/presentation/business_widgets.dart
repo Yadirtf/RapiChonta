@@ -128,8 +128,9 @@ class CurrencyPicker extends ConsumerWidget {
                 selected: selected == code,
                 showCheckmark: false,
                 labelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: selected == code ? AppColors.ink : Colors.white.withValues(alpha: 0.82)),
-                selectedColor: Colors.white,
-                backgroundColor: Colors.transparent,
+                // `color` manda sobre selectedColor/backgroundColor: sin él, Material 3 pinta los no elegidos con
+                // un relleno claro y el texto blanco queda ilegible.
+                color: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.selected) ? Colors.white : Colors.transparent),
                 side: BorderSide(color: selected == code ? Colors.white : Colors.white38),
                 visualDensity: VisualDensity.compact,
                 onSelected: (_) => ref.read(displayCurrencyProvider.notifier).choose(code),

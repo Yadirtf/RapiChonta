@@ -1,3 +1,5 @@
+import scene from "@/assets/brand/sidebar-scene.webp";
+
 /**
  * Fondo de los paneles oscuros (menú lateral, ingreso al panel): el paisaje de Villagarzón detrás de un
  * vidrio oscuro. Va dentro de un contenedor con `relative isolate`; el contraste del texto está medido
@@ -7,7 +9,7 @@
 export function SidebarBackdrop({ bar = false }: { bar?: boolean }) {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-      <div className="sidebar-scene absolute inset-0" />
+      <div className="sidebar-scene absolute inset-0" style={{ backgroundImage: `url(${scene.src})` }} />
       <div className={`sidebar-glass absolute inset-0 ${bar ? "sidebar-glass--bar" : ""}`} />
     </div>
   );

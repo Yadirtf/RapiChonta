@@ -198,7 +198,7 @@ La marca sale del chontaduro (*Bactris gasipaes*), el fruto de palma del Putumay
 |---|---|---|---|
 | Emblema completo, sin fondo | Menú lateral, ingreso al panel (se lee desde ~64 px) | `web/src/assets/brand/emblem.webp` (`LogoEmblem`) | `app/assets/brand/emblem.webp` (`BrandEmblem`) |
 | Marca pequeña: cara de la mascota en medallón crema | Favicon, encabezados, barra superior | `web/src/assets/brand/mark.webp` (`LogoMark`), `web/src/app/icon.png`, `apple-icon.png` | `app/assets/brand/mark.webp` (`BrandLogo`), ícono del lanzador en `app/branding/android/res` |
-| Paisaje de Villagarzón (atardecer, montañas, selva y mercado), desenfocado | Fondo del menú lateral bajo vidrio oscuro | `web/public/brand/sidebar-scene.webp` (`SidebarBackdrop`, `.sidebar-glass`) | `app/assets/brand/sidebar_scene.jpg` (`_GlassBackdrop`) |
+| Paisaje de Villagarzón (atardecer, montañas, selva y mercado), desenfocado | Fondo del menú lateral bajo vidrio oscuro | `web/src/assets/brand/sidebar-scene.webp` (`SidebarBackdrop`, `.sidebar-glass`) | `app/assets/brand/sidebar_scene.jpg` (`_GlassBackdrop`) |
 
 **Vidrio del menú lateral:** tinta `#14121F` al 35 % arriba (solo está el emblema, con un resplandor amarillo del atardecer), 64 % desde 170 px y 72 % abajo. Medido sobre el punto más claro del paisaje, el texto blanco al 70 % y el amarillo de marca quedan por encima de 4.5:1 (WCAG AA); por eso en el menú ningún texto baja de blanco al 70 %. El cartel "Cerrado" usa `chonta-strong` (el blanco sobre `chonta` da 3.6:1).
 

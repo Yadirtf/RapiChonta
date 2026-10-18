@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Pantallas altas: el menú lateral se permite un emblema más grande. */
+@custom-variant tall (@media (min-height: 720px));
+
 /* Tokens de marca. Ver Docs/05-flujos-y-ux.md (sistema visual). */
 @theme {
   --color-brand: #ffc531;
@@ -343,13 +346,14 @@ body {
 }
 
 /*
- * Menú lateral: atardecer, montañas, selva y el mercado de Villagarzón (public/brand/sidebar-scene.webp,
+ * Menú lateral: atardecer, montañas, selva y el mercado de Villagarzón (src/assets/brand/sidebar-scene.webp,
  * generado por Docs/marca/generar_marca.py) bajo un vidrio oscuro. El vidrio es más claro arriba, donde
  * solo está el emblema, y desde ~170 px tiene al menos 62 % de tinta: así el texto blanco al 70 % y el
  * amarillo de marca quedan por encima de 4.5:1 (WCAG AA) sobre el punto más claro del paisaje.
  */
 .sidebar-scene {
-  background: var(--color-ink) url("/brand/sidebar-scene.webp") center 35% / cover no-repeat;
+  /* La imagen la pone SidebarBackdrop (importada: URL con hash, viaja en .next/static). */
+  background: var(--color-ink) center 35% / cover no-repeat;
 }
 
 .sidebar-glass {
