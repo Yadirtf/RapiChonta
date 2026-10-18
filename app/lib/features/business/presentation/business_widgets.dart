@@ -54,7 +54,8 @@ class OpeningSign extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: text.open ? AppColors.leaf : AppColors.chonta,
+                // chontaStrong: el blanco sobre chonta no llega a 4.5:1.
+                color: text.open ? AppColors.leaf : AppColors.chontaStrong,
                 borderRadius: BorderRadius.circular(8),
                 boxShadow: [BoxShadow(color: AppColors.ink.withValues(alpha: 0.15), blurRadius: 4, offset: const Offset(0, 2))],
               ),
@@ -64,14 +65,14 @@ class OpeningSign extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 10),
-            Icon(Icons.schedule_rounded, size: 14, color: dark ? Colors.white60 : Colors.black54),
+            Icon(Icons.schedule_rounded, size: 14, color: dark ? Colors.white.withValues(alpha: 0.78) : Colors.black54),
             const SizedBox(width: 4),
             Expanded(
               child: Text(
                 text.detail,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: dark ? Colors.white60 : Colors.black54),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: dark ? Colors.white.withValues(alpha: 0.78) : Colors.black54),
               ),
             ),
           ],
@@ -126,10 +127,10 @@ class CurrencyPicker extends ConsumerWidget {
                 label: Text(code == null ? 'COP' : '≈ $code'),
                 selected: selected == code,
                 showCheckmark: false,
-                labelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: selected == code ? AppColors.ink : Colors.white70),
+                labelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: selected == code ? AppColors.ink : Colors.white.withValues(alpha: 0.82)),
                 selectedColor: Colors.white,
                 backgroundColor: Colors.transparent,
-                side: BorderSide(color: selected == code ? Colors.white : Colors.white24),
+                side: BorderSide(color: selected == code ? Colors.white : Colors.white38),
                 visualDensity: VisualDensity.compact,
                 onSelected: (_) => ref.read(displayCurrencyProvider.notifier).choose(code),
               ),

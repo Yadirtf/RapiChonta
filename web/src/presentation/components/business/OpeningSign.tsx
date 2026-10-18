@@ -12,8 +12,8 @@ export function OpeningSign({ variant = "light", className = "" }: { variant?: "
   const text = useOpeningText()(status);
   if (!text) return null;
   const open = text.tone === "open";
-  const plate = open ? "bg-leaf text-white" : "bg-chonta text-white";
-  const sub = variant === "dark" ? "text-white/60" : "text-ink/60";
+  const plate = open ? "bg-leaf text-white" : "bg-chonta-strong text-white";
+  const sub = variant === "dark" ? "text-white/75" : "text-ink/60";
 
   return (
     <div className={`flex items-center gap-3 ${className}`} role="status">

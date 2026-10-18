@@ -1,115 +1,78 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import 'theme.dart';
 
-/// Marca de RapiChonta: un chontaduro (con su racimo) cuya silueta es un pin de mapa, sobre la placa
-/// amarilla. Es el mismo dibujo de web/public/brand/logo-mark.svg (lienzo de 48 × 48).
+/// Marca de RapiChonta: la chonta domiciliaria en moto, con su gorra del Putumayo. Las imágenes salen de
+/// Docs/marca/logo-original.jpeg con Docs/marca/generar_marca.py (las mismas de la web, web/src/assets/brand).
+abstract final class BrandAssets {
+  /// Emblema completo, sin fondo (428 × 458).
+  static const emblem = 'assets/brand/emblem.webp';
+
+  /// Cara de la mascota en su medallón crema: para tamaños donde el emblema no se lee.
+  static const mark = 'assets/brand/mark.webp';
+
+  /// Paisaje de Villagarzón (atardecer, montañas, selva y mercado), ya desenfocado, para el menú lateral.
+  static const sidebarScene = 'assets/brand/sidebar_scene.jpg';
+}
+
+/// Emblema completo (insignia con el nombre). Se lee bien desde ~64 de ancho; por debajo, usar [BrandLogo].
+class BrandEmblem extends StatelessWidget {
+  const BrandEmblem({super.key, this.width = 128});
+
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'RapiChonta',
+      image: true,
+      child: DecoratedBox(
+        // Sombra suave para despegar el emblema del paisaje.
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 24, offset: const Offset(0, 10))],
+        ),
+        child: Image.asset(BrandAssets.emblem, width: width, filterQuality: FilterQuality.medium, excludeFromSemantics: true),
+      ),
+    );
+  }
+}
+
+/// Marca pequeña (la mascota) con el nombre al lado, para barras y encabezados.
 class BrandLogo extends StatelessWidget {
   const BrandLogo({super.key, this.size = 40, this.showName = true, this.onDark = true});
 
   final double size;
   final bool showName;
 
-  /// Fondo oscuro (menú lateral) o claro: cambia el color del nombre.
+  /// Fondo oscuro o claro: cambia el color del nombre y el filo del medallón.
   final bool onDark;
 
   @override
   Widget build(BuildContext context) {
-    final mark = CustomPaint(size: Size.square(size), painter: const _LogoMarkPainter());
-    if (!showName) return Semantics(label: 'RapiChonta', child: mark);
+    final mark = Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: onDark ? Colors.white24 : AppColors.ink.withValues(alpha: 0.1)),
+        image: const DecorationImage(image: AssetImage(BrandAssets.mark), filterQuality: FilterQuality.medium),
+      ),
+    );
+    if (!showName) return Semantics(label: 'RapiChonta', image: true, child: mark);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        mark,
-        const SizedBox(width: 10),
+        ExcludeSemantics(child: mark),
+        SizedBox(width: size / 4),
         Text.rich(
           TextSpan(children: [
             TextSpan(text: 'Rapi', style: TextStyle(color: onDark ? Colors.white : AppColors.ink)),
             TextSpan(text: 'Chonta', style: TextStyle(color: onDark ? AppColors.chonta : AppColors.chontaStrong)),
           ]),
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.4),
+          style: TextStyle(fontSize: size * 0.55, fontWeight: FontWeight.w800, letterSpacing: -0.4),
         ),
       ],
     );
   }
-}
-
-class _LogoMarkPainter extends CustomPainter {
-  const _LogoMarkPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.scale(size.width / 48);
-    final outline = Paint()
-      ..style = PaintingStyle.stroke
-      ..color = AppColors.ink
-      ..strokeJoin = StrokeJoin.round
-      ..strokeCap = StrokeCap.round;
-
-    // Placa amarilla.
-    canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(0, 0, 48, 48), const Radius.circular(14)), Paint()..color = AppColors.brand);
-
-    // Líneas de velocidad: "Rapi".
-    outline.strokeWidth = 2.6;
-    canvas.drawLine(const Offset(5.5, 21), const Offset(11, 21), outline);
-    canvas.drawLine(const Offset(4, 26.5), const Offset(11, 26.5), outline);
-    canvas.drawLine(const Offset(6.5, 32), const Offset(11, 32), outline);
-
-    // Segundo fruto del racimo, detrás.
-    _rotated(canvas, const Offset(36.4, 18.6), 24, () {
-      final oval = Rect.fromCenter(center: Offset.zero, width: 12, height: 15.2);
-      canvas.drawOval(oval, Paint()..color = const Color(0xFFC9461F));
-      canvas.drawOval(oval, outline..strokeWidth = 2);
-    });
-
-    // Chontaduro principal: rojo arriba, naranja y amarillo hacia la punta del pin.
-    final fruit = Path()
-      ..moveTo(26, 43.5)
-      ..cubicTo(19.8, 37.5, 15.8, 32.3, 15.8, 24.9)
-      ..cubicTo(15.8, 17.9, 20.4, 12.5, 26, 12.5)
-      ..cubicTo(31.6, 12.5, 36.2, 17.9, 36.2, 24.9)
-      ..cubicTo(36.2, 32.3, 32.2, 37.5, 26, 43.5)
-      ..close();
-    canvas.drawPath(
-      fruit,
-      Paint()
-        ..shader = const LinearGradient(
-          colors: [AppColors.chontaStrong, AppColors.chonta, Color(0xFFF7A531)],
-          stops: [0, 0.45, 1],
-        ).createShader(Rect.fromPoints(const Offset(15.8, 12.5), const Offset(20.9, 43.5))),
-    );
-    canvas.drawPath(fruit, outline..strokeWidth = 2.2);
-
-    // Brillo de la piel.
-    _rotated(canvas, const Offset(21.8, 21), 18, () {
-      canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: 4.2, height: 8.4), Paint()..color = AppColors.cream.withValues(alpha: 0.85));
-    });
-
-    // Cáliz (capuchón) de la palma.
-    final calyx = Path()
-      ..moveTo(26, 10.2)
-      ..lineTo(27.7, 12.6)
-      ..lineTo(30.6, 12.1)
-      ..lineTo(29.5, 14.7)
-      ..lineTo(22.5, 14.7)
-      ..lineTo(21.4, 12.1)
-      ..lineTo(24.3, 12.6)
-      ..close();
-    canvas.drawPath(calyx, Paint()..color = AppColors.leaf);
-    canvas.drawPath(calyx, outline..strokeWidth = 1.5);
-  }
-
-  void _rotated(Canvas canvas, Offset center, double degrees, VoidCallback draw) {
-    canvas
-      ..save()
-      ..translate(center.dx, center.dy)
-      ..rotate(degrees * math.pi / 180);
-    draw();
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

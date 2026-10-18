@@ -192,7 +192,15 @@ La marca sale del chontaduro (*Bactris gasipaes*), el fruto de palma del Putumay
 | `ink` | `#14121F` | Menú lateral, textos, contornos |
 | `surface` | `#F4F2EE` | Fondo general |
 
-**Logo:** un chontaduro con su racimo cuya silueta es un pin de mapa (la chonta que llega a tu ubicación), con líneas de velocidad ("Rapi"), sobre la placa amarilla. Archivo: `web/public/brand/logo-mark.svg` (también es el favicon, `web/src/app/icon.svg`); en la app se dibuja con `app/lib/app/brand_logo.dart`.
+**Logo:** la chonta domiciliaria (mascota) en moto con su gorra del Putumayo, dentro de una insignia con hojas y chontaduros y el nombre "RapiChonta · Domicilios Putumayo". Original: `Docs/marca/logo-original.jpeg`; todos los recursos se generan con `Docs/marca/generar_marca.py` (recorte sin fondo con rembg):
+
+| Recurso | Uso | Web | App |
+|---|---|---|---|
+| Emblema completo, sin fondo | Menú lateral, ingreso al panel (se lee desde ~64 px) | `web/src/assets/brand/emblem.webp` (`LogoEmblem`) | `app/assets/brand/emblem.webp` (`BrandEmblem`) |
+| Marca pequeña: cara de la mascota en medallón crema | Favicon, encabezados, barra superior | `web/src/assets/brand/mark.webp` (`LogoMark`), `web/src/app/icon.png`, `apple-icon.png` | `app/assets/brand/mark.webp` (`BrandLogo`), ícono del lanzador en `app/branding/android/res` |
+| Paisaje de Villagarzón (atardecer, montañas, selva y mercado), desenfocado | Fondo del menú lateral bajo vidrio oscuro | `web/public/brand/sidebar-scene.webp` (`SidebarBackdrop`, `.sidebar-glass`) | `app/assets/brand/sidebar_scene.jpg` (`_GlassBackdrop`) |
+
+**Vidrio del menú lateral:** tinta `#14121F` al 35 % arriba (solo está el emblema, con un resplandor amarillo del atardecer), 64 % desde 170 px y 72 % abajo. Medido sobre el punto más claro del paisaje, el texto blanco al 70 % y el amarillo de marca quedan por encima de 4.5:1 (WCAG AA); por eso en el menú ningún texto baja de blanco al 70 %. El cartel "Cerrado" usa `chonta-strong` (el blanco sobre `chonta` da 3.6:1).
 
 **Mapa:** mismos datos de OpenStreetMap (calles, ríos y lugares sin cambios), pintados con la paleta de la marca. En la web, el estilo gratuito "liberty" de OpenFreeMap (sin clave) se repinta al cargarlo (`web/src/presentation/components/map/mapStyle.ts`): tierra crema, selva y parques en verdes vivos, ríos en azul intenso, troncales en chontaduro, vías principales en amarillo y edificios en terracota. En la app, las teselas raster de OSM pasan por un filtro más saturado y cálido (los mapas vectoriales en Flutter dependen de una librería que todavía está en beta para la versión de `flutter_map` que usamos).
 

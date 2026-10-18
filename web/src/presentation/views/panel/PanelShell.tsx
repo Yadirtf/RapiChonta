@@ -12,7 +12,8 @@ import { useAuth } from "../../auth/AuthProvider";
 import { Alert } from "../../components/ui/Alert";
 import { Button } from "../../components/ui/Button";
 import { TextField } from "../../components/ui/Field";
-import { Logo } from "../../components/ui/Logo";
+import { SidebarBackdrop } from "../../components/layout/SidebarBackdrop";
+import { Logo, LogoEmblem } from "../../components/ui/Logo";
 import { initials } from "../../format";
 import { useErrorMessage } from "../../hooks/useErrorMessage";
 
@@ -67,14 +68,20 @@ function Sidebar({ account, items, pathname }: { account: Account; items: (typeo
   const signOutToLogin = () => void signOut().then(() => router.replace("/panel/ingresar"));
 
   return (
-    <aside className="sticky top-0 z-20 flex shrink-0 flex-col bg-ink text-white lg:h-dvh lg:w-64">
-      <div className="flex items-center justify-between px-4 py-4 lg:px-5 lg:py-6">
+    <aside className="sticky top-0 z-20 isolate flex shrink-0 flex-col bg-ink text-white lg:h-dvh lg:w-64">
+      <SidebarBackdrop bar />
+      <div className="flex items-center justify-between px-4 py-4 lg:justify-center lg:px-5 lg:pb-4 lg:pt-6">
         <Link href="/panel">
-          <Logo />
+          <span className="lg:hidden">
+            <Logo />
+          </span>
+          <span className="hidden lg:block">
+            <LogoEmblem priority className="w-32" />
+          </span>
         </Link>
         <div className="flex items-center gap-1 lg:hidden">
           <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-brand">{tr(account.activeRole)}</span>
-          <button onClick={signOutToLogin} aria-label={t("signOut")} className="grid size-9 place-items-center rounded-xl text-white/60 hover:bg-white/10 hover:text-white">
+          <button onClick={signOutToLogin} aria-label={t("signOut")} className="grid size-9 place-items-center rounded-xl text-white/75 hover:bg-white/10 hover:text-white">
             <LogOut className="size-4.5" />
           </button>
         </div>
@@ -85,7 +92,7 @@ function Sidebar({ account, items, pathname }: { account: Account; items: (typeo
             key={href}
             href={href}
             aria-current={isActive(href) ? "page" : undefined}
-            className="relative flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/70 transition-colors hover:text-white lg:py-3"
+            className="relative flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/75 transition-colors hover:bg-white/10 hover:text-white lg:py-3"
           >
             {isActive(href) && <motion.span layoutId="panel-nav" className="absolute inset-0 rounded-xl bg-brand/15 ring-1 ring-brand/40" />}
             <Icon className={`relative size-5 ${isActive(href) ? "text-brand" : ""}`} aria-hidden />
@@ -93,11 +100,11 @@ function Sidebar({ account, items, pathname }: { account: Account; items: (typeo
           </Link>
         ))}
       </nav>
-      <div className="mt-auto hidden flex-col gap-1 border-t border-white/10 p-3 lg:flex">
-        <Link href="/" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/60 hover:bg-white/5 hover:text-white">
+      <div className="mt-auto hidden flex-col gap-1 border-t border-white/15 p-3 lg:flex">
+        <Link href="/" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/75 hover:bg-white/10 hover:text-white">
           <Map className="size-5" aria-hidden /> {t("viewSite")}
         </Link>
-        <div className="mt-2 flex items-center gap-3 rounded-2xl bg-white/5 p-3">
+        <div className="mt-2 flex items-center gap-3 rounded-2xl bg-white/10 p-3 ring-1 ring-white/10 backdrop-blur-sm">
           <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand text-sm font-extrabold text-ink">
             {initials(account.givenNames, account.familyNames)}
           </span>
@@ -111,7 +118,7 @@ function Sidebar({ account, items, pathname }: { account: Account; items: (typeo
             onClick={signOutToLogin}
             aria-label={t("signOut")}
             title={t("signOut")}
-            className="grid size-9 place-items-center rounded-xl text-white/60 hover:bg-white/10 hover:text-white"
+            className="grid size-9 place-items-center rounded-xl text-white/75 hover:bg-white/10 hover:text-white"
           >
             <LogOut className="size-4.5" />
           </button>

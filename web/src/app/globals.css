@@ -341,3 +341,36 @@ body {
     transition: none;
   }
 }
+
+/*
+ * Menú lateral: atardecer, montañas, selva y el mercado de Villagarzón (public/brand/sidebar-scene.webp,
+ * generado por Docs/marca/generar_marca.py) bajo un vidrio oscuro. El vidrio es más claro arriba, donde
+ * solo está el emblema, y desde ~170 px tiene al menos 62 % de tinta: así el texto blanco al 70 % y el
+ * amarillo de marca quedan por encima de 4.5:1 (WCAG AA) sobre el punto más claro del paisaje.
+ */
+.sidebar-scene {
+  background: var(--color-ink) url("/brand/sidebar-scene.webp") center 35% / cover no-repeat;
+}
+
+.sidebar-glass {
+  background:
+    radial-gradient(90% 200px at 50% 0, rgb(255 197 49 / 0.12), transparent 75%),
+    linear-gradient(
+      to bottom,
+      rgb(20 18 31 / 0.35) 0,
+      rgb(20 18 31 / 0.5) 110px,
+      rgb(20 18 31 / 0.64) 170px,
+      rgb(20 18 31 / 0.68) 300px,
+      rgb(20 18 31 / 0.72) 100%
+    );
+  /* Canto del vidrio: un filo de luz a la derecha y arriba. */
+  box-shadow:
+    inset -1px 0 0 rgb(255 255 255 / 0.08),
+    inset 0 1px 0 rgb(255 255 255 / 0.06);
+}
+
+@media (width < 64rem) {
+  .sidebar-glass--bar {
+    background: rgb(20 18 31 / 0.74);
+  }
+}
