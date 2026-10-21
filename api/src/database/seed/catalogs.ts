@@ -266,21 +266,22 @@ export const CATALOGS: CatalogSeed[] = [
     rows: ordered(
       (
         [
-          // code, visible al cliente, paso del recorrido, revela datos de entrega, cuenta como entregado, avisa por push (H06.2)
-          ['PENDING_ASSIGNMENT', true, true, false, false, false],
-          ['OFFERED', false, false, false, false, false],
-          ['ACCEPTED', true, true, false, false, true],
-          ['AT_ESTABLISHMENT', true, true, false, false, true],
-          ['AWAITING_CUSTOMER', true, false, false, false, false],
-          ['PREPARING', true, true, false, false, false],
-          ['ON_THE_WAY', true, true, true, false, true],
-          ['ARRIVING', true, true, true, false, true],
-          ['PENDING_REVIEW', true, false, true, false, false],
-          ['DISPUTED', true, false, true, false, false],
-          ['DELIVERED', true, true, false, true, true],
-          ['CANCELLED', true, false, false, false, true],
+          // code, visible al cliente, paso del recorrido, revela datos de entrega, cuenta como entregado, avisa por push (H06.2),
+          // tiene domiciliario (E07: exactamente una asignación vigente)
+          ['PENDING_ASSIGNMENT', true, true, false, false, false, false],
+          ['OFFERED', false, false, false, false, false, false],
+          ['ACCEPTED', true, true, false, false, true, true],
+          ['AT_ESTABLISHMENT', true, true, false, false, true, true],
+          ['AWAITING_CUSTOMER', true, false, false, false, false, true],
+          ['PREPARING', true, true, false, false, false, true],
+          ['ON_THE_WAY', true, true, true, false, true, true],
+          ['ARRIVING', true, true, true, false, true, true],
+          ['PENDING_REVIEW', true, false, true, false, false, true],
+          ['DISPUTED', true, false, true, false, false, true],
+          ['DELIVERED', true, true, false, true, true, false],
+          ['CANCELLED', true, false, false, false, true, false],
         ] as const
-      ).map(([code, visible, milestone, reveals, delivered, notifies]) =>
+      ).map(([code, visible, milestone, reveals, delivered, notifies, courier]) =>
         STATUS(
           code,
           {
@@ -289,6 +290,7 @@ export const CATALOGS: CatalogSeed[] = [
             reveals_delivery_details: reveals,
             counts_as_delivered: delivered,
             notifies_customer: notifies,
+            requires_courier: courier,
           },
           code === 'PENDING_ASSIGNMENT',
           code === 'DELIVERED' || code === 'CANCELLED',
@@ -304,7 +306,40 @@ export const CATALOGS: CatalogSeed[] = [
       { code: 'OFFLINE_SYNC', is_automatic: false },
       { code: 'GEOFENCE', is_automatic: true },
       { code: 'TIMER', is_automatic: true },
+      // E07: todos los destinatarios dijeron "No puedo" antes del vencimiento; el pedido vuelve al panel.
+      { code: 'OFFERS_DECLINED', is_automatic: true },
     ]),
+  },
+  // ─────────────── E07 · Asignación por el operador ───────────────
+  {
+    table: 'offer_modes',
+    key: 'code',
+    rows: ordered([
+      { code: 'SPECIFIC', max_recipients: 1 },
+      { code: 'BROADCAST', max_recipients: null },
+    ]),
+  },
+  {
+    table: 'offer_recipient_statuses',
+    key: 'code',
+    rows: ordered([
+      STATUS('PENDING', {}, true),
+      STATUS('ACCEPTED', {}, false, true),
+      STATUS('REJECTED', {}, false, true),
+      STATUS('EXPIRED', {}, false, true),
+      STATUS('WITHDRAWN', {}, false, true),
+    ]),
+  },
+  {
+    table: 'assignment_release_reasons',
+    key: 'code',
+    rows: ordered(['COURIER_RELEASED', 'OPERATOR_REASSIGNED', 'ORDER_CANCELLED', 'ORDER_COMPLETED'].map((code) => ({ code }))),
+  },
+  // Disponibilidad del domiciliario (E08, la usa el despacho).
+  {
+    table: 'availability_end_reasons',
+    key: 'code',
+    rows: ordered(['TOGGLED_OFF', 'INACTIVITY_TIMEOUT', 'ACCOUNT_DISABLED'].map((code) => ({ code }))),
   },
   // ─────────────── E06 · Notificaciones push ───────────────
   { table: 'push_providers', key: 'code', rows: ordered([{ code: 'FCM' }, { code: 'HMS' }]) },

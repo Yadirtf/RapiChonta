@@ -69,6 +69,6 @@ class BusinessCodesCheck implements OnApplicationBootstrap {
     ExchangeRatesUseCase,
     ExchangeRatesScheduler,
   ],
-  exports: [QuoteDeliveryUseCase, EnsureOpenForOrders],
+  exports: [QuoteDeliveryUseCase, EnsureOpenForOrders, MunicipalityScope],
 })
 export class BusinessConfigModule {}

@@ -316,6 +316,8 @@ model User {
   orders                 Order[]
   orderStatusChanges     OrderStatusHistory[]
   notifications          Notification[]
+  offersSent             OrderOffer[]
+  assignmentsReleased    OrderAssignment[]            @relation("OrderAssignmentReleasedBy")
 
   @@index([statusId])
   @@map("users")
@@ -686,6 +688,9 @@ model CourierProfile {
   vehicles            Vehicle[]
   documents           CourierDocument[]
   collectionAccounts  CourierCollectionAccount[]
+  offersReceived      OrderOfferRecipient[]
+  availabilityPeriods CourierAvailabilityPeriod[]
+  locationPings       CourierLocationPing[]
 
   @@map("courier_profiles")
 }
@@ -1286,6 +1291,8 @@ model OrderStatus {
   countsAsDelivered      Boolean   @map("counts_as_delivered")
   /// Al llegar aquí se avisa al cliente por push (H06.2), salvo que el cambio lo haya hecho él mismo.
   notifiesCustomer       Boolean   @default(false) @map("notifies_customer")
+  /// En este estado el pedido tiene un domiciliario: exactamente una asignación vigente (E07, disparador diferido).
+  requiresCourier        Boolean   @default(false) @map("requires_courier")
 
   orders          Order[]
   transitionsFrom OrderStatusTransition[] @relation("OrderTransitionFrom")
@@ -1361,6 +1368,8 @@ model Order {
   items             OrderItem[]
   statusHistory     OrderStatusHistory[]
   notifications     Notification[]
+  offers            OrderOffer[]
+  assignments       OrderAssignment[]
 
   @@index([customerUserId, createdAt(sort: Desc)])
   @@index([customerUserId, statusId])
@@ -1516,4 +1525,141 @@ model NotificationDelivery {
   @@index([notificationId])
   @@index([devicePushTokenId])
   @@map("notification_deliveries")
+}
+
+// ─────────────── E07 · Asignación por el operador (Docs/14-base-de-datos/E07-asignacion.md) ───────────────
+
+/// SPECIFIC (un domiciliario elegido) o BROADCAST (todos los disponibles). max_recipients nulo = sin tope.
+model OfferMode {
+  id            Int          @id @default(autoincrement()) @db.SmallInt
+  code          String       @unique @db.VarChar(40)
+  sortOrder     Int          @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?    @map("deactivated_at") @db.Timestamptz(6)
+  maxRecipients Int?         @map("max_recipients") @db.SmallInt
+  offers        OrderOffer[]
+
+  @@map("offer_modes")
+}
+
+/// Respuesta de un domiciliario a una oferta: PENDING y un solo paso a una final (ACCEPTED, REJECTED, EXPIRED, WITHDRAWN).
+model OfferRecipientStatus {
+  id            Int                   @id @default(autoincrement()) @db.SmallInt
+  code          String                @unique @db.VarChar(40)
+  sortOrder     Int                   @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?             @map("deactivated_at") @db.Timestamptz(6)
+  isInitial     Boolean               @map("is_initial")
+  isTerminal    Boolean               @map("is_terminal")
+  recipients    OrderOfferRecipient[]
+
+  @@map("offer_recipient_statuses")
+}
+
+/// Por qué un domiciliario dejó de tener un pedido.
+model AssignmentReleaseReason {
+  id            Int               @id @default(autoincrement()) @db.SmallInt
+  code          String            @unique @db.VarChar(40)
+  sortOrder     Int               @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?         @map("deactivated_at") @db.Timestamptz(6)
+  assignments   OrderAssignment[]
+
+  @@map("assignment_release_reasons")
+}
+
+/// Un envío del operador. Vence en created_at + offers.timeout_seconds del municipio (excepción deliberada).
+model OrderOffer {
+  id           String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId      String                @map("order_id") @db.Uuid
+  offerModeId  Int                   @map("offer_mode_id") @db.SmallInt
+  /// Operador o administrador. Nulo solo para la asignación automática (E15).
+  sentByUserId String?               @map("sent_by_user_id") @db.Uuid
+  createdAt    DateTime              @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(6)
+  expiresAt    DateTime              @map("expires_at") @db.Timestamptz(6)
+  order        Order                 @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  mode         OfferMode             @relation(fields: [offerModeId], references: [id], onDelete: Restrict)
+  sentBy       User?                 @relation(fields: [sentByUserId], references: [id], onDelete: Restrict)
+  recipients   OrderOfferRecipient[]
+  assignments  OrderAssignment[]
+
+  @@unique([id, orderId])
+  @@index([orderId, createdAt])
+  @@map("order_offers")
+}
+
+/// A quién se ofreció y qué respondió. La fila es su propio historial (un solo paso).
+model OrderOfferRecipient {
+  orderOfferId  String               @map("order_offer_id") @db.Uuid
+  courierUserId String               @map("courier_user_id") @db.Uuid
+  statusId      Int                  @map("status_id") @db.SmallInt
+  respondedAt   DateTime?            @map("responded_at") @db.Timestamptz(6)
+  offer         OrderOffer           @relation(fields: [orderOfferId], references: [id], onDelete: Restrict)
+  courier       CourierProfile       @relation(fields: [courierUserId], references: [userId], onDelete: Restrict)
+  status        OfferRecipientStatus @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  assignment    OrderAssignment?
+
+  @@id([orderOfferId, courierUserId])
+  @@index([courierUserId])
+  @@map("order_offer_recipients")
+}
+
+/// Quién tiene el pedido. Una sola vigente por pedido y por domiciliario (índices únicos parciales en SQL).
+model OrderAssignment {
+  id               String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId          String                   @map("order_id") @db.Uuid
+  orderOfferId     String                   @map("order_offer_id") @db.Uuid
+  courierUserId    String                   @map("courier_user_id") @db.Uuid
+  assignedAt       DateTime                 @default(dbgenerated("clock_timestamp()")) @map("assigned_at") @db.Timestamptz(6)
+  releasedAt       DateTime?                @map("released_at") @db.Timestamptz(6)
+  releaseReasonId  Int?                     @map("release_reason_id") @db.SmallInt
+  releasedByUserId String?                  @map("released_by_user_id") @db.Uuid
+  order            Order                    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  offer            OrderOffer               @relation(fields: [orderOfferId, orderId], references: [id, orderId], onDelete: Restrict)
+  recipient        OrderOfferRecipient      @relation(fields: [orderOfferId, courierUserId], references: [orderOfferId, courierUserId], onDelete: Restrict)
+  releaseReason    AssignmentReleaseReason? @relation(fields: [releaseReasonId], references: [id], onDelete: Restrict)
+  releasedBy       User?                    @relation("OrderAssignmentReleasedBy", fields: [releasedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([orderOfferId, courierUserId])
+  @@index([orderId])
+  @@map("order_assignments")
+}
+
+// ─────────────── E08 · Disponibilidad y ubicación (las usa el despacho de E07) ───────────────
+
+/// TOGGLED_OFF, INACTIVITY_TIMEOUT, ACCOUNT_DISABLED.
+model AvailabilityEndReason {
+  id            Int                         @id @default(autoincrement()) @db.SmallInt
+  code          String                      @unique @db.VarChar(40)
+  sortOrder     Int                         @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?                   @map("deactivated_at") @db.Timestamptz(6)
+  periods       CourierAvailabilityPeriod[]
+
+  @@map("availability_end_reasons")
+}
+
+/// Turno "Disponible": se abre al activarse y se cierra al desactivarse. Uno abierto por domiciliario.
+model CourierAvailabilityPeriod {
+  id            String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  courierUserId String                 @map("courier_user_id") @db.Uuid
+  startedAt     DateTime               @default(dbgenerated("clock_timestamp()")) @map("started_at") @db.Timestamptz(6)
+  endedAt       DateTime?              @map("ended_at") @db.Timestamptz(6)
+  endReasonId   Int?                   @map("end_reason_id") @db.SmallInt
+  courier       CourierProfile         @relation(fields: [courierUserId], references: [userId], onDelete: Restrict)
+  endReason     AvailabilityEndReason? @relation(fields: [endReasonId], references: [id], onDelete: Restrict)
+
+  @@index([courierUserId, startedAt])
+  @@map("courier_availability_periods")
+}
+
+/// Una lectura de GPS del domiciliario. Nunca llega al cliente; se borra a los location.retention_days.
+model CourierLocationPing {
+  id            BigInt                                @id @default(autoincrement())
+  courierUserId String                                @map("courier_user_id") @db.Uuid
+  location      Unsupported("geography(Point, 4326)")
+  accuracyM     Decimal?                              @map("accuracy_m") @db.Decimal(6, 1)
+  recordedAt    DateTime                              @map("recorded_at") @db.Timestamptz(6)
+  receivedAt    DateTime                              @default(now()) @map("received_at") @db.Timestamptz(6)
+  courier       CourierProfile                        @relation(fields: [courierUserId], references: [userId], onDelete: Restrict)
+
+  @@index([courierUserId, recordedAt(sort: Desc)])
+  @@index([receivedAt])
+  @@map("courier_location_pings")
 }
