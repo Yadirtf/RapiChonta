@@ -3,15 +3,17 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { CalendarOff, CalendarPlus, Clock3, Copy, Plus, Trash2, X } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { clockToMinutes, dayProblem, type Schedule, type ScheduleException, type TimeSlot } from "@/core/domain/entities/business";
 import { container } from "@/infrastructure/di/container";
 import { useOpeningText } from "../../../business/BusinessProvider";
 import { PageHeader } from "../../../components/panel/PageHeader";
 import { Alert } from "../../../components/ui/Alert";
 import { Button } from "../../../components/ui/Button";
+import { DatePicker } from "../../../components/ui/DatePicker";
 import { Dialog } from "../../../components/ui/Dialog";
 import { TextField } from "../../../components/ui/Field";
+import { TimePicker } from "../../../components/ui/TimePicker";
 import { useErrorMessage } from "../../../hooks/useErrorMessage";
 import { useResource } from "../../../hooks/useResource";
 import { usePanelMunicipality } from "../PanelMunicipality";
@@ -55,9 +57,12 @@ export function ScheduleView() {
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [addingException, setAddingException] = useState(false);
 
-  useEffect(() => {
+  // La semana editable se reinicia cada vez que llega un horario nuevo de la API (al cargar o al guardar).
+  const [loaded, setLoaded] = useState(data);
+  if (data !== loaded) {
+    setLoaded(data);
     if (data) setWeek(toWeek(data));
-  }, [data]);
+  }
 
   const original = useMemo(() => (data ? toWeek(data) : null), [data]);
   const dirty = !!week && !!original && !sameWeek(week, original);
@@ -353,9 +358,7 @@ function DayRow({ scale, name, short, slots, maxSlots, problem, onChange, onCopy
   );
 }
 
-/**
- * Franjas editables. `<input type="time">` no admite "24:00": un cierre a las 00:00 se guarda como fin del día.
- */
+/** Franjas editables. El cierre "24:00" es medianoche (fin del día). */
 function SlotsEditor({ slots, maxSlots, dayLabel, onChange }: { slots: TimeSlot[]; maxSlots: number; dayLabel: string; onChange: (slots: TimeSlot[]) => void }) {
   const t = useTranslations("schedule");
   const update = (index: number, patch: Partial<TimeSlot>) => onChange(slots.map((s, i) => (i === index ? { ...s, ...patch } : s)));
@@ -371,29 +374,11 @@ function SlotsEditor({ slots, maxSlots, dayLabel, onChange }: { slots: TimeSlot[
       {slots.map((slot, index) => (
         <div key={index} className="inline-flex items-center gap-1 rounded-2xl bg-cream py-1 pr-1 pl-2 ring-1 ring-brand/40">
           <Clock3 className="size-3.5 text-chonta-strong" aria-hidden />
-          <input
-            type="time"
-            value={slot.opensAt}
-            aria-label={t("opensAt", { day: dayLabel, n: index + 1 })}
-            onChange={(e) => e.target.value && update(index, { opensAt: e.target.value })}
-            className="rounded-lg bg-transparent px-1 py-1 text-sm font-bold tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-chonta"
-          />
+          <TimePicker value={slot.opensAt} label={t("opensAt", { day: dayLabel, n: index + 1 })} onChange={(opensAt) => update(index, { opensAt })} />
           <span className="text-ink/40" aria-hidden>
             –
           </span>
-          <input
-            type="time"
-            value={slot.closesAt === "24:00" ? "00:00" : slot.closesAt}
-            aria-label={t("closesAt", { day: dayLabel, n: index + 1 })}
-            title={t("midnightHint")}
-            onChange={(e) =>
-              e.target.value &&
-              update(index, {
-                closesAt: e.target.value === "00:00" ? "24:00" : e.target.value,
-              })
-            }
-            className="rounded-lg bg-transparent px-1 py-1 text-sm font-bold tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-chonta"
-          />
+          <TimePicker value={slot.closesAt} endOfDay label={t("closesAt", { day: dayLabel, n: index + 1 })} onChange={(closesAt) => update(index, { closesAt })} />
           {slots.length > 1 && (
             <button
               onClick={() => onChange(slots.filter((_, i) => i !== index))}
@@ -479,14 +464,18 @@ function ExceptionDialog({ open, minDate, maxSlots, onClose, onSaved }: { open: 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    setDate(minDate);
-    setClosed(true);
-    setSlots([{ opensAt: "09:00", closesAt: "13:00" }]);
-    setReason("");
-    setError(null);
-  }, [open, minDate]);
+  // Cada vez que se abre, el formulario empieza de cero.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setDate(minDate);
+      setClosed(true);
+      setSlots([{ opensAt: "09:00", closesAt: "13:00" }]);
+      setReason("");
+      setError(null);
+    }
+  }
 
   const problem = closed ? null : dayProblem(slots);
   const save = async () => {
@@ -510,7 +499,7 @@ function ExceptionDialog({ open, minDate, maxSlots, onClose, onSaved }: { open: 
   return (
     <Dialog open={open} onClose={onClose} title={t("exceptionTitle")} description={t("exceptionBody")} closeLabel={t("cancel")}>
       <div className="flex flex-col gap-4">
-        <TextField label={t("date")} type="date" min={minDate} value={date} onChange={(e) => setDate(e.target.value)} />
+        <DatePicker label={t("date")} min={minDate} value={date} onChange={setDate} />
         <div role="radiogroup" aria-label={t("exceptionKind")} className="grid grid-cols-2 gap-2">
           {[
             {

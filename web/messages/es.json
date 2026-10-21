@@ -944,7 +944,6 @@
     "removeSlot": "Quitar franja",
     "opensAt": "{day}, franja {n}: abre",
     "closesAt": "{day}, franja {n}: cierra",
-    "midnightHint": "00:00 al cerrar significa medianoche",
     "copy": "Copiar",
     "copyWorkdays": "Copiar a lunes–viernes",
     "copyAll": "Copiar a toda la semana",
@@ -1312,5 +1311,20 @@
     "retry": "Intentar de nuevo",
     "home": "Ir al inicio",
     "code": "Código para soporte: {digest}"
+  },
+  "pickers": {
+    "hour": "Hora",
+    "minutes": "Minutos",
+    "periods": {
+      "dawn": "Madrugada",
+      "morning": "Mañana",
+      "afternoon": "Tarde",
+      "evening": "Noche"
+    },
+    "midnight": "Medianoche",
+    "endOfDay": "Medianoche",
+    "done": "Listo",
+    "previousMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente"
   }
 }
