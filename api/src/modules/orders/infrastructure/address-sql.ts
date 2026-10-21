@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../../generated/prisma/client';
 import { GeoPoint } from '../../catalog/domain/value-objects/geo-point';
 import { pointSql } from '../../catalog/infrastructure/persistence/sql';
 import { NewAddress, SavedAddress } from '../domain/ports/address-book';

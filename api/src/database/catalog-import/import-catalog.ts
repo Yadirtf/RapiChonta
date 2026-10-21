@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '../../generated/prisma/client';
 import { ESTABLISHMENT_STATUSES, PRODUCT_STATUSES } from '../../modules/catalog/domain/catalog.codes';
 import { establishmentPhone, normalizeCategories } from '../../modules/catalog/domain/value-objects/establishment-fields';
 import { GeoPoint } from '../../modules/catalog/domain/value-objects/geo-point';

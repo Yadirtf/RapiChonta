@@ -8,13 +8,15 @@
 //   $executeRaw + Prisma.sql desde su repositorio de infraestructura.
 
 generator client {
-  provider        = "prisma-client-js"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  moduleFormat    = "cjs"
   previewFeatures = ["postgresqlExtensions"]
 }
 
+// La URL de conexión vive en prisma.config.ts (CLI) y en el adaptador pg (cliente).
 datasource db {
   provider   = "postgresql"
-  url        = env("DATABASE_URL")
   extensions = [postgis, citext, btree_gist, unaccent]
 }
 

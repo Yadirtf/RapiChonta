@@ -1,5 +1,5 @@
 import { Injectable, Logger, Module, OnApplicationBootstrap } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../shared/infrastructure/prisma/prisma.service';
 import { ManageCoverageUseCase, PublicCoverageUseCase } from './application/coverage.use-cases';
 import { ExchangeRatesUseCase } from './application/exchange-rates.use-cases';

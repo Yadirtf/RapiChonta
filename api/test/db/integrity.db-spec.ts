@@ -1,11 +1,12 @@
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '../../src/generated/prisma/client';
+import { prismaAdapter } from '../../src/shared/infrastructure/prisma/prisma-adapter';
 
 /**
  * Pruebas de las reglas que garantiza la base de datos (Docs/14-base-de-datos/README.md).
  * Requieren una base migrada y con la semilla: `npm run prisma:deploy && npm run seed:dev && npm run test:db`.
  * Cada prueba corre en una transacción que se revierte al final.
  */
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ adapter: prismaAdapter() });
 class Rollback extends Error {}
 
 async function inTransaction(work: (tx: Prisma.TransactionClient) => Promise<void>): Promise<void> {

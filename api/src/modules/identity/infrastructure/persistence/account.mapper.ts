@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../../../generated/prisma/client';
 import { RoleCode, UserStatusCode } from '../../domain/identity.codes';
 import { Account } from '../../domain/ports/account.repository';
 import { PhoneNumber } from '../../domain/value-objects/phone-number';

@@ -10,12 +10,12 @@
     "esModuleInterop": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
     "incremental": true,
     "strict": true,
     "resolveJsonModule": true,
     "strictPropertyInitialization": false,
     "skipLibCheck": true,
+    "types": ["node", "jest"],
     "forceConsistentCasingInFileNames": true
   },
   "include": ["src/**/*", "test/**/*"]

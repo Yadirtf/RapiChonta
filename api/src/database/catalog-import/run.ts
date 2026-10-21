@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../../generated/prisma/client';
+import { prismaAdapter } from '../../shared/infrastructure/prisma/prisma-adapter';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parseCsv } from './csv';
@@ -13,7 +14,7 @@ import { importCatalog } from './import-catalog';
 async function main() {
   const folder = resolve(process.argv[2] ?? '');
   if (!process.argv[2]) throw new Error('Indique la carpeta con establecimientos.csv y productos.csv');
-  const prisma = new PrismaClient();
+  const prisma = new PrismaClient({ adapter: prismaAdapter() });
   try {
     const report = await runImport(prisma, folder);
     console.log(JSON.stringify(report, null, 2));

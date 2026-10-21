@@ -25,11 +25,22 @@ La regla de dependencia va siempre hacia adentro: `presentation → application 
 
 ## Desarrollo local
 
+Requiere Node 24 LTS (24.9 o superior).
+
 ```bash
 cp .env.example .env      # deja DATABASE_URL vacía para usar datos en memoria
 npm install
+npx prisma generate       # genera el cliente en src/generated/prisma (no se versiona)
 npm run start:dev         # http://localhost:3000/api/health
 ```
+
+Notas de versiones (NestJS 12, Prisma 7):
+
+- NestJS 12 se publica solo como ESM. La API sigue compilando a CommonJS y Node carga Nest con `require(esm)`;
+  Jest lo hace igual, por eso `npm test` corre con `--experimental-vm-modules` (necesita Node 24.9+).
+- Prisma 7 lee la conexión de `prisma.config.ts` (CLI, con `.env` si existe) y el cliente se conecta con el
+  adaptador `@prisma/adapter-pg` (`src/shared/infrastructure/prisma/prisma-adapter.ts`). Todo cliente nuevo se
+  crea con `new PrismaClient({ adapter: prismaAdapter() })` e importa desde `src/generated/prisma/client`.
 
 Con base de datos (PostgreSQL 15+ con PostGIS):
 
