@@ -1,6 +1,7 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Response } from 'express';
+import { reportError } from './observability/sentry';
 
 /**
  * Las reglas que garantiza la base de datos (índices únicos, CHECK, disparadores) llegan aquí cuando el caso
@@ -13,7 +14,10 @@ export class PrismaErrorFilter implements ExceptionFilter {
   catch(error: Prisma.PrismaClientKnownRequestError | Prisma.PrismaClientUnknownRequestError, host: ArgumentsHost): void {
     const response = host.switchToHttp().getResponse<Response>();
     const [status, code] = this.classify(error);
-    if (status === HttpStatus.INTERNAL_SERVER_ERROR) this.logger.error(error.message);
+    if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
+      this.logger.error(error.message);
+      reportError(error);
+    }
     const field = code === 'ALREADY_EXISTS' ? duplicatedField(error) : undefined;
     response.status(status).json({ statusCode: status, code, message: code, ...(field ? { details: { field } } : {}) });
   }
