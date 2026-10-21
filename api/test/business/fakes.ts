@@ -1,10 +1,11 @@
 import { Principal } from '../../src/modules/identity/domain/principal';
-import { MunicipalityDirectory, MunicipalityInfo } from '../../src/modules/business-config/domain/ports/municipalities';
+import { MunicipalityDirectory, MunicipalityInfo, MunicipalityReadiness } from '../../src/modules/business-config/domain/ports/municipalities';
 import { ScheduleException, ScheduleRepository, WeeklySlot } from '../../src/modules/business-config/domain/ports/schedule.repository';
 import { CommissionVersion, SettingChange, SettingRecord, SettingsRepository } from '../../src/modules/business-config/domain/ports/settings.repository';
-import { DeliveryQuote, FeeChange, ZoneData, ZoneOverlap, ZoneRecord, ZonesRepository } from '../../src/modules/business-config/domain/ports/zones.repository';
+import { DeliveryQuote, FeeChange, MunicipalityCoverage, ZoneData, ZoneOverlap, ZoneRecord, ZonesRepository } from '../../src/modules/business-config/domain/ports/zones.repository';
 import { GeoPoint } from '../../src/modules/catalog/domain/value-objects/geo-point';
 import { GeoPolygon } from '../../src/modules/catalog/domain/value-objects/geo-polygon';
+import { ZONE_KINDS } from '../../src/modules/business-config/domain/business-config.codes';
 
 /** Dobles en memoria de los puertos de business-config: los casos de uso se prueban sin base de datos. */
 
@@ -18,12 +19,21 @@ export const admin: Principal = {
 export const scopedAdmin = (municipalityId: number): Principal => ({ ...admin, userId: `admin-${municipalityId}`, municipalityId });
 
 export class MemoryMunicipalities extends MunicipalityDirectory {
-  rows: MunicipalityInfo[] = [{ id: 1, name: 'Villagarzón', timeZone: 'America/Bogota', center: { lat: 1.03, lng: -76.62 }, launched: true }];
+  rows: MunicipalityInfo[] = [{ id: 1, name: 'Villagarzón', department: 'Putumayo', timeZone: 'America/Bogota', center: { lat: 1.03, lng: -76.62 }, launched: true }];
   async list(scope: number | null) {
     return this.rows.filter((m) => scope === null || m.id === scope);
   }
   async find(id: number) {
     return this.rows.find((m) => m.id === id) ?? null;
+  }
+  ready = new Map<number, MunicipalityReadiness>();
+  async readiness(ids: number[]) {
+    return new Map(ids.map((id) => [id, this.ready.get(id) ?? { coverage: false, hours: false, commission: false }]));
+  }
+  async update(id: number, change: { launched?: boolean; center?: { lat: number; lng: number } }) {
+    const row = this.rows.find((m) => m.id === id)!;
+    if (change.launched !== undefined) row.launched = change.launched;
+    if (change.center) row.center = change.center;
   }
 }
 
@@ -58,6 +68,8 @@ export class MemoryZones extends ZonesRepository {
       municipalityId,
       name: data.name,
       kind: data.kind,
+      shape: data.shape,
+      circle: null,
       area: data.area.closedRing().slice(0, -1),
       polygon: data.area,
       areaSquareMeters: Math.round(data.area.squareMeters()),
@@ -91,9 +103,30 @@ export class MemoryZones extends ZonesRepository {
   async feeHistory(id: string): Promise<FeeChange[]> {
     return this.fees.filter((f) => f.zoneId === id).map((f) => ({ fee: f.fee, createdAt: new Date(), createdBy: 'Admin' }));
   }
+  /** Como PostgreSQL: el barrio o la vereda gana sobre la tarifa base de la cobertura. */
   async quote(municipalityId: number, point: GeoPoint): Promise<DeliveryQuote | null> {
-    const zone = [...this.rows.values()].find((z) => z.active && z.municipalityId === municipalityId && z.polygon.covers(point));
+    const zone = [...this.rows.values()]
+      .filter((z) => z.active && z.municipalityId === municipalityId && z.polygon.covers(point))
+      .sort((a, b) => Number(a.kind === ZONE_KINDS.COVERAGE) - Number(b.kind === ZONE_KINDS.COVERAGE) || a.sortOrder - b.sortOrder)[0];
     return zone ? { deliveryZoneFeeId: `fee-${zone.id}`, fee: zone.fee, zone: { id: zone.id, name: zone.name, kind: zone.kind } } : null;
+  }
+  municipalityNames = new Map<number, string>([[1, 'Villagarzón']]);
+  async coverage(): Promise<MunicipalityCoverage[]> {
+    return [];
+  }
+  async locate(point: GeoPoint) {
+    for (const [municipalityId, municipalityName] of this.municipalityNames) {
+      const quote = await this.quote(municipalityId, point);
+      if (quote) return { municipalityId, municipalityName, quote };
+    }
+    return null;
+  }
+  /** Distancia al vértice más cercano: basta para las pruebas (PostgreSQL mide hasta el borde). */
+  async distanceToCoverage(point: GeoPoint, municipalityId?: number) {
+    const zones = [...this.rows.values()].filter((z) => z.active && (municipalityId === undefined || z.municipalityId === municipalityId));
+    if (!zones.length) return null;
+    const meters = Math.min(...zones.flatMap((z) => z.polygon.vertices.map((v) => v.distanceTo(point))));
+    return { meters: Math.round(meters), municipalityName: this.municipalityNames.get(zones[0].municipalityId) ?? '' };
   }
   async establishmentMunicipality(id: string) {
     return this.establishments.get(id) ?? null;

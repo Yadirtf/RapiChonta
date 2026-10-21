@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import '../../../../app/theme.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../auth/presentation/widgets/phone_field.dart';
+import '../../../business/domain/business.dart' show CoverageArea;
 import '../../../business/presentation/business_widgets.dart';
 import '../../../establishments/domain/entities/cart.dart';
 import '../../../establishments/domain/entities/establishment.dart';
@@ -28,8 +29,10 @@ class ZoneLoading extends ZoneState {
   const ZoneLoading();
 }
 
+/// Fuera de cobertura; [distanceMeters] es a cuánto empieza (null si no hay ningún municipio abierto).
 class ZoneOutside extends ZoneState {
-  const ZoneOutside();
+  const ZoneOutside([this.distanceMeters]);
+  final int? distanceMeters;
 }
 
 class ZoneFound extends ZoneState {
@@ -79,6 +82,7 @@ class DeliverySection extends StatelessWidget {
     required this.customLabelController,
     required this.showErrors,
     this.store,
+    this.coverage = const [],
   });
 
   final CheckoutDraft draft;
@@ -93,6 +97,7 @@ class DeliverySection extends StatelessWidget {
   final TextEditingController customLabelController;
   final bool showErrors;
   final GeoPoint? store;
+  final List<CoverageArea> coverage;
 
   @override
   Widget build(BuildContext context) {
@@ -168,6 +173,7 @@ class DeliverySection extends StatelessWidget {
                 controller: mapController,
                 store: store,
                 label: label,
+                coverage: coverage,
                 onPick: (point) => onChange((d) => d.copyWith(point: point)),
               ),
               Positioned(
@@ -202,7 +208,7 @@ class DeliverySection extends StatelessWidget {
           ),
         ),
       ),
-      if (zone is ZoneOutside) ...[const SizedBox(height: 12), _Notice(text: l10n.checkoutOutsideZone)],
+      if (zone case ZoneOutside(:final distanceMeters)) ...[const SizedBox(height: 12), _OutsideNotice(distanceMeters: distanceMeters)],
       const SizedBox(height: 16),
       TextField(
         controller: referenceController,
@@ -270,7 +276,7 @@ class _ZoneLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final language = Localizations.localeOf(context).languageCode;
-    if (zone is ZoneOutside) return _Notice(text: l10n.checkoutOutsideZone);
+    if (zone case ZoneOutside(:final distanceMeters)) return _OutsideNotice(distanceMeters: distanceMeters);
     final text = switch (zone) {
       ZoneFound(:final name, :final feeCents) => l10n.checkoutZoneFee(name, formatPesos(feeCents, language)),
       _ => l10n.checkoutCheckingZone,
@@ -288,9 +294,10 @@ class _ZoneLine extends StatelessWidget {
 }
 
 class _Notice extends StatelessWidget {
-  const _Notice({required this.text});
+  const _Notice({required this.text, this.detail});
 
   final String text;
+  final String? detail;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -299,9 +306,36 @@ class _Notice extends StatelessWidget {
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Icon(Icons.wrong_location_rounded, color: AppColors.chontaStrong, size: 20),
           const SizedBox(width: 8),
-          Expanded(child: Text(text, style: const TextStyle(color: AppColors.chontaStrong, fontWeight: FontWeight.w700))),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(text, style: const TextStyle(color: AppColors.chontaStrong, fontWeight: FontWeight.w700)),
+              if (detail != null) ...[
+                const SizedBox(height: 2),
+                Text(detail!, style: const TextStyle(color: AppColors.chontaStrong, fontWeight: FontWeight.w900)),
+              ],
+            ]),
+          ),
         ]),
       );
+}
+
+/// Fuera de cobertura: además de decirlo, cuánto falta ("a 600 m"), porque en un pueblo eso suele ser una
+/// esquina más allá y el cliente puede mover el pin hasta donde lo encuentre el domiciliario.
+class _OutsideNotice extends StatelessWidget {
+  const _OutsideNotice({required this.distanceMeters});
+
+  final int? distanceMeters;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final meters = distanceMeters;
+    final language = Localizations.localeOf(context).languageCode;
+    return _Notice(
+      text: l10n.checkoutOutsideZone,
+      detail: meters != null && meters > 0 ? l10n.checkoutOutsideDistance(formatDistance(meters, language)) : null,
+    );
+  }
 }
 
 class _Pill extends StatelessWidget {

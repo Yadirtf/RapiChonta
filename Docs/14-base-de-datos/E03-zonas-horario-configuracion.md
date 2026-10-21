@@ -1,6 +1,6 @@
 # E03 · Zonas, horario y configuración del negocio
 
-Historias: H03.1 a H03.4 y la carga de valores del piloto (H12.1). Módulo de la API: `business-config`.
+Historias: H03.1 a H03.5 y la carga de valores del piloto (H12.1). Módulo de la API: `business-config`.
 
 Todo lo de esta épica pertenece a un municipio y todo lo que cambia con el tiempo se **versiona**: un pedido apunta a la tarifa y a la comisión con que se creó, y la caja de un día pasado se puede recalcular igual.
 
@@ -10,6 +10,7 @@ Todo lo de esta épica pertenece a un municipio y todo lo que cambia con el tiem
 erDiagram
   municipalities ||--o{ delivery_zones : ""
   zone_kinds ||--o{ delivery_zones : ""
+  zone_shapes ||--o{ delivery_zones : ""
   delivery_zones ||--|{ delivery_zone_fees : "tarifas (versiones)"
   delivery_zone_fees ||--o{ orders : "tarifa aplicada"
   municipalities ||--o{ operating_hours : ""
@@ -25,6 +26,7 @@ erDiagram
     uuid id PK
     integer municipality_id FK
     smallint zone_kind_id FK
+    smallint zone_shape_id FK
     varchar name
     geography area "Polygon"
     smallint sort_order
@@ -92,9 +94,11 @@ erDiagram
 
 | Tabla | Columna | Tipo | Nulo | Regla |
 | --- | --- | --- | --- | --- |
-| `zone_kinds` (sistema) | `code` | | | `URBAN` (barrios del casco urbano), `RURAL` (veredas y lugares aledaños) |
+| `zone_kinds` (sistema) | `code` | | | `COVERAGE` (cobertura del municipio, H03.5), `URBAN` (barrios del casco urbano), `RURAL` (veredas y lugares aledaños) |
+| `zone_shapes` (sistema) | `code` | | | `POLYGON` (área dibujada), `CIRCLE` (radio alrededor de un centro) |
 | `delivery_zones` | `municipality_id` | FK | no | |
 | | `zone_kind_id` | FK `zone_kinds` | no | |
+| | `zone_shape_id` | FK `zone_shapes` | no | Cómo se definió el área. Solo informa al panel: el área se guarda siempre como polígono |
 | | `name` | `varchar(80)` | no | Índice único parcial `(municipality_id, name) WHERE deactivated_at IS NULL` (una zona dada de baja puede renacer con el mismo nombre y otro polígono) |
 | | `area` | `geography(Polygon)` | no | GIST. Dos zonas activas del mismo municipio no se pueden superponer (disparador con `ST_Intersects` y área de intersección ≥ 1 m²; el margen absorbe el redondeo a 6 decimales de los vértices compartidos) |
 | | `sort_order` | `smallint` | no | |
@@ -115,11 +119,32 @@ Tarifa para una dirección (H04.2):
 SELECT f.id AS delivery_zone_fee_id, f.amount
 FROM delivery_zones z
 JOIN v_current_zone_fees f ON f.delivery_zone_id = z.id
+JOIN zone_kinds k ON k.id = z.zone_kind_id
 WHERE z.deactivated_at IS NULL
   AND z.municipality_id = :municipio_del_establecimiento
-  AND ST_Covers(z.area, :punto);
+  AND ST_Covers(z.area, :punto)
+ORDER BY (k.code = 'COVERAGE'), z.sort_order, z.created_at  -- la zona URBAN/RURAL gana a la tarifa base
+LIMIT 1;
 -- Sin filas: la dirección está fuera de cobertura y no se puede pedir.
 ```
+
+## Cobertura por municipio (H03.5, RF-18)
+
+La cobertura es hasta dónde llegan los domiciliarios en un municipio. No es una tabla nueva: es una fila de `delivery_zones` de tipo `COVERAGE`, con su tarifa base en `delivery_zone_fees`. Así el pedido sigue apuntando a una tarifa versionada aunque caiga fuera de toda zona URBAN/RURAL, y no se duplica nada.
+
+| Regla | Cómo se cumple |
+| --- | --- |
+| Una sola cobertura activa por municipio | El disparador `fn_delivery_zones_no_overlap` rechaza una segunda `COVERAGE` activa (`23505`) |
+| Las zonas URBAN/RURAL quedan dentro y no chocan con ella | El mismo disparador compara superposición solo entre zonas que no son `COVERAGE` |
+| Radio o área | `zone_shape_id` = `CIRCLE`: la API genera un polígono geodésico de 72 vértices (radio de 200 m a 15 km). El centro y el radio **no se guardan**: se derivan al leer (`ST_Centroid` y `ST_Distance(centro, primer vértice, false)`). `POLYGON`: el área dibujada, de 0,1 a 1.000 km² |
+| Cambiar el área | Igual que una zona: se da de baja y se crea otra. Cambiar solo la tarifa base inserta en `delivery_zone_fees` |
+| Abrir un municipio | `municipalities.launched_at`. La API exige cobertura, horario y comisión (`MUNICIPALITY_NOT_READY` con lo que falta) y solo el administrador general lo cambia (`GLOBAL_ADMIN_ONLY`, permiso `municipalities.manage`; queda en auditoría como `MUNICIPALITY_CHANGED`) |
+
+Para el cliente:
+
+- `GET /delivery/coverage`: la unión (`ST_Union`, simplificada) de las zonas activas de cada municipio abierto, con su centro. Se cachea 5 minutos.
+- `GET /delivery/coverage/check?lat&lng`: si el punto (GPS o pin puesto a mano, por ejemplo para otra persona) cae en una zona de un municipio abierto devuelve la tarifa; si no, a cuántos metros está la cobertura más cercana (`ST_Distance` contra esa unión).
+- Al cotizar o confirmar fuera de cobertura, `NO_COVERAGE` lleva `distanceMeters` para decirle al cliente cuánto debe mover el pin.
 
 ## Horario de operación (H03.2, RF-15)
 

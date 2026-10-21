@@ -2,11 +2,16 @@ import type {
   BusinessOptions,
   BusinessStatus,
   Commission,
+  CoverageArea,
+  CoverageCheck,
+  CoverageInput,
+  CoverageZone,
   DeliveryQuote,
   DisplayCurrency,
   ExchangeRate,
   FeeChange,
   Municipality,
+  MunicipalityOverview,
   Schedule,
   ScheduleDay,
   Setting,
@@ -22,7 +27,12 @@ import type { Account } from "../entities/account";
 export interface BusinessAdminRepository {
   options(): Promise<BusinessOptions>;
 
-  zones(municipalityId?: number): Promise<{ municipality: Municipality; zones: Zone[] }>;
+  coverage(): Promise<MunicipalityOverview[]>;
+  saveCoverage(input: CoverageInput, municipalityId: number): Promise<CoverageZone>;
+  removeCoverage(municipalityId: number): Promise<void>;
+  updateMunicipality(id: number, change: { launched?: boolean; center?: { lat: number; lng: number } }): Promise<Municipality>;
+
+  zones(municipalityId?: number): Promise<{ municipality: Municipality; zones: Zone[]; coverage: CoverageZone | null }>;
   createZone(input: ZoneInput, municipalityId?: number): Promise<Zone>;
   updateZone(id: string, input: ZoneInput): Promise<Zone>;
   deactivateZone(id: string): Promise<void>;
@@ -49,6 +59,10 @@ export interface BusinessAdminRepository {
 export interface BusinessPublicRepository {
   status(municipalityId?: number): Promise<BusinessStatus>;
   quote(establishmentId: string, point: { lat: number; lng: number }): Promise<DeliveryQuote>;
+  /** Cobertura de los municipios abiertos, para dibujarla en el mapa del cliente (H03.5). */
+  coverage(): Promise<CoverageArea[]>;
+  /** Si el punto (GPS o pin) está dentro de alguna cobertura, y si no, a cuántos metros queda. */
+  checkCoverage(point: { lat: number; lng: number }): Promise<CoverageCheck>;
   exchangeRates(): Promise<ExchangeRate[]>;
   setDisplayCurrency(currency: DisplayCurrency | null): Promise<Account>;
 }

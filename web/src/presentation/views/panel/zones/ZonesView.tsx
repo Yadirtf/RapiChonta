@@ -19,6 +19,7 @@ import { TextField } from "../../../components/ui/Field";
 import { useCatalogFormat } from "../../../hooks/useCatalogFormat";
 import { useErrorMessage } from "../../../hooks/useErrorMessage";
 import { useResource } from "../../../hooks/useResource";
+import { usePanelMunicipality } from "../PanelMunicipality";
 import { ZonesMap, type ZoneMapMode } from "./ZonesMap";
 
 interface Draft {
@@ -55,7 +56,8 @@ export function ZonesView() {
   const area = useAreaFormat();
   const errorMessage = useErrorMessage();
   const options = useResource(() => container.businessAdmin.options(), []);
-  const { data, error, loading, reload } = useResource(() => container.businessAdmin.zones(), []);
+  const { municipalityId } = usePanelMunicipality();
+  const { data, error, loading, reload } = useResource(() => container.businessAdmin.zones(municipalityId), [municipalityId]);
   const zones = useMemo(() => data?.zones ?? [], [data]);
   const limits = options.data?.limits.zone;
 
@@ -127,7 +129,7 @@ export function ZonesView() {
     setSaveError(null);
     try {
       const input = { name: draft.name, kind: draft.kind, fee, area: draft.ring, trimOverlaps };
-      const saved = draft.id ? await container.businessAdmin.updateZone(draft.id, input) : await container.businessAdmin.createZone(input);
+      const saved = draft.id ? await container.businessAdmin.updateZone(draft.id, input) : await container.businessAdmin.createZone(input, municipalityId);
       await reload();
       setSelectedId(saved.id);
       close();
@@ -144,7 +146,7 @@ export function ZonesView() {
     setSaving(true);
     setSaveError(null);
     try {
-      setPreview(await container.businessAdmin.trimZone(draft.ring, draft.id ?? undefined));
+      setPreview(await container.businessAdmin.trimZone(draft.ring, draft.id ?? undefined, municipalityId));
     } catch (e) {
       setSaveError(e);
     } finally {
@@ -168,7 +170,8 @@ export function ZonesView() {
     }
   };
 
-  const probeZone = probe ? zoneAt(zones, probe) : null;
+  // Fuera de los barrios y veredas, el punto paga la tarifa base de la cobertura (si la tiene).
+  const probeZone = probe ? (zoneAt(zones, probe) ?? (data?.coverage && zoneAt([data.coverage], probe))) : null;
   const mapLabels = useMemo(() => ({ vertexHint: t("vertexHint"), midpointHint: t("midpointHint") }), [t]);
   const center = data?.municipality.center ?? options.data?.municipalities[0]?.center ?? { lat: 1.0294, lng: -76.6165 };
   const grouped = (["URBAN", "RURAL"] as const).map((kind) => ({ kind, zones: zones.filter((z) => z.kind === kind) }));
@@ -323,7 +326,7 @@ export function ZonesView() {
                 {loading && !data ? (
                   Array.from({ length: 3 }, (_, i) => <div key={i} className="h-20 animate-pulse rounded-3xl bg-white" />)
                 ) : !zones.length ? (
-                  <EmptyState icon={<MapPinned className="size-7" />} title={t("emptyTitle")} body={t("emptyBody")} action={<Button onClick={startNew}>{t("new")}</Button>} />
+                  <EmptyState icon={<MapPinned className="size-7" />} title={t("emptyTitle")} body={data?.coverage ? t("emptyBodyWithCoverage") : t("emptyBody")} action={<Button onClick={startNew}>{t("new")}</Button>} />
                 ) : (
                   grouped.map(
                     ({ kind, zones: list }) =>
@@ -377,8 +380,10 @@ export function ZonesView() {
         {/* Mapa */}
         <div className="relative order-1 h-[58dvh] min-h-[420px] overflow-hidden rounded-[28px] bg-white shadow-sm ring-1 ring-ink/5 lg:order-2 lg:h-[calc(100dvh-12rem)]">
           <ZonesMap
+            key={data?.municipality.id ?? 0}
             fallbackCenter={center}
             zones={zones}
+            coverage={data?.coverage ?? null}
             selectedId={selectedId}
             editingId={draft?.id ?? null}
             draft={draft?.ring ?? null}
@@ -426,7 +431,7 @@ export function ZonesView() {
                 ) : probeZone ? (
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-ink/45">{t(`kinds.${probeZone.kind}`)}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-ink/45">{probeZone.kind === "COVERAGE" ? t("probeCoverage") : t(`kinds.${probeZone.kind}`)}</p>
                       <p className="truncate font-display text-lg font-extrabold">{probeZone.name}</p>
                     </div>
                     <span className="price-tag text-base">{money.price(probeZone.fee)}</span>

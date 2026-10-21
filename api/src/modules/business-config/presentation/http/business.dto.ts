@@ -8,14 +8,16 @@ import {
   IsInt,
   IsLatitude,
   IsLongitude,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
   Matches,
   MaxLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
-import { ZONE_KINDS } from '../../domain/business-config.codes';
+import { FEE_ZONE_KINDS, ZONE_SHAPES, ZoneShapeCode } from '../../domain/business-config.codes';
 
 const MONEY = /^\d{1,10}([.,]\d{1,2})?$/;
 const CLOCK = /^\d{2}:\d{2}$/;
@@ -36,8 +38,8 @@ export class ZoneDto {
   @MaxLength(80)
   name: string;
 
-  @IsIn(Object.values(ZONE_KINDS))
-  kind: (typeof ZONE_KINDS)[keyof typeof ZONE_KINDS];
+  @IsIn(FEE_ZONE_KINDS)
+  kind: (typeof FEE_ZONE_KINDS)[number];
 
   /** Vértices [lng, lat]; el dominio valida forma, cruces y tamaño. */
   @IsArray()
@@ -166,4 +168,62 @@ export class QuoteQueryDto {
   @Type(() => Number)
   @IsLongitude()
   lng: number;
+}
+
+export class PointQueryDto {
+  @Type(() => Number)
+  @IsLatitude()
+  lat: number;
+
+  @Type(() => Number)
+  @IsLongitude()
+  lng: number;
+}
+
+export class LatLngDto {
+  @IsLatitude()
+  lat: number;
+
+  @IsLongitude()
+  lng: number;
+}
+
+/** Cobertura del municipio (H03.5): un radio alrededor de `center`, o el área dibujada en `area`. */
+export class CoverageDto {
+  @IsOptional()
+  @IsInt()
+  municipalityId?: number;
+
+  @IsIn(Object.values(ZONE_SHAPES))
+  shape: ZoneShapeCode;
+
+  @ValidateIf((o: CoverageDto) => o.shape === ZONE_SHAPES.CIRCLE)
+  @ValidateNested()
+  @Type(() => LatLngDto)
+  center?: LatLngDto;
+
+  @ValidateIf((o: CoverageDto) => o.shape === ZONE_SHAPES.CIRCLE)
+  @IsNumber()
+  radiusMeters?: number;
+
+  @ValidateIf((o: CoverageDto) => o.shape === ZONE_SHAPES.POLYGON)
+  @IsArray()
+  @ArrayMinSize(3)
+  @ArrayMaxSize(301)
+  area?: [number, number][];
+
+  @IsString()
+  @Matches(MONEY)
+  fee: string;
+}
+
+export class MunicipalityUpdateDto {
+  @IsOptional()
+  @IsBoolean()
+  launched?: boolean;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LatLngDto)
+  center?: LatLngDto;
 }

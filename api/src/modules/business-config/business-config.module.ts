@@ -1,6 +1,7 @@
 import { Injectable, Logger, Module, OnApplicationBootstrap } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../shared/infrastructure/prisma/prisma.service';
+import { ManageCoverageUseCase, PublicCoverageUseCase } from './application/coverage.use-cases';
 import { ExchangeRatesUseCase } from './application/exchange-rates.use-cases';
 import { MunicipalityScope } from './application/municipality-scope';
 import { EnsureOpenForOrders, GetBusinessStatusUseCase, ManageScheduleUseCase, OpeningHours } from './application/schedule.use-cases';
@@ -57,6 +58,8 @@ class BusinessCodesCheck implements OnApplicationBootstrap {
     MunicipalityScope,
     ManageZonesUseCase,
     QuoteDeliveryUseCase,
+    ManageCoverageUseCase,
+    PublicCoverageUseCase,
     OpeningHours,
     ManageScheduleUseCase,
     GetBusinessStatusUseCase,

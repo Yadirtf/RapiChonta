@@ -5,8 +5,8 @@ import { PrismaService } from '../../../shared/infrastructure/prisma/prisma.serv
 import { GeoPoint } from '../../catalog/domain/value-objects/geo-point';
 import { GeoPolygon } from '../../catalog/domain/value-objects/geo-polygon';
 import { pointSql, polygonSql } from '../../catalog/infrastructure/persistence/sql';
-import { BUSINESS_AUDIT_ACTIONS, ZoneKindCode } from '../domain/business-config.codes';
-import { DeliveryQuote, FeeChange, ZoneData, ZoneOverlap, ZoneRecord, ZonesRepository } from '../domain/ports/zones.repository';
+import { BUSINESS_AUDIT_ACTIONS, ZONE_KINDS, ZONE_SHAPES, ZoneKindCode, ZoneShapeCode } from '../domain/business-config.codes';
+import { DeliveryQuote, FeeChange, MunicipalityCoverage, ZoneData, ZoneOverlap, ZoneRecord, ZonesRepository } from '../domain/ports/zones.repository';
 
 type Tx = Prisma.TransactionClient;
 
@@ -15,7 +15,11 @@ interface ZoneRow {
   municipality_id: number;
   name: string;
   kind: ZoneKindCode;
+  shape: ZoneShapeCode;
   ring: [number, number][];
+  center_lat: number | null;
+  center_lng: number | null;
+  radius_m: number | null;
   area_m2: number;
   fee: string;
   fee_since: Date;
@@ -23,12 +27,19 @@ interface ZoneRow {
   created_at: Date;
 }
 
+// Un radio se guarda como el polígono que lo aproxima: el centro es su centroide y el radio, la distancia
+// a un vértice sobre la esfera (así lo trazó GeoCircle; sobre el elipsoide variaría ±0,5 % según el rumbo).
 const ZONE_SELECT = Prisma.sql`
-  SELECT z.id, z.municipality_id, z.name, k.code AS kind, z.sort_order, z.created_at,
+  SELECT z.id, z.municipality_id, z.name, k.code AS kind, s.code AS shape, z.sort_order, z.created_at,
          ST_AsGeoJSON(z.area::geometry, 7)::json -> 'coordinates' -> 0 AS ring, ST_Area(z.area) AS area_m2,
-         f.amount::text AS fee, f.created_at AS fee_since
+         f.amount::text AS fee, f.created_at AS fee_since,
+         CASE WHEN s.code = ${ZONE_SHAPES.CIRCLE} THEN ST_Y(ST_Centroid(z.area::geometry)) END AS center_lat,
+         CASE WHEN s.code = ${ZONE_SHAPES.CIRCLE} THEN ST_X(ST_Centroid(z.area::geometry)) END AS center_lng,
+         CASE WHEN s.code = ${ZONE_SHAPES.CIRCLE}
+              THEN ST_Distance(ST_Centroid(z.area::geometry)::geography, ST_PointN(ST_ExteriorRing(z.area::geometry), 1)::geography, false) END AS radius_m
   FROM delivery_zones z
   JOIN zone_kinds k ON k.id = z.zone_kind_id
+  JOIN zone_shapes s ON s.id = z.zone_shape_id
   JOIN v_current_zone_fees f ON f.delivery_zone_id = z.id`;
 
 const toRecord = (r: ZoneRow): ZoneRecord => ({
@@ -36,6 +47,11 @@ const toRecord = (r: ZoneRow): ZoneRecord => ({
   municipalityId: r.municipality_id,
   name: r.name,
   kind: r.kind,
+  shape: r.shape,
+  circle:
+    r.radius_m === null || r.center_lat === null || r.center_lng === null
+      ? null
+      : { center: { lat: round6(r.center_lat), lng: round6(r.center_lng) }, radiusMeters: Math.round(r.radius_m) },
   // El anillo de PostGIS viene cerrado (último = primero); el editor trabaja con vértices únicos.
   area: r.ring.slice(0, -1),
   areaSquareMeters: Math.round(r.area_m2),
@@ -45,12 +61,20 @@ const toRecord = (r: ZoneRow): ZoneRecord => ({
   createdAt: r.created_at,
 });
 
+const round6 = (n: number) => Math.round(n * 1e6) / 1e6;
+
+/** Zonas con tarifa propia (barrios y veredas): la cobertura las contiene y no cuenta como superposición. */
+const FEE_ZONE = Prisma.sql`z.zone_kind_id <> (SELECT id FROM zone_kinds WHERE code = ${ZONE_KINDS.COVERAGE})`;
+
+/** Municipios abiertos: sus zonas son las que ve y puede pedir el cliente. */
+const LAUNCHED = Prisma.sql`m.launched_at IS NOT NULL AND m.launched_at <= now()`;
+
 /** Piezas con superficie (≥ 50 m²) que quedan de `area` al quitarle las zonas activas del municipio. */
 function trimmedPieces(municipalityId: number, area: GeoPolygon, exceptId?: string) {
   return Prisma.sql`
     others AS (
       SELECT ST_Union(z.area::geometry) AS g FROM delivery_zones z
-      WHERE z.municipality_id = ${municipalityId} AND z.deactivated_at IS NULL
+      WHERE z.municipality_id = ${municipalityId} AND z.deactivated_at IS NULL AND ${FEE_ZONE}
         AND (${exceptId ?? null}::uuid IS NULL OR z.id <> ${exceptId ?? null}::uuid)
     ), cut AS (
       SELECT ST_CollectionExtract(ST_MakeValid(coalesce(ST_Difference(${polygonSql(area)}::geometry, o.g), ${polygonSql(area)}::geometry)), 3) AS g
@@ -59,6 +83,26 @@ function trimmedPieces(municipalityId: number, area: GeoPolygon, exceptId?: stri
       SELECT d.geom AS g FROM cut, ST_Dump(cut.g) d WHERE ST_Area(d.geom::geography) >= 50
     )`;
 }
+
+interface QuoteRow {
+  fee_id: string;
+  amount: string;
+  zone_id: string;
+  name: string;
+  kind: ZoneKindCode;
+}
+
+const QUOTE_SELECT = Prisma.sql`
+  SELECT f.id AS fee_id, f.amount::text AS amount, z.id AS zone_id, z.name, k.code AS kind, z.municipality_id
+  FROM delivery_zones z
+  JOIN zone_kinds k ON k.id = z.zone_kind_id
+  JOIN v_current_zone_fees f ON f.delivery_zone_id = z.id`;
+
+// El barrio o la vereda gana sobre la tarifa base de la cobertura; en el borde de dos zonas vecinas, la de
+// menor orden (la primera de la lista).
+const QUOTE_ORDER = Prisma.sql`ORDER BY (k.code = ${ZONE_KINDS.COVERAGE}), z.sort_order, z.created_at`;
+
+const toQuote = (r: QuoteRow): DeliveryQuote => ({ deliveryZoneFeeId: r.fee_id, fee: r.amount, zone: { id: r.zone_id, name: r.name, kind: r.kind } });
 
 /** Superficie mínima compartida para contar como superposición (redondeos del dibujo no cuentan). */
 const OVERLAP_TOLERANCE_M2 = 1;
@@ -91,7 +135,7 @@ export class PrismaZonesRepository extends ZonesRepository {
     const rows = await this.prisma.$queryRaw<{ id: string; name: string; m2: number }[]>`
       SELECT z.id, z.name, ST_Area(ST_Intersection(z.area::geometry, a.g)::geography) AS m2
       FROM delivery_zones z, (SELECT ${polygonSql(area)}::geometry AS g) a
-      WHERE z.municipality_id = ${municipalityId} AND z.deactivated_at IS NULL
+      WHERE z.municipality_id = ${municipalityId} AND z.deactivated_at IS NULL AND ${FEE_ZONE}
         AND (${exceptId ?? null}::uuid IS NULL OR z.id <> ${exceptId ?? null}::uuid)
         AND ST_Intersects(z.area::geometry, a.g)
       ORDER BY m2 DESC`;
@@ -169,15 +213,43 @@ export class PrismaZonesRepository extends ZonesRepository {
   }
 
   async quote(municipalityId: number, point: GeoPoint): Promise<DeliveryQuote | null> {
-    // Si el punto cae justo en el borde de dos zonas vecinas, gana la de menor orden (la primera de la lista).
-    const [row] = await this.prisma.$queryRaw<{ fee_id: string; amount: string; zone_id: string; name: string; kind: ZoneKindCode }[]>`
-      SELECT f.id AS fee_id, f.amount::text AS amount, z.id AS zone_id, z.name, k.code AS kind
-      FROM delivery_zones z
+    const [row] = await this.prisma.$queryRaw<QuoteRow[]>`
+      ${QUOTE_SELECT} WHERE z.deactivated_at IS NULL AND z.municipality_id = ${municipalityId} AND ST_Covers(z.area, ${pointSql(point)})
+      ${QUOTE_ORDER} LIMIT 1`;
+    return row ? toQuote(row) : null;
+  }
+
+  async coverage(municipalityId?: number): Promise<MunicipalityCoverage[]> {
+    // ~2 m de tolerancia al simplificar: el borde se ve igual y la respuesta pesa una fracción.
+    const rows = await this.prisma.$queryRaw<{ id: number; name: string; lat: number; lng: number; polygons: [number, number][][][] }[]>`
+      SELECT m.id, m.name, ST_Y(m.center::geometry) AS lat, ST_X(m.center::geometry) AS lng,
+             ST_AsGeoJSON(ST_Multi(ST_SimplifyPreserveTopology(ST_Union(z.area::geometry), 0.00002)), 6)::json -> 'coordinates' AS polygons
+      FROM municipalities m
+      JOIN delivery_zones z ON z.municipality_id = m.id AND z.deactivated_at IS NULL
+      WHERE ${LAUNCHED} AND (${municipalityId ?? null}::int IS NULL OR m.id = ${municipalityId ?? null}::int)
+      GROUP BY m.id ORDER BY m.name`;
+    return rows.map((r) => ({ municipality: { id: r.id, name: r.name, center: { lat: r.lat, lng: r.lng } }, polygons: r.polygons }));
+  }
+
+  async locate(point: GeoPoint): Promise<{ municipalityId: number; municipalityName: string; quote: DeliveryQuote } | null> {
+    const [row] = await this.prisma.$queryRaw<(QuoteRow & { municipality_id: number; municipality_name: string })[]>`
+      SELECT q.*, m.name AS municipality_name FROM (${QUOTE_SELECT}) q
+      JOIN municipalities m ON m.id = q.municipality_id
+      JOIN delivery_zones z ON z.id = q.zone_id
       JOIN zone_kinds k ON k.id = z.zone_kind_id
-      JOIN v_current_zone_fees f ON f.delivery_zone_id = z.id
-      WHERE z.deactivated_at IS NULL AND z.municipality_id = ${municipalityId} AND ST_Covers(z.area, ${pointSql(point)})
-      ORDER BY z.sort_order, z.created_at LIMIT 1`;
-    return row ? { deliveryZoneFeeId: row.fee_id, fee: row.amount, zone: { id: row.zone_id, name: row.name, kind: row.kind } } : null;
+      WHERE z.deactivated_at IS NULL AND ${LAUNCHED} AND ST_Covers(z.area, ${pointSql(point)})
+      ${QUOTE_ORDER} LIMIT 1`;
+    return row ? { municipalityId: row.municipality_id, municipalityName: row.municipality_name, quote: toQuote(row) } : null;
+  }
+
+  async distanceToCoverage(point: GeoPoint, municipalityId?: number): Promise<{ meters: number; municipalityName: string } | null> {
+    const [row] = await this.prisma.$queryRaw<{ meters: number; name: string }[]>`
+      SELECT ST_Distance(z.area, ${pointSql(point)}) AS meters, m.name
+      FROM delivery_zones z JOIN municipalities m ON m.id = z.municipality_id
+      WHERE z.deactivated_at IS NULL
+        AND (${municipalityId ?? null}::int IS NULL AND ${LAUNCHED} OR m.id = ${municipalityId ?? null}::int)
+      ORDER BY z.area <-> ${pointSql(point)} LIMIT 1`;
+    return row ? { meters: Math.round(row.meters), municipalityName: row.name } : null;
   }
 
   async establishmentMunicipality(establishmentId: string): Promise<number | null> {
@@ -195,11 +267,11 @@ export class PrismaZonesRepository extends ZonesRepository {
       ? Prisma.sql`(WITH ${trimmedPieces(municipalityId, data.area)} SELECT g::geography FROM pieces LIMIT 1)`
       : polygonSql(data.area);
     const [{ id }] = await tx.$queryRaw<{ id: string }[]>`
-      INSERT INTO delivery_zones (municipality_id, zone_kind_id, name, area, sort_order, created_by_user_id)
-      SELECT ${municipalityId}, k.id, ${data.name}, ${area}, coalesce(${sortOrder ?? null}::smallint,
+      INSERT INTO delivery_zones (municipality_id, zone_kind_id, zone_shape_id, name, area, sort_order, created_by_user_id)
+      SELECT ${municipalityId}, k.id, s.id, ${data.name}, ${area}, coalesce(${sortOrder ?? null}::smallint,
              (SELECT coalesce(max(sort_order), 0) + 1 FROM delivery_zones WHERE municipality_id = ${municipalityId} AND deactivated_at IS NULL)),
              ${actorUserId}::uuid
-      FROM zone_kinds k WHERE k.code = ${data.kind}
+      FROM zone_kinds k, zone_shapes s WHERE k.code = ${data.kind} AND s.code = ${data.shape}
       RETURNING id`;
     await tx.$executeRaw`INSERT INTO delivery_zone_fees (delivery_zone_id, amount, created_by_user_id) VALUES (${id}::uuid, ${data.fee}::numeric, ${actorUserId}::uuid)`;
     return id;

@@ -3,11 +3,16 @@ import type {
   BusinessOptions,
   BusinessStatus,
   Commission,
+  CoverageArea,
+  CoverageCheck,
+  CoverageInput,
+  CoverageZone,
   DeliveryQuote,
   DisplayCurrency,
   ExchangeRate,
   FeeChange,
   Municipality,
+  MunicipalityOverview,
   Schedule,
   ScheduleDay,
   Setting,
@@ -28,8 +33,24 @@ export class HttpBusinessAdminRepository implements BusinessAdminRepository {
     return apiRequest<BusinessOptions>("GET", `${BASE}/options`);
   }
 
+  coverage() {
+    return apiRequest<MunicipalityOverview[]>("GET", `${BASE}/coverage`);
+  }
+
+  saveCoverage(input: CoverageInput, municipalityId: number) {
+    return apiRequest<CoverageZone>("PUT", `${BASE}/coverage`, { body: { ...input, municipalityId } });
+  }
+
+  removeCoverage(municipalityId: number) {
+    return apiRequest<void>("DELETE", `${BASE}/coverage`, { query: { municipalityId } });
+  }
+
+  updateMunicipality(municipalityId: number, change: { launched?: boolean; center?: { lat: number; lng: number } }) {
+    return apiRequest<Municipality>("PUT", `${BASE}/municipalities/${municipalityId}`, { body: change });
+  }
+
   zones(municipalityId?: number) {
-    return apiRequest<{ municipality: Municipality; zones: Zone[] }>("GET", `${BASE}/zones`, { query: { municipalityId } });
+    return apiRequest<{ municipality: Municipality; zones: Zone[]; coverage: CoverageZone | null }>("GET", `${BASE}/zones`, { query: { municipalityId } });
   }
 
   createZone(input: ZoneInput, municipalityId?: number) {
@@ -112,6 +133,14 @@ export class HttpBusinessPublicRepository implements BusinessPublicRepository {
 
   exchangeRates() {
     return apiGet<ExchangeRate[]>("/business/exchange-rates");
+  }
+
+  async coverage() {
+    return (await apiGet<{ municipalities: CoverageArea[] }>("/delivery/coverage")).municipalities;
+  }
+
+  checkCoverage(point: { lat: number; lng: number }) {
+    return apiGet<CoverageCheck>("/delivery/coverage/check", { lat: point.lat, lng: point.lng });
   }
 
   setDisplayCurrency(currency: DisplayCurrency | null) {

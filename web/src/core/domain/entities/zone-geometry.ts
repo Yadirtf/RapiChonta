@@ -39,3 +39,43 @@ export function boundsOf(rings: LngLat[][]): [LngLat, LngLat] | null {
 }
 
 export { squareMeters };
+
+const EARTH_RADIUS_M = 6_371_008.8;
+const CIRCLE_SEGMENTS = 72;
+
+/**
+ * Vértices [lng, lat] de un radio alrededor de `center`, con la misma fórmula que la API (GeoCircle): lo que
+ * el panel dibuja mientras se arrastra el control es exactamente lo que se guardará.
+ */
+export function circleRing(center: GeoPoint, radiusMeters: number, segments = CIRCLE_SEGMENTS): LngLat[] {
+  const rad = Math.PI / 180;
+  const φ1 = center.lat * rad;
+  const λ1 = center.lng * rad;
+  const δ = radiusMeters / EARTH_RADIUS_M;
+  return Array.from({ length: segments }, (_, i) => {
+    const θ = (2 * Math.PI * i) / segments;
+    const φ2 = Math.asin(Math.sin(φ1) * Math.cos(δ) + Math.cos(φ1) * Math.sin(δ) * Math.cos(θ));
+    const λ2 = λ1 + Math.atan2(Math.sin(θ) * Math.sin(δ) * Math.cos(φ1), Math.cos(δ) - Math.sin(φ1) * Math.sin(φ2));
+    return [λ2 / rad, φ2 / rad] as LngLat;
+  });
+}
+
+/** Punto dentro de alguno de los polígonos de la cobertura (anillo exterior menos huecos). */
+export function coverageContains(polygons: LngLat[][][], point: GeoPoint): boolean {
+  return polygons.some(([outer, ...holes]) => contains(outer, point) && !holes.some((hole) => contains(hole, point)));
+}
+
+/**
+ * Máscara "fuera de cobertura": el mundo con las coberturas recortadas como huecos. Se pinta oscura encima
+ * del mapa para que lo que sí cubrimos quede iluminado.
+ */
+export function outsideMask(polygons: LngLat[][][]): GeoJSON.Feature<GeoJSON.Polygon> {
+  const world: LngLat[] = [
+    [-180, -85],
+    [180, -85],
+    [180, 85],
+    [-180, 85],
+    [-180, -85],
+  ];
+  return { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [world, ...polygons.map(([outer]) => outer)] } };
+}

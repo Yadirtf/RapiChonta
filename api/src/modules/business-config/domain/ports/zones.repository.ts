@@ -1,10 +1,11 @@
 import { GeoPoint } from '../../../catalog/domain/value-objects/geo-point';
 import { GeoPolygon } from '../../../catalog/domain/value-objects/geo-polygon';
-import { ZoneKindCode } from '../business-config.codes';
+import { ZoneKindCode, ZoneShapeCode } from '../business-config.codes';
 
 export interface ZoneData {
   name: string;
   kind: ZoneKindCode;
+  shape: ZoneShapeCode;
   area: GeoPolygon;
   /** Tarifa en pesos, texto decimal ("3000.00"). */
   fee: string;
@@ -17,8 +18,11 @@ export interface ZoneRecord {
   municipalityId: number;
   name: string;
   kind: ZoneKindCode;
+  shape: ZoneShapeCode;
   /** Vértices [lng, lat] sin repetir el primero. */
   area: [number, number][];
+  /** Solo si se trazó como radio: centro y radio recuperados del polígono guardado. */
+  circle: { center: { lat: number; lng: number }; radiusMeters: number } | null;
   areaSquareMeters: number;
   fee: string;
   feeSince: Date;
@@ -37,6 +41,13 @@ export interface DeliveryQuote {
   deliveryZoneFeeId: string;
   fee: string;
   zone: { id: string; name: string; kind: ZoneKindCode };
+}
+
+/** Hasta dónde llega RapiChonta en un municipio abierto: la unión de sus zonas activas (lo que ve el cliente). */
+export interface MunicipalityCoverage {
+  municipality: { id: number; name: string; center: { lat: number; lng: number } };
+  /** Polígonos [lng, lat] en orden GeoJSON (MultiPolygon), simplificados para dibujarlos. */
+  polygons: [number, number][][][];
 }
 
 export interface FeeChange {
@@ -65,4 +76,10 @@ export abstract class ZonesRepository {
   /** Tarifa vigente de la zona que cubre el punto (ST_Covers), o null si está fuera de cobertura. */
   abstract quote(municipalityId: number, point: GeoPoint): Promise<DeliveryQuote | null>;
   abstract establishmentMunicipality(establishmentId: string): Promise<number | null>;
+  /** Cobertura de los municipios abiertos (o de uno), para el mapa del cliente. */
+  abstract coverage(municipalityId?: number): Promise<MunicipalityCoverage[]>;
+  /** Municipio abierto cuya cobertura contiene el punto, con la tarifa que aplicaría. */
+  abstract locate(point: GeoPoint): Promise<{ municipalityId: number; municipalityName: string; quote: DeliveryQuote } | null>;
+  /** Metros desde el punto hasta la cobertura más cercana (de un municipio o de todos los abiertos). */
+  abstract distanceToCoverage(point: GeoPoint, municipalityId?: number): Promise<{ meters: number; municipalityName: string } | null>;
 }

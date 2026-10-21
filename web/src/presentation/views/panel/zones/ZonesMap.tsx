@@ -17,6 +17,7 @@ const COLORS = {
   URBAN: { fill: "#ffc531", line: "#b83a1b" },
   RURAL: { fill: "#1f7a4d", line: "#1f7a4d" },
   conflict: "#e4572e",
+  coverage: "#b83a1b",
   draft: "#14121f",
   preview: "#1f7a4d",
 } as const;
@@ -24,6 +25,8 @@ const COLORS = {
 interface Props {
   fallbackCenter: GeoPoint;
   zones: Zone[];
+  /** Cobertura del municipio (se edita en la página Cobertura): borde punteado como referencia. */
+  coverage?: { area: LngLat[] } | null;
   selectedId: string | null;
   /** Zona que se está editando: no se pinta con las demás. */
   editingId: string | null;
@@ -46,7 +49,7 @@ interface Props {
  * con vértices arrastrables, las que chocan con ella en rojo y, si se pidió recortar, cómo quedaría.
  */
 export function ZonesMap(props: Props) {
-  const { fallbackCenter, zones, selectedId, editingId, draft, mode, conflicts, preview, probe, maxVertices, formatFee, onSelect, onDraftChange, onCloseRing, onProbe, labels } = props;
+  const { fallbackCenter, zones, coverage = null, selectedId, editingId, draft, mode, conflicts, preview, probe, maxVertices, formatFee, onSelect, onDraftChange, onCloseRing, onProbe, labels } = props;
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const [ready, setReady] = useState(false);
@@ -61,7 +64,9 @@ export function ZonesMap(props: Props) {
     map.doubleClickZoom.disable();
     map.on("load", () => {
       const empty: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
-      for (const id of ["zones", "draft", "preview"]) map.addSource(id, { type: "geojson", data: empty });
+      for (const id of ["coverage", "zones", "draft", "preview"]) map.addSource(id, { type: "geojson", data: empty });
+      map.addLayer({ id: "coverage-fill", type: "fill", source: "coverage", paint: { "fill-color": COLORS.coverage, "fill-opacity": 0.06 } });
+      map.addLayer({ id: "coverage-line", type: "line", source: "coverage", paint: { "line-color": COLORS.coverage, "line-width": 2.5, "line-dasharray": [3, 2] } });
       map.addLayer({ id: "zones-fill", type: "fill", source: "zones", paint: { "fill-color": ["get", "fill"], "fill-opacity": ["case", ["get", "conflict"], 0.45, ["get", "selected"], 0.42, 0.24] } });
       map.addLayer({
         id: "zones-line",
@@ -141,6 +146,20 @@ export function ZonesMap(props: Props) {
     }
     return () => markers.forEach((m) => m.remove());
   }, [zones, editingId, selectedId, conflicts, ready, formatFee]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    (map.getSource("coverage") as GeoJSONSource).setData({
+      type: "FeatureCollection",
+      features: coverage ? [{ type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [[...coverage.area, coverage.area[0]]] } }] : [],
+    });
+    if (!fitted.current && coverage && !zones.length) {
+      const bounds = boundsOf([coverage.area]);
+      if (bounds) map.fitBounds(bounds, { padding: 40, maxZoom: 16, duration: 0 });
+      fitted.current = true;
+    }
+  }, [coverage, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Al elegir una zona, el mapa la encuadra.
   useEffect(() => {

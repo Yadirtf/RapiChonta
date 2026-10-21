@@ -1,5 +1,6 @@
 import { DisplayRate } from '../../application/exchange-rates.use-cases';
 import { ScheduleView } from '../../application/schedule.use-cases';
+import { MunicipalityOverview } from '../../application/coverage.use-cases';
 import { MunicipalityInfo } from '../../domain/ports/municipalities';
 import { CommissionVersion } from '../../domain/ports/settings.repository';
 import { ZoneRecord } from '../../domain/ports/zones.repository';
@@ -8,12 +9,21 @@ import { OpeningState } from '../../domain/value-objects/opening-calendar';
 
 /** Respuestas HTTP del módulo: fechas ISO, dinero como texto decimal y franjas "HH:MM". */
 export const BusinessPresenter = {
-  municipality: (m: MunicipalityInfo) => ({ id: m.id, name: m.name, timeZone: m.timeZone, center: m.center }),
+  municipality: (m: MunicipalityInfo) => ({ id: m.id, name: m.name, department: m.department, timeZone: m.timeZone, center: m.center, launched: m.launched }),
+
+  overview: (o: MunicipalityOverview) => ({
+    municipality: BusinessPresenter.municipality(o.municipality),
+    coverage: o.coverage && BusinessPresenter.zone(o.coverage),
+    zoneCount: o.zoneCount,
+    readiness: o.readiness,
+  }),
 
   zone: (z: ZoneRecord) => ({
     id: z.id,
     name: z.name,
     kind: z.kind,
+    shape: z.shape,
+    circle: z.circle,
     area: z.area,
     areaSquareMeters: z.areaSquareMeters,
     fee: z.fee,

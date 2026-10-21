@@ -34,9 +34,9 @@ async function scenario(tx: Tx) {
   if (!product) throw new Error('Cargue los datos de ejemplo (SEED_DEMO_DATA=true) antes de test:db');
   await tx.$executeRaw`UPDATE delivery_zones SET deactivated_at = now() WHERE deactivated_at IS NULL`;
   const [zone] = await tx.$queryRaw<{ id: string }[]>`
-    INSERT INTO delivery_zones (municipality_id, zone_kind_id, name, area, sort_order, created_by_user_id)
-    SELECT m.id, k.id, 'Zona prueba E04', ST_GeogFromText('SRID=4326;POLYGON((-76.7 0.9, -76.5 0.9, -76.5 1.1, -76.7 1.1, -76.7 0.9))'), 1, ${user.id}::uuid
-    FROM municipalities m, zone_kinds k WHERE m.dane_code = '86885' AND k.code = 'URBAN' RETURNING id`;
+    INSERT INTO delivery_zones (municipality_id, zone_kind_id, zone_shape_id, name, area, sort_order, created_by_user_id)
+    SELECT m.id, k.id, s.id, 'Zona prueba E04', ST_GeogFromText('SRID=4326;POLYGON((-76.7 0.9, -76.5 0.9, -76.5 1.1, -76.7 1.1, -76.7 0.9))'), 1, ${user.id}::uuid
+    FROM municipalities m, zone_kinds k, zone_shapes s WHERE m.dane_code = '86885' AND k.code = 'URBAN' AND s.code = 'POLYGON' RETURNING id`;
   const [fee] = await tx.$queryRaw<{ id: string }[]>`
     INSERT INTO delivery_zone_fees (delivery_zone_id, amount, created_by_user_id) VALUES (${zone.id}::uuid, 3000, ${user.id}::uuid) RETURNING id`;
   const [commission] = await tx.$queryRaw<{ id: string }[]>`

@@ -107,7 +107,7 @@ async function seedCatalogs() {
 }
 
 async function seedGeography() {
-  const { country, department, municipality: m } = GEOGRAPHY;
+  const { country, department, municipalities, timeZone } = GEOGRAPHY;
   await prisma.$executeRaw`
     INSERT INTO countries (iso2, name) VALUES (${country.iso2}, ${country.name})
     ON CONFLICT (iso2) DO UPDATE SET name = EXCLUDED.name
@@ -117,13 +117,16 @@ async function seedGeography() {
     SELECT id, ${department.daneCode}, ${department.name} FROM countries WHERE iso2 = ${country.iso2}
     ON CONFLICT (dane_code) DO UPDATE SET name = EXCLUDED.name
   `;
-  await prisma.$executeRaw`
-    INSERT INTO municipalities (department_id, dane_code, name, time_zone, center, launched_at)
-    SELECT id, ${m.daneCode}, ${m.name}, ${m.timeZone},
-           ST_SetSRID(ST_MakePoint(${m.center.lng}, ${m.center.lat}), 4326)::geography, ${m.launchedAt}::timestamptz
-    FROM departments WHERE dane_code = ${department.daneCode}
-    ON CONFLICT (dane_code) DO NOTHING
-  `;
+  // Lo que el panel cambia (abierto o no, centro) no se pisa al volver a sembrar.
+  for (const m of municipalities) {
+    await prisma.$executeRaw`
+      INSERT INTO municipalities (department_id, dane_code, name, time_zone, center, launched_at)
+      SELECT id, ${m.daneCode}, ${m.name}, ${timeZone},
+             ST_SetSRID(ST_MakePoint(${m.center.lng}, ${m.center.lat}), 4326)::geography, ${m.launchedAt ?? null}::timestamptz
+      FROM departments WHERE dane_code = ${department.daneCode}
+      ON CONFLICT (dane_code) DO NOTHING
+    `;
+  }
 }
 
 async function seedSettings() {

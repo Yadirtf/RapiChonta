@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Bike, Clock, LayoutDashboard, Loader2, LogOut, Map, MapPinned, ShieldAlert, SlidersHorizontal, Store, Tags, Users } from "lucide-react";
+import { Bike, Clock, LayoutDashboard, Loader2, LogOut, Map, MapPinned, Radar, ShieldAlert, SlidersHorizontal, Store, Tags, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -16,12 +16,14 @@ import { SidebarBackdrop } from "../../components/layout/SidebarBackdrop";
 import { Logo, LogoEmblem } from "../../components/ui/Logo";
 import { initials } from "../../format";
 import { useErrorMessage } from "../../hooks/useErrorMessage";
+import { MunicipalitySwitcher, PanelMunicipalityProvider } from "./PanelMunicipality";
 
 const NAV = [
   { href: "/panel", key: "home", icon: LayoutDashboard, permission: null },
   { href: "/panel/establecimientos", key: "establishments", icon: Store, permission: PERMISSIONS.MANAGE_ESTABLISHMENTS },
   { href: "/panel/categorias", key: "categories", icon: Tags, permission: PERMISSIONS.MANAGE_CATEGORIES },
   { href: "/panel/domiciliarios", key: "couriers", icon: Bike, permission: PERMISSIONS.MANAGE_COURIERS },
+  { href: "/panel/cobertura", key: "coverage", icon: Radar, permission: PERMISSIONS.MANAGE_ZONES },
   { href: "/panel/zonas", key: "zones", icon: MapPinned, permission: PERMISSIONS.MANAGE_ZONES },
   { href: "/panel/horario", key: "hours", icon: Clock, permission: PERMISSIONS.MANAGE_HOURS },
   { href: "/panel/configuracion", key: "settings", icon: SlidersHorizontal, permission: PERMISSIONS.MANAGE_SETTINGS },
@@ -52,10 +54,12 @@ export function PanelShell({ children }: { children: ReactNode }) {
 
   const items = NAV.filter((item) => !item.permission || can(account, item.permission));
   return (
-    <div className="flex min-h-dvh flex-col bg-surface lg:flex-row">
-      <Sidebar account={account} items={items} pathname={pathname} />
-      <main className="min-w-0 flex-1">{children}</main>
-    </div>
+    <PanelMunicipalityProvider account={account}>
+      <div className="flex min-h-dvh flex-col bg-surface lg:flex-row">
+        <Sidebar account={account} items={items} pathname={pathname} />
+        <main className="min-w-0 flex-1">{children}</main>
+      </div>
+    </PanelMunicipalityProvider>
   );
 }
 
@@ -86,6 +90,7 @@ function Sidebar({ account, items, pathname }: { account: Account; items: (typeo
           </button>
         </div>
       </div>
+      <MunicipalitySwitcher className="mx-3 mb-3" />
       <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:pb-0" aria-label={t("navigation")}>
         {items.map(({ href, key, icon: Icon }) => (
           <Link

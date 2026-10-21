@@ -1,19 +1,22 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Clock3, MapPin, X } from "lucide-react";
+import { ArrowRight, Bike, Clock3, MapPin, MapPinOff, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { CoverageCheck } from "@/core/domain/entities/business";
 import { cartCount } from "@/core/domain/entities/cart";
-import { localized, type Establishment } from "@/core/domain/entities/establishment";
+import { localized, type Establishment, type GeoPoint } from "@/core/domain/entities/establishment";
+import { container } from "@/infrastructure/di/container";
 import { useCart } from "../cart/CartProvider";
 import { CartBar } from "../components/cart/CartBar";
 import { CategoryIcon } from "../components/catalog/CategoryIcon";
 import { SideMenu } from "../components/layout/SideMenu";
 import { useCatalogFormat } from "../hooks/useCatalogFormat";
 import { useCategories } from "../hooks/useCategories";
+import { useCoverage } from "../hooks/useCoverage";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { useNearbyEstablishments } from "../hooks/useNearbyEstablishments";
 
@@ -31,7 +34,9 @@ export function HomeView() {
   const { cart } = useCart();
   const [active, setActive] = useState<string[]>([]);
   const [selected, setSelected] = useState<Establishment | null>(null);
-  const { position, status } = useGeolocation();
+  const { position, status, device } = useGeolocation();
+  const coverage = useCoverage();
+  const reach = useCoverageCheck(device);
   const { data, error, loading } = useNearbyEstablishments(position, active, status !== "loading");
   const names = useMemo(() => new Map((categories ?? []).map((c) => [c.code, localized(c.names, locale)])), [categories, locale]);
 
@@ -44,14 +49,35 @@ export function HomeView() {
       <SideMenu categories={categories} active={active} onToggle={toggle} onClear={() => setActive([])} />
 
       <section className="relative flex-1">
-        <NearbyMap center={position} establishments={data} selectedId={selected?.id} onSelect={onSelect} />
+        <NearbyMap center={position} establishments={data} selectedId={selected?.id} onSelect={onSelect} coverage={coverage} />
 
-        <header className="pointer-events-none absolute inset-x-0 top-0 flex justify-center p-4">
+        <header className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center gap-2 p-4">
           <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm shadow-lg backdrop-blur">
             <MapPin className="size-4 text-brand-strong" />
             {status === "denied" ? t("map.enableLocation") : status === "outside" ? t("map.outsideArea") : t("map.nearYou")}
             <span className="font-semibold">· {loading ? t("map.searching") : t("map.places", { count: data.length })}</span>
           </div>
+          <AnimatePresence>
+            {reach && (
+              <motion.p
+                key={reach.covered ? "in" : "out"}
+                initial={{ y: -8, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -8, opacity: 0 }}
+                role="status"
+                className={`coverage-flag pointer-events-auto ${reach.covered ? "" : "!bg-chonta-strong !text-white"}`}
+              >
+                <span className={`grid size-5 place-items-center rounded-full ${reach.covered ? "bg-brand text-ink" : "bg-white/20"}`} aria-hidden>
+                  {reach.covered ? <Bike className="size-3" strokeWidth={2.6} /> : <MapPinOff className="size-3" strokeWidth={2.6} />}
+                </span>
+                {reach.covered
+                  ? t("map.weReachYou", { fee: format.price(reach.fee) })
+                  : reach.nearest
+                    ? t("map.coverageAway", { distance: format.distance(reach.nearest.distanceMeters), municipality: reach.nearest.municipalityName })
+                    : t("map.noCoverageYet")}
+              </motion.p>
+            )}
+          </AnimatePresence>
         </header>
 
         {error && (
@@ -116,4 +142,26 @@ export function HomeView() {
       </section>
     </main>
   );
+}
+
+/**
+ * ¿Llegamos a donde está el cliente? (H03.5) Se pregunta a la API con la ubicación real del GPS, una vez
+ * por posición: responde con la tarifa del domicilio o con cuánto falta para la cobertura.
+ */
+function useCoverageCheck(point: GeoPoint | null): CoverageCheck | null {
+  const [result, setResult] = useState<CoverageCheck | null>(null);
+  const lat = point?.lat;
+  const lng = point?.lng;
+  useEffect(() => {
+    if (lat === undefined || lng === undefined) return;
+    let alive = true;
+    container.business.checkCoverage({ lat, lng }).then(
+      (r) => alive && setResult(r),
+      () => alive && setResult(null),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [lat, lng]);
+  return result;
 }

@@ -14,9 +14,12 @@
   "map": {
     "nearYou": "Cerca de ti",
     "enableLocation": "Activa tu ubicación para ver lo más cercano",
-    "outsideArea": "Aún no llegamos a tu zona · Villagarzón",
+    "outsideArea": "Aún no llegamos a tu zona",
     "searching": "buscando…",
-    "places": "{count, plural, =0 {sin lugares} one {# lugar} other {# lugares}}"
+    "places": "{count, plural, =0 {sin lugares} one {# lugar} other {# lugares}}",
+    "weReachYou": "Llegamos a tu ubicación · domicilio {fee}",
+    "coverageAway": "Estás a {distance} de nuestra cobertura en {municipality}",
+    "noCoverageYet": "Todavía no tenemos cobertura abierta"
   },
   "establishment": {
     "orderHere": "Pedir aquí",
@@ -73,7 +76,7 @@
     "INVALID_AREA": "{reason, select, TOO_FEW_VERTICES {El área necesita al menos 3 esquinas.} TOO_MANY_VERTICES {El área tiene demasiadas esquinas.} SELF_INTERSECTION {Los lados del área se cruzan.} TOO_SMALL {El área es muy pequeña.} TOO_LARGE {El área es demasiado grande.} other {El área dibujada no es válida.}}",
     "AREA_MUST_COVER_LOCATION": "El punto del local debe quedar dentro del área.",
     "LOCATION_OUTSIDE_MUNICIPALITY": "Ese punto está fuera del municipio.",
-    "INVALID_RADIUS": "El radio de búsqueda no es válido.",
+    "INVALID_RADIUS": "El radio debe estar entre 200 m y 15 km.",
     "INVALID_PRICE": "El precio no es válido.",
     "INVALID_PREP_MINUTES": "El tiempo de preparación debe estar entre 0 y 240 minutos.",
     "SPANISH_TEXT_REQUIRED": "El texto en español es obligatorio.",
@@ -139,7 +142,10 @@
     "RECIPIENT_NOT_FOUND": "Ese contacto ya no está guardado.",
     "TOO_MANY_ADDRESSES": "Puedes guardar hasta {max} lugares.",
     "ORDER_NOT_FOUND": "No encontramos ese pedido.",
-    "REQUEST_REUSED": "Vuelve a intentarlo."
+    "REQUEST_REUSED": "Vuelve a intentarlo.",
+    "COVERAGE_NOT_FOUND": "Ese municipio todavía no tiene cobertura.",
+    "MUNICIPALITY_NOT_READY": "Antes de abrir, el municipio necesita cobertura, horario y comisión.",
+    "GLOBAL_ADMIN_ONLY": "Solo el administrador general abre o pausa municipios."
   },
   "auth": {
     "signInTitle": "Entra con tu celular",
@@ -263,6 +269,7 @@
       "staff": "Personal",
       "establishments": "Establecimientos",
       "categories": "Categorías",
+      "coverage": "Cobertura",
       "zones": "Zonas",
       "hours": "Horario",
       "settings": "Configuración"
@@ -922,7 +929,9 @@
     "probeHint": "Toca un punto del mapa para ver qué tarifa se cobraría ahí.",
     "probeOutside": "Ese punto está fuera de cobertura.",
     "vertexHint": "Arrastra para mover; doble toque para quitar",
-    "midpointHint": "Agregar un punto aquí"
+    "midpointHint": "Agregar un punto aquí",
+    "probeCoverage": "Tarifa base de la cobertura",
+    "emptyBodyWithCoverage": "Por ahora toda la cobertura cobra la tarifa base. Crea un barrio o vereda si necesita otra tarifa."
   },
   "schedule": {
     "title": "Horario de atención",
@@ -1089,7 +1098,7 @@
     "locationDenied": "No pudimos ver tu ubicación. Mueve el mapa hasta el punto de entrega.",
     "zoneFee": "Domicilio a {zone}: {fee}",
     "checkingZone": "Calculando el domicilio…",
-    "outsideZone": "Aquí todavía no llegamos. Mueve el pin a un barrio o vereda con cobertura.",
+    "outsideZone": "Aquí todavía no llegamos. Mueve el pin dentro del área iluminada del mapa.",
     "reference": "Referencia para encontrarte",
     "referencePlaceholder": "Casa azul de dos pisos, frente al parque",
     "referenceHint": "Lo que vería el domiciliario al llegar: color, portón, un negocio cerca.",
@@ -1141,10 +1150,11 @@
     "removed": "Ya no se pueden pedir: {names}.",
     "repriced": "Cambió el precio de: {names}. Revisa el total.",
     "legal": "Al confirmar, un domiciliario de RapiChonta compra por ti en el local y te lo lleva.",
-    "outsideShort": "Sin cobertura aquí",
+    "outsideShort": "Fuera de cobertura",
     "missingRecipientPhone": "Escribe un celular de 10 dígitos que empiece por 3",
     "cashExactNote": "Pago con el valor exacto",
-    "storeClosed": "Este local no está recibiendo pedidos"
+    "storeClosed": "Este local no está recibiendo pedidos",
+    "outsideDistance": "La cobertura empieza a {distance} de este punto."
   },
   "payment": {
     "CASH": "Efectivo",
@@ -1235,5 +1245,65 @@
     "updated": "Se actualiza solo",
     "signInBody": "Entra con tu celular para ver en qué va cada pedido.",
     "detailTitle": "Tu pedido"
+  },
+  "coverage": {
+    "title": "Cobertura",
+    "subtitle": "Hasta dónde llegan nuestros domiciliarios · {open} de {total} municipios abiertos",
+    "workingIn": "Trabajando en",
+    "groupOpen": "Abiertos",
+    "groupPreparing": "En preparación",
+    "statusOpen": "Abierto",
+    "statusPreparing": "En preparación",
+    "noCoverage": "Sin cobertura definida",
+    "summaryRadius": "Radio de {radius} desde el centro",
+    "summaryArea": "Área dibujada de {area} km²",
+    "baseFee": "Tarifa base {fee}",
+    "readinessTitle": "Para abrir le falta",
+    "readinessOpen": "{zones, plural, =0 {Atendiendo solo con la tarifa base} one {Atendiendo con # zona de tarifa propia} other {Atendiendo con # zonas de tarifa propia}}",
+    "readiness": {
+      "coverage": "Cobertura",
+      "hours": "Horario",
+      "commission": "Comisión"
+    },
+    "ready": "Listo",
+    "missing": "Falta",
+    "defineCoverage": "Definir cobertura",
+    "editCoverage": "Cambiar cobertura",
+    "launch": "Abrir {name}",
+    "pause": "Pausar pedidos en {name}",
+    "pauseTitle": "¿Pausar {name}?",
+    "pauseBody": "Deja de aparecer en el mapa y nadie podrá pedir allí hasta que lo vuelvas a abrir. No se borra nada: zonas, horario y pedidos se conservan.",
+    "pauseConfirm": "Pausar pedidos",
+    "shape": "Forma de la cobertura",
+    "shapes": {
+      "CIRCLE": "Radio",
+      "POLYGON": "Área dibujada"
+    },
+    "radius": "Hasta dónde llega la moto",
+    "areaApprox": "≈ {area} km² cubiertos",
+    "centerHint": "Toca el mapa para mover el centro (la plaza, la galería).",
+    "centerReset": "Centro del municipio",
+    "fee": "Tarifa base del domicilio",
+    "feeHint": "Se cobra en toda la cobertura, salvo en los barrios y veredas que tengan tarifa propia.",
+    "save": "Guardar cobertura",
+    "cancel": "Cancelar",
+    "remove": "Quitar cobertura",
+    "removeTitle": "¿Quitar la cobertura?",
+    "removeBody": "En {name} solo se podrá pedir dentro de los barrios y veredas con tarifa propia. Los pedidos anteriores no cambian.",
+    "mapLegend": "Borde de la cobertura",
+    "mapHintCircle": "Toca el mapa para mover el centro",
+    "mapHintDraw": "Toca el mapa para poner cada esquina",
+    "mapHintEdit": "Arrastra los puntos para ajustar el borde",
+    "emptyTitle": "{name} aún no tiene cobertura",
+    "emptyBody": "Define un radio desde el centro o dibuja el área a la que llegan los domiciliarios.",
+    "problems": {
+      "TOO_FEW_VERTICES": "Faltan puntos",
+      "TOO_MANY_VERTICES": "Demasiados puntos",
+      "SELF_INTERSECTION": "El borde se cruza consigo mismo",
+      "TOO_SMALL": "Muy pequeña para una cobertura (mínimo 0,1 km²)",
+      "TOO_LARGE": "Muy grande para una cobertura (máximo 1.000 km²)"
+    },
+    "vertexHint": "Arrastra para mover; doble toque para quitar",
+    "midpointHint": "Agregar un punto aquí"
   }
 }

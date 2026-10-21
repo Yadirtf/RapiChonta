@@ -466,3 +466,116 @@ body {
     transition: none;
   }
 }
+
+/* Placa de moto colombiana (amarilla, letras negras, ciudad abajo): así se ve cada municipio en Cobertura. */
+.moto-plate {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 7.5rem;
+  padding: 5px 12px 4px;
+  border: 2px solid var(--color-ink);
+  border-radius: 8px;
+  background: var(--color-brand);
+  color: var(--color-ink);
+  box-shadow: inset 0 0 0 2px var(--color-brand), inset 0 0 0 3px rgb(20 18 31 / 0.35);
+  font-family: var(--font-display);
+  line-height: 1;
+}
+
+.moto-plate > b {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.moto-plate > small {
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 480px) {
+  .moto-plate { min-width: 6.25rem; padding: 4px 8px 3px; }
+  .moto-plate > b { font-size: 0.8rem; letter-spacing: 0.03em; }
+  .moto-plate > small { font-size: 0.5rem; letter-spacing: 0.24em; }
+}
+
+.moto-plate.is-preparing {
+  background: var(--color-cream);
+  box-shadow: inset 0 0 0 2px var(--color-cream), inset 0 0 0 3px rgb(20 18 31 / 0.2);
+  border-style: dashed;
+}
+
+/* Control del radio: una carretera punteada; la moto es el tirador. */
+.radius-road {
+  --fill: 0%;
+  appearance: none;
+  width: 100%;
+  height: 34px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.radius-road::-webkit-slider-runnable-track {
+  height: 10px;
+  border-radius: 999px;
+  background:
+    repeating-linear-gradient(90deg, var(--color-brand) 0 10px, transparent 10px 18px) center / 100% 2px no-repeat,
+    linear-gradient(90deg, var(--color-chonta-strong) var(--fill), var(--color-ink) var(--fill));
+}
+
+.radius-road::-moz-range-track {
+  height: 10px;
+  border-radius: 999px;
+  background:
+    repeating-linear-gradient(90deg, var(--color-brand) 0 10px, transparent 10px 18px) center / 100% 2px no-repeat,
+    linear-gradient(90deg, var(--color-chonta-strong) var(--fill), var(--color-ink) var(--fill));
+}
+
+.radius-road::-webkit-slider-thumb {
+  appearance: none;
+  width: 34px;
+  height: 34px;
+  margin-top: -12px;
+  border: 3px solid var(--color-ink);
+  border-radius: 999px;
+  background: var(--color-brand) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2314121f' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><circle cx='18.5' cy='17.5' r='3.5'/><circle cx='5.5' cy='17.5' r='3.5'/><circle cx='15' cy='5' r='1'/><path d='M12 17.5V14l-3-3 4-3 2 3h2'/></svg>") center / 18px no-repeat;
+  box-shadow: 0 4px 12px rgb(20 18 31 / 0.25);
+}
+
+.radius-road::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--color-ink);
+  border-radius: 999px;
+  background: var(--color-brand) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2314121f' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><circle cx='18.5' cy='17.5' r='3.5'/><circle cx='5.5' cy='17.5' r='3.5'/><circle cx='15' cy='5' r='1'/><path d='M12 17.5V14l-3-3 4-3 2 3h2'/></svg>") center / 16px no-repeat;
+}
+
+.radius-road:focus-visible {
+  outline: none;
+}
+
+.radius-road:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 5px rgb(255 197 49 / 0.45);
+}
+
+/* Borde de cobertura sobre el mapa del cliente: el rótulo flotante "Hasta aquí llegamos". */
+.coverage-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 6px;
+  border-radius: 999px;
+  background: var(--color-ink);
+  color: var(--color-brand);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px rgb(20 18 31 / 0.25);
+}

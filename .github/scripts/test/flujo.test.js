@@ -170,6 +170,8 @@ test('issue desde plantilla: etiquetas desde el formulario y enlace a la épica'
 test('lee los issues que cierra un PR', () => {
   assert.deepEqual(lib.issuesQueCierra({ body: 'Closes #12, #13\nresuelve #20', head: 'feature/31-carrito' }).sort((a, b) => a - b), [12, 13, 20, 31]);
   assert.deepEqual(lib.issuesQueCierra({ body: 'Relacionado con #4', head: 'feature/carrito' }), []);
+  // Lista separada solo por espacios (PR #97 cerró la épica pero dejó abiertas sus historias).
+  assert.deepEqual(lib.issuesQueCierra({ body: 'Closes #24 #25 #26\n\n## Antes #9' }), [24, 25, 26]);
 });
 
 test('el reporte de progreso cuenta por fase y épica', async () => {
@@ -179,7 +181,9 @@ test('el reporte de progreso cuenta por fase y épica', async () => {
   await progreso({ github: gh.github, context: contexto(), core });
   const reporte = gh.estado.issues.find((i) => i.body.includes(lib.MARCA_PROGRESO));
   assert.ok(reporte);
-  assert.match(reporte.body, /\*\*1 de 66 historias y tareas hechas/);
+  // El total sale del backlog sembrado: crece cada vez que se agrega una historia.
+  const total = gh.estado.issues.filter((i) => etiquetas(i).some((l) => l === 'tipo: historia' || l === 'tipo: tarea')).length;
+  assert.match(reporte.body, new RegExp(`\\*\\*1 de ${total} historias y tareas hechas`));
   assert.match(reporte.body, /\| \[E01 · Identidad y acceso\]\([^)]+\) \| 1 \| backlog \| 1\/5 \|/);
 });
 

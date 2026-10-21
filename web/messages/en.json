@@ -14,9 +14,12 @@
   "map": {
     "nearYou": "Near you",
     "enableLocation": "Turn on your location to see what's nearby",
-    "outsideArea": "We're not in your area yet · Villagarzón",
+    "outsideArea": "We do not reach your area yet",
     "searching": "searching…",
-    "places": "{count, plural, =0 {no places} one {# place} other {# places}}"
+    "places": "{count, plural, =0 {no places} one {# place} other {# places}}",
+    "weReachYou": "We deliver to your location · {fee} delivery",
+    "coverageAway": "You are {distance} from our coverage in {municipality}",
+    "noCoverageYet": "No coverage open yet"
   },
   "establishment": {
     "orderHere": "Order here",
@@ -73,7 +76,7 @@
     "INVALID_AREA": "{reason, select, TOO_FEW_VERTICES {The area needs at least 3 corners.} TOO_MANY_VERTICES {The area has too many corners.} SELF_INTERSECTION {The area's sides cross each other.} TOO_SMALL {The area is too small.} TOO_LARGE {The area is too large.} other {The drawn area isn't valid.}}",
     "AREA_MUST_COVER_LOCATION": "The store point must be inside the area.",
     "LOCATION_OUTSIDE_MUNICIPALITY": "That point is outside the municipality.",
-    "INVALID_RADIUS": "The search radius isn't valid.",
+    "INVALID_RADIUS": "The radius must be between 200 m and 15 km.",
     "INVALID_PRICE": "The price isn't valid.",
     "INVALID_PREP_MINUTES": "Preparation time must be between 0 and 240 minutes.",
     "SPANISH_TEXT_REQUIRED": "The Spanish text is required.",
@@ -139,7 +142,10 @@
     "RECIPIENT_NOT_FOUND": "That contact is no longer saved.",
     "TOO_MANY_ADDRESSES": "You can save up to {max} places.",
     "ORDER_NOT_FOUND": "We couldn't find that order.",
-    "REQUEST_REUSED": "Please try again."
+    "REQUEST_REUSED": "Please try again.",
+    "COVERAGE_NOT_FOUND": "That municipality has no coverage yet.",
+    "MUNICIPALITY_NOT_READY": "Before opening, the municipality needs coverage, hours and a commission.",
+    "GLOBAL_ADMIN_ONLY": "Only the general administrator opens or pauses municipalities."
   },
   "auth": {
     "signInTitle": "Sign in with your phone",
@@ -263,6 +269,7 @@
       "staff": "Staff",
       "establishments": "Stores",
       "categories": "Categories",
+      "coverage": "Coverage",
       "zones": "Zones",
       "hours": "Hours",
       "settings": "Settings"
@@ -922,7 +929,9 @@
     "probeHint": "Tap a point on the map to see which fee would apply there.",
     "probeOutside": "That point is outside coverage.",
     "vertexHint": "Drag to move; double-tap to remove",
-    "midpointHint": "Add a point here"
+    "midpointHint": "Add a point here",
+    "probeCoverage": "Coverage base fee",
+    "emptyBodyWithCoverage": "For now the whole coverage charges the base fee. Add a neighborhood or rural area if it needs a different fee."
   },
   "schedule": {
     "title": "Opening hours",
@@ -1089,7 +1098,7 @@
     "locationDenied": "We couldn't see your location. Move the map to the delivery spot.",
     "zoneFee": "Delivery to {zone}: {fee}",
     "checkingZone": "Working out the delivery fee…",
-    "outsideZone": "We don't reach this spot yet. Move the pin to a covered neighborhood or village.",
+    "outsideZone": "We do not deliver here yet. Move the pin inside the lit area of the map.",
     "reference": "Landmark to find you",
     "referencePlaceholder": "Blue two-story house across from the park",
     "referenceHint": "What the courier would see on arrival: color, gate, a shop nearby.",
@@ -1141,10 +1150,11 @@
     "removed": "No longer available: {names}.",
     "repriced": "Price changed for: {names}. Check the total.",
     "legal": "When you confirm, a RapiChonta courier buys it for you at the store and brings it over.",
-    "outsideShort": "No coverage here",
+    "outsideShort": "Outside coverage",
     "missingRecipientPhone": "Enter a 10-digit mobile number starting with 3",
     "cashExactNote": "Paying the exact amount",
-    "storeClosed": "This store is not taking orders"
+    "storeClosed": "This store is not taking orders",
+    "outsideDistance": "Coverage starts {distance} from this point."
   },
   "payment": {
     "CASH": "Cash",
@@ -1235,5 +1245,65 @@
     "updated": "Updates automatically",
     "signInBody": "Sign in with your phone to follow each order.",
     "detailTitle": "Your order"
+  },
+  "coverage": {
+    "title": "Coverage",
+    "subtitle": "How far our couriers go · {open} of {total} municipalities open",
+    "workingIn": "Working in",
+    "groupOpen": "Open",
+    "groupPreparing": "Getting ready",
+    "statusOpen": "Open",
+    "statusPreparing": "Getting ready",
+    "noCoverage": "No coverage yet",
+    "summaryRadius": "{radius} radius from the center",
+    "summaryArea": "Drawn area of {area} km²",
+    "baseFee": "Base fee {fee}",
+    "readinessTitle": "Still needed to open",
+    "readinessOpen": "{zones, plural, =0 {Serving with the base fee only} one {Serving with # zone with its own fee} other {Serving with # zones with their own fee}}",
+    "readiness": {
+      "coverage": "Coverage",
+      "hours": "Hours",
+      "commission": "Commission"
+    },
+    "ready": "Done",
+    "missing": "Missing",
+    "defineCoverage": "Set coverage",
+    "editCoverage": "Change coverage",
+    "launch": "Open {name}",
+    "pause": "Pause orders in {name}",
+    "pauseTitle": "Pause {name}?",
+    "pauseBody": "It disappears from the map and nobody can order there until you open it again. Nothing is deleted: zones, hours and orders are kept.",
+    "pauseConfirm": "Pause orders",
+    "shape": "Coverage shape",
+    "shapes": {
+      "CIRCLE": "Radius",
+      "POLYGON": "Drawn area"
+    },
+    "radius": "How far the motorbike goes",
+    "areaApprox": "≈ {area} km² covered",
+    "centerHint": "Tap the map to move the center (the main square, the market).",
+    "centerReset": "Municipality center",
+    "fee": "Base delivery fee",
+    "feeHint": "Charged across the whole coverage, except in neighborhoods and rural areas with their own fee.",
+    "save": "Save coverage",
+    "cancel": "Cancel",
+    "remove": "Remove coverage",
+    "removeTitle": "Remove the coverage?",
+    "removeBody": "In {name} orders will only be possible inside neighborhoods and rural areas with their own fee. Past orders do not change.",
+    "mapLegend": "Coverage edge",
+    "mapHintCircle": "Tap the map to move the center",
+    "mapHintDraw": "Tap the map to place each corner",
+    "mapHintEdit": "Drag the points to adjust the edge",
+    "emptyTitle": "{name} has no coverage yet",
+    "emptyBody": "Set a radius from the center or draw the area couriers reach.",
+    "problems": {
+      "TOO_FEW_VERTICES": "Not enough points",
+      "TOO_MANY_VERTICES": "Too many points",
+      "SELF_INTERSECTION": "The edge crosses itself",
+      "TOO_SMALL": "Too small for a coverage (minimum 0.1 km²)",
+      "TOO_LARGE": "Too large for a coverage (maximum 1,000 km²)"
+    },
+    "vertexHint": "Drag to move; double tap to remove",
+    "midpointHint": "Add a point here"
   }
 }

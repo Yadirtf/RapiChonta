@@ -1,4 +1,4 @@
-import { ConflictError, DomainError, NotFoundError, ServiceUnavailableError } from '../../../shared/domain/domain.error';
+import { ConflictError, DomainError, NotFoundError, PermissionDeniedError, ServiceUnavailableError } from '../../../shared/domain/domain.error';
 
 /** Errores del módulo business-config. El `code` es el contrato con la web y la app (lo traducen). */
 export const BusinessErrors = {
@@ -13,7 +13,14 @@ export const BusinessErrors = {
     new DomainError('La zona se superpone con otra zona activa', 'ZONE_OVERLAP', { zones }),
   zoneTrimEmpty: () => new DomainError('Al recortar no queda área', 'ZONE_TRIM_EMPTY'),
   zoneTrimSplit: () => new DomainError('Al recortar la zona queda partida en varias piezas', 'ZONE_TRIM_SPLIT'),
-  noCoverage: () => new DomainError('La dirección está fuera de las zonas de entrega', 'NO_COVERAGE'),
+  /** `distanceMeters`: qué tan lejos queda el punto del borde de la cobertura (el cliente lo ve). */
+  noCoverage: (distanceMeters: number | null = null) =>
+    new DomainError('La dirección está fuera de las zonas de entrega', 'NO_COVERAGE', { distanceMeters }),
+  invalidRadius: (min: number, max: number) => new DomainError(`El radio debe estar entre ${min} y ${max} m`, 'INVALID_RADIUS', { min, max }),
+  coverageNotFound: () => new NotFoundError('COVERAGE_NOT_FOUND', 'El municipio no tiene cobertura'),
+  /** `missing`: lo que falta para abrir (COVERAGE, HOURS, COMMISSION); el panel lo muestra como lista. */
+  municipalityNotReady: (missing: string[]) => new DomainError('Al municipio le falta configuración para abrir', 'MUNICIPALITY_NOT_READY', { missing }),
+  globalAdminOnly: () => new PermissionDeniedError('GLOBAL_ADMIN_ONLY', 'Solo el administrador general abre o pausa municipios'),
   establishmentNotFound: () => new NotFoundError('ESTABLISHMENT_NOT_FOUND', 'Establecimiento no encontrado'),
 
   invalidTime: () => new DomainError('Hora inválida (HH:MM)', 'INVALID_TIME'),

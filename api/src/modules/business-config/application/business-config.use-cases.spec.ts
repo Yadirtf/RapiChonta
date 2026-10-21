@@ -93,7 +93,7 @@ describe('Zonas de entrega (H03.1)', () => {
 
   it('el personal de otro municipio no ve ni toca la zona', async () => {
     const { manageZones, municipalities } = setup();
-    municipalities.rows.push({ id: 2, name: 'Mocoa', timeZone: 'America/Bogota', center: { lat: 1.15, lng: -76.65 }, launched: true });
+    municipalities.rows.push({ id: 2, name: 'Mocoa', department: 'Putumayo', timeZone: 'America/Bogota', center: { lat: 1.15, lng: -76.65 }, launched: true });
     const created = await manageZones.create(admin, zone({ municipalityId: 1 }));
     await expect(manageZones.deactivate(scopedAdmin(2), created.id)).rejects.toMatchObject({ code: 'ZONE_NOT_FOUND' });
     await expect(manageZones.list(scopedAdmin(2), 1)).rejects.toMatchObject({ code: 'MUNICIPALITY_NOT_FOUND' });
