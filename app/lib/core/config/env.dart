@@ -7,6 +7,10 @@ class Env {
     defaultValue: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   );
 
+  /// Sentry (H05.4): sin DSN la app no envía nada. Entorno: pruebas o produccion.
+  static const sentryDsn = String.fromEnvironment('SENTRY_DSN');
+  static const sentryEnvironment = String.fromEnvironment('SENTRY_ENVIRONMENT', defaultValue: 'pruebas');
+
   /// Web pública (documentos legales). Por defecto, el mismo origen de la API (contenedor único).
   static const _webUrl = String.fromEnvironment('WEB_URL');
   static String get webUrl => _webUrl.isNotEmpty ? _webUrl : apiUrl.replaceFirst(RegExp(r'/api/v\d+/?$'), '');
