@@ -26,8 +26,8 @@ jobs:
       app: ${{ github.event_name != 'pull_request' || steps.filtro.outputs.app == 'true' }}
       imagen: ${{ github.event_name != 'pull_request' || steps.filtro.outputs.imagen == 'true' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v4
         id: filtro
         with:
           filters: |
@@ -72,8 +72,8 @@ jobs:
     env:
       DATABASE_URL: postgresql://rapichonta:rapichonta@localhost:5432/rapichonta?schema=public
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -107,8 +107,8 @@ jobs:
     env:
       NEXT_TELEMETRY_DISABLED: 1
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -118,7 +118,7 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
       - run: npm run lint
       - run: npm run typecheck
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: web/.next/cache
           key: next-${{ hashFiles('web/package-lock.json') }}-${{ hashFiles('web/src/**') }}
@@ -134,7 +134,7 @@ jobs:
       run:
         working-directory: app
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -149,10 +149,10 @@ jobs:
     if: needs.cambios.outputs.imagen == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       # Solo se construye (no se publica): SnapDeploy compila la suya desde develop.
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           push: false
