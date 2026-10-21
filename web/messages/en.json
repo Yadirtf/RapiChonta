@@ -944,7 +944,6 @@
     "removeSlot": "Remove slot",
     "opensAt": "{day}, slot {n}: opens",
     "closesAt": "{day}, slot {n}: closes",
-    "midnightHint": "00:00 as closing time means midnight",
     "copy": "Copy",
     "copyWorkdays": "Copy to Mon–Fri",
     "copyAll": "Copy to whole week",
@@ -1312,5 +1311,20 @@
     "retry": "Try again",
     "home": "Go home",
     "code": "Support code: {digest}"
+  },
+  "pickers": {
+    "hour": "Hour",
+    "minutes": "Minutes",
+    "periods": {
+      "dawn": "Early",
+      "morning": "Morning",
+      "afternoon": "Afternoon",
+      "evening": "Evening"
+    },
+    "midnight": "Midnight",
+    "endOfDay": "Midnight",
+    "done": "Done",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month"
   }
 }

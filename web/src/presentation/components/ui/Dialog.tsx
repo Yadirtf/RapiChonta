@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 interface DialogProps {
@@ -20,6 +20,11 @@ interface DialogProps {
   side?: boolean;
 }
 
+// Portal solo en el navegador: en el servidor no hay document.body.
+const noop = () => () => {};
+const isClient = () => true;
+const isServer = () => false;
+
 const SIZES = { sm: "sm:max-w-md", md: "sm:max-w-lg", lg: "sm:max-w-2xl" };
 
 /** Diálogos abiertos, del más antiguo al más reciente: solo el de arriba responde al teclado. */
@@ -33,8 +38,7 @@ export function Dialog({ open, onClose, title, description, children, size = "sm
   const titleId = useId();
   const descriptionId = useId();
   const panel = useRef<HTMLDivElement>(null);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(noop, isClient, isServer);
 
   useEffect(() => {
     if (!open) return;
