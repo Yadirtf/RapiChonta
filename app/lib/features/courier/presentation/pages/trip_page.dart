@@ -511,8 +511,12 @@ class _BuyStageState extends ConsumerState<_BuyStage> {
             style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.6),
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
-              prefixText: '\$ ',
-              prefixStyle: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.chonta),
+              // Siempre a la vista (prefixText solo aparece al escribir): es un monto en pesos.
+              prefixIcon: const Padding(
+                padding: EdgeInsets.only(left: 16, right: 6),
+                child: Text('\$', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.chonta)),
+              ),
+              prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
               hintText: l10n.tripAmountHint,
               hintStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.ink.withValues(alpha: 0.35)),
               errorText: _tried && pesos == null ? l10n.tripAmountMissing : null,
