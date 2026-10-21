@@ -241,6 +241,20 @@ epicas:
           - "El cliente elige mostrar USD, EUR o ninguna; el valor aparece como aproximado (≈ US$ 6,10)."
           - "Si no hay tasa del día, se usa la última disponible y se indica la fecha."
 
+      - id: H03.5
+        titulo: Cobertura por municipio
+        como: administrador
+        quiero: "definir desde el panel hasta dónde llegan los domiciliarios en cada municipio, con un radio o un área dibujada"
+        para: "abrir nuevos municipios sin desplegar y que el cliente sepa si llegamos a su ubicación"
+        areas: [api, web, app]
+        prioridad: alta
+        requerimientos: [RF-18, RF-14, RF-21]
+        criterios:
+          - "En el panel cada municipio tiene una cobertura: radio en metros alrededor del centro (la plaza) o un área dibujada, y una tarifa base."
+          - "Un municipio se abre a pedidos solo con cobertura, horario y comisión; solo el administrador general lo abre o lo pausa."
+          - "El cliente ve el área cubierta en el mapa y si su ubicación queda dentro; puede mover el pin (por ejemplo, para otra persona) y la API valida ese punto."
+          - "Fuera de la cobertura no se puede pedir y se indica a qué distancia empieza."
+
   - id: E04
     titulo: Pedido del cliente
     fase: 1

@@ -54,6 +54,9 @@ RF-17:
   fuente: Docs/05-flujos-y-ux.md
 
 # ── Pedido del cliente ───────────────────────────────────────────────────────
+RF-18:
+  texto: "Cada municipio tiene una cobertura definida desde el panel: un radio alrededor de su centro o un área dibujada, con tarifa base. Las zonas URBAN y RURAL quedan dentro y su tarifa manda. Solo se pide dentro de la cobertura de un municipio abierto; el cliente ve el área en el mapa, si su ubicación (o el pin que puso) queda dentro y, si no, a qué distancia empieza."
+  fuente: Docs/14-base-de-datos/E03-zonas-horario-configuracion.md
 RF-20:
   texto: "El cliente arma un carrito con productos de un solo establecimiento y ve el total: suma de productos más la tarifa de la zona de entrega."
   fuente: Docs/05-flujos-y-ux.md
