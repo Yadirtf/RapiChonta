@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../../../core/network/api_client.dart';
@@ -63,10 +66,64 @@ final establishmentDetailProvider = FutureProvider.autoDispose.family<Establishm
   (ref, key) => ref.watch(establishmentRepositoryProvider).findById(key.$1, language: key.$2),
 );
 
-/// Canasta en memoria: se envía a la API recién al confirmar el pedido (E04).
-class CartNotifier extends Notifier<Cart?> {
+/// Dónde se guarda la canasta en el teléfono (sobrevive a cerrar la app). Se reemplaza en las pruebas.
+abstract class CartStore {
+  Future<Cart?> read();
+  Future<void> write(Cart? cart);
+}
+
+class SecureCartStore implements CartStore {
+  static const _key = 'rc.cart';
+  static const _storage = FlutterSecureStorage();
+
   @override
-  Cart? build() => null;
+  Future<Cart?> read() async {
+    final raw = await _storage.read(key: _key);
+    if (raw == null) return null;
+    try {
+      return Cart.fromJson(jsonDecode(raw));
+    } on FormatException {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> write(Cart? cart) => cart == null ? _storage.delete(key: _key) : _storage.write(key: _key, value: jsonEncode(cart.toJson()));
+}
+
+final cartStoreProvider = Provider<CartStore>((ref) => SecureCartStore());
+
+/// Canasta guardada en el teléfono: solo productos, cantidades y notas (nada personal).
+/// Se envía a la API recién al confirmar el pedido (E04).
+class CartNotifier extends Notifier<Cart?> {
+  /// true en cuanto el cliente toca la canasta: lo que se lea tarde del almacenamiento ya no la pisa.
+  bool _touched = false;
+
+  /// Local cuyo pedido ya se confirmó: si la canasta guardada es de ahí, no se restaura.
+  String? _placedAt;
+
+  @override
+  Cart? build() {
+    final store = ref.watch(cartStoreProvider);
+    store.read().then((saved) {
+      if (_touched || saved == null) return;
+      state = saved.establishmentId == _placedAt ? null : saved;
+    }, onError: (_) {});
+    return null;
+  }
+
+  /// El pedido de ese local ya existe: su canasta se vacía (aunque todavía no se haya leído del teléfono).
+  void placedAt(String establishmentId) {
+    _placedAt = establishmentId;
+    if (state?.establishmentId == establishmentId) state = null;
+  }
+
+  @override
+  set state(Cart? value) {
+    _touched = true;
+    super.state = value;
+    ref.read(cartStoreProvider).write(value).catchError((_) {});
+  }
 
   void add(EstablishmentDetail establishment, MenuProduct product) =>
       state = CartRules.add(state, establishmentId: establishment.id, establishmentName: establishment.name, product: product);
@@ -74,6 +131,20 @@ class CartNotifier extends Notifier<Cart?> {
   void setQuantity(String productId, int quantity) {
     final cart = state;
     if (cart != null) state = CartRules.setQuantity(cart, productId, quantity);
+  }
+
+  void setNotes(String productId, String notes) {
+    final cart = state;
+    if (cart != null) state = CartRules.setNotes(cart, productId, notes);
+  }
+
+  /// Corrige la canasta con lo que dijo la API al cotizar o confirmar.
+  ({List<String> removed, List<String> repriced})? correct({Iterable<String> unavailable = const [], Map<String, ({String versionId, int priceCents})> changed = const {}}) {
+    final cart = state;
+    if (cart == null) return null;
+    final result = CartRules.applyCorrections(cart, unavailable: unavailable, changed: changed);
+    state = result.cart;
+    return (removed: result.removed, repriced: result.repriced);
   }
 
   /// Devuelve qué cambió para que la vista avise; null si nada.

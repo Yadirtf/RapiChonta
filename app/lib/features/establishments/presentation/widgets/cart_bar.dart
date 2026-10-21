@@ -187,9 +187,15 @@ class _CartSheet extends ConsumerWidget {
           const SizedBox(height: 16),
           const OpeningSign(),
           const SizedBox(height: 12),
-          FilledButton(onPressed: null, child: Text(l10n.cartCheckout)),
-          const SizedBox(height: 6),
-          Center(child: Text(l10n.cartCheckoutSoon, style: const TextStyle(fontSize: 12, color: Colors.black45))),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.of(context).pop();
+              context.push('/pedido');
+            },
+            iconAlignment: IconAlignment.end,
+            icon: const Icon(Icons.arrow_forward_rounded),
+            label: Text(l10n.cartCheckout),
+          ),
           TextButton(
             onPressed: () {
               notifier.clear();

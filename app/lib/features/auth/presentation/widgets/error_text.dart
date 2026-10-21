@@ -5,6 +5,7 @@ import '../../../../l10n/app_localizations.dart';
 String errorText(AppLocalizations l10n, Object error) {
   final failure = error is Failure ? error : const Failure('', code: 'UNKNOWN');
   final minutes = ((failure.retryAfterSeconds ?? 60) / 60).ceil().clamp(1, 1440);
+  final max = (failure.details['max'] as num?)?.toInt() ?? 0;
   return switch (failure.code) {
     'NETWORK_ERROR' => l10n.errNetwork,
     'SERVER_ERROR' || 'INTERNAL_ERROR' => l10n.errServer,
@@ -32,6 +33,24 @@ String errorText(AppLocalizations l10n, Object error) {
     'SAME_PHONE' => l10n.errSamePhone,
     'PASSWORD_NOT_SET' => l10n.errPasswordNotSet,
     'ESTABLISHMENT_NOT_FOUND' => l10n.errEstablishmentNotFound,
+    'EMPTY_ORDER' => l10n.errEmptyOrder,
+    'TOO_MANY_LINES' => l10n.errTooManyLines(max),
+    'INVALID_QUANTITY' => l10n.errInvalidQuantity(max),
+    'DUPLICATE_PRODUCT' => l10n.errDuplicateProduct,
+    'PRODUCTS_UNAVAILABLE' => l10n.errProductsUnavailable,
+    'PRODUCTS_CHANGED' => l10n.errProductsChanged,
+    'ESTABLISHMENT_NOT_ACCEPTING_ORDERS' => l10n.errEstablishmentNotAcceptingOrders,
+    'NEW_CUSTOMER_LIMIT' => l10n.errNewCustomerLimit,
+    'PAYMENT_METHOD_UNAVAILABLE' => l10n.errPaymentMethodUnavailable,
+    'ORDERS_NOT_CONFIGURED' => l10n.errOrdersNotConfigured,
+    'ADDRESS_NOT_FOUND' => l10n.errAddressNotFound,
+    'RECIPIENT_NOT_FOUND' => l10n.errRecipientNotFound,
+    'TOO_MANY_ADDRESSES' => l10n.errTooManyAddresses(max),
+    'ORDER_NOT_FOUND' => l10n.errOrderNotFound,
+    'REQUEST_REUSED' => l10n.errRequestReused,
+    'NO_COVERAGE' => l10n.errNoCoverage,
+    'OUTSIDE_OPERATING_HOURS' => l10n.errOutsideOperatingHours,
+    'TEXT_REQUIRED' => l10n.errTextRequired(failure.details['field']?.toString() ?? 'other'),
     _ => l10n.errUnknown,
   };
 }

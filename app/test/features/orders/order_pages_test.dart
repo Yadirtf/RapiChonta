@@ -1,0 +1,169 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:rapichonta/core/error/failure.dart';
+import 'package:rapichonta/features/establishments/domain/entities/cart.dart';
+import 'package:rapichonta/features/establishments/domain/entities/establishment.dart';
+import 'package:rapichonta/features/establishments/presentation/providers/establishments_providers.dart';
+import 'package:rapichonta/features/orders/domain/entities/order.dart';
+import 'package:rapichonta/features/orders/domain/repositories/order_repository.dart';
+import 'package:rapichonta/features/orders/presentation/pages/checkout_page.dart';
+import 'package:rapichonta/features/orders/presentation/pages/my_orders_page.dart';
+import 'package:rapichonta/features/orders/presentation/pages/order_detail_page.dart';
+import 'package:rapichonta/features/orders/presentation/providers/orders_providers.dart';
+import 'package:rapichonta/l10n/app_localizations.dart';
+
+const _journey = ['PENDING_ASSIGNMENT', 'ACCEPTED', 'AT_ESTABLISHMENT', 'PREPARING', 'ON_THE_WAY', 'ARRIVING', 'DELIVERED'];
+final _at = DateTime.utc(2026, 10, 21, 20, 7);
+
+final _delivered = OrderDetail(
+  code: 'RC-W9W5',
+  establishmentId: 'e1',
+  establishmentName: 'Burger Demo',
+  createdAt: _at,
+  status: 'DELIVERED',
+  statusAt: _at,
+  active: false,
+  itemCount: 2,
+  totalCents: 2300000,
+  lines: const [OrderLine(productId: 'p1', name: 'Hamburguesa sencilla', unitCents: 1400000, quantity: 1, notes: 'Sin cebolla')],
+  itemsCents: 2000000,
+  feeCents: 300000,
+  prepMinutes: 15,
+  zoneName: 'Centro',
+  address: const SavedAddress(id: '', label: 'Trabajo', reference: 'Portón verde', location: GeoPoint(1.03, -76.61)),
+  recipient: (fullName: 'Rosa Mutumbajoy', phone: '+573124567890'),
+  paymentMethod: 'CASH',
+  notes: r'Pago con $ 30.000',
+  timeline: [TimelineEntry('PENDING_ASSIGNMENT', _at), TimelineEntry('DELIVERED', _at.add(const Duration(minutes: 40)))],
+  journey: _journey,
+);
+
+class _Orders implements OrderRepository {
+  _Orders({this.missing = false});
+  final bool missing;
+
+  @override
+  Future<OrderDetail> find(String code, {required String language}) async => missing ? throw const Failure('', code: 'ORDER_NOT_FOUND') : _delivered;
+
+  @override
+  Future<OrderHistory> mine({String? before}) async => OrderHistory(active: const [], past: [_delivered], journey: _journey);
+
+  @override
+  Future<List<SavedAddress>> addresses() async => const [SavedAddress(id: 'a1', label: 'Casa', reference: 'Casa azul', location: GeoPoint(1.03, -76.61), isDefault: true)];
+
+  @override
+  Future<List<SavedRecipient>> recipients() async => const [];
+
+  @override
+  Future<List<String>> paymentMethods() async => const ['CASH', 'NEQUI', 'DAVIPLATA', 'BANK_TRANSFER'];
+
+  @override
+  Future<OrderQuote> quote({required String establishmentId, required List<Map<String, dynamic>> items, required DeliveryTarget delivery, required String language}) async =>
+      const OrderQuote(itemsCents: 2000000, feeCents: 300000, totalCents: 2300000, prepMinutes: 15, zoneName: 'Centro',
+          newCustomerLimit: NewCustomerLimit(limitCents: 10000000, availableCents: 7400000, exceeded: false));
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _MemoryCart implements CartStore {
+  _MemoryCart(this.saved);
+  Cart? saved;
+
+  @override
+  Future<Cart?> read() async => saved;
+
+  @override
+  Future<void> write(Cart? cart) async => saved = cart;
+}
+
+Widget _app(Widget home, {OrderRepository? orders, CartStore? cart}) => ProviderScope(
+      overrides: [
+        orderRepositoryProvider.overrideWithValue(orders ?? _Orders()),
+        cartStoreProvider.overrideWithValue(cart ?? _MemoryCart(null)),
+      ],
+      child: MaterialApp(
+        locale: const Locale('es'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: home,
+      ),
+    );
+
+void main() {
+  setUp(() => TestWidgetsFlutterBinding.ensureInitialized());
+
+  testWidgets('el detalle muestra el código, la ruta, la comanda y a quién se entrega', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 2400));
+    await tester.pumpWidget(_app(const OrderDetailPage(code: 'RC-W9W5')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('RC-W9W5'), findsOneWidget);
+    expect(find.text('Entregado'), findsWidgets);
+    expect(find.text('Así va tu pedido'), findsOneWidget);
+    expect(find.text('Hamburguesa sencilla'), findsOneWidget);
+    expect(find.text('Sin cebolla'), findsOneWidget);
+    expect(find.text(r'$ 23.000'), findsOneWidget);
+    expect(find.text('Rosa Mutumbajoy'), findsOneWidget);
+    expect(find.text('+57 312 456 7890'), findsOneWidget);
+    // Un pedido entregado no muestra pasos pendientes.
+    expect(find.text('En camino'), findsNothing);
+  });
+
+  testWidgets('recién confirmado celebra y vacía la canasta de ese local', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 2400));
+    final store = _MemoryCart(const Cart(establishmentId: 'e1', establishmentName: 'Burger Demo', lines: [
+      CartLine(productId: 'p1', versionId: 'v1', name: 'Hamburguesa', priceCents: 1400000, quantity: 1),
+    ]));
+    await tester.pumpWidget(_app(const OrderDetailPage(code: 'RC-W9W5', placed: true), cart: store));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 700));
+
+    expect(find.text('¡Recibimos tu pedido!'), findsOneWidget);
+    expect(store.saved, isNull);
+  });
+
+  testWidgets('un código que no es del cliente muestra cómo volver a sus pedidos', (tester) async {
+    await tester.pumpWidget(_app(const OrderDetailPage(code: 'RC-ZZZZ'), orders: _Orders(missing: true)));
+    await tester.pumpAndSettle();
+    expect(find.text('No encontramos ese pedido'), findsOneWidget);
+  });
+
+  testWidgets('Mis pedidos lista el historial como recibos', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 1200));
+    await tester.pumpWidget(_app(const MyOrdersPage()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Pedidos anteriores'), findsOneWidget);
+    expect(find.text('Burger Demo'), findsOneWidget);
+    expect(find.text(r'$ 23.000'), findsOneWidget);
+  });
+
+  testWidgets('el pedido cotiza el lugar guardado y pide elegir el pago antes de confirmar', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 3200));
+    final store = _MemoryCart(const Cart(establishmentId: 'e1', establishmentName: 'Burger Demo', lines: [
+      CartLine(productId: 'p1', versionId: 'v1', name: 'Hamburguesa sencilla', priceCents: 1400000, quantity: 1),
+      CartLine(productId: 'p2', versionId: 'v1', name: 'Papas', priceCents: 600000, quantity: 1),
+    ]));
+    await tester.pumpWidget(_app(const CheckoutPage(), cart: store));
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    expect(find.text('¿Dónde te lo llevamos?'), findsOneWidget);
+    expect(find.text(r'Domicilio a Centro: $ 3.000'), findsOneWidget);
+    expect(find.text(r'Confirmar pedido · $ 23.000'), findsOneWidget);
+    expect(find.text('Tu primer pedido'), findsOneWidget);
+
+    await tester.tap(find.text(r'Confirmar pedido · $ 23.000'));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Elige cómo vas a pagar'), findsOneWidget);
+
+    await tester.tap(find.text('Efectivo'));
+    await tester.pump();
+    expect(find.text('¿Con cuánto pagas?'), findsOneWidget);
+    expect(find.text(r'$ 30.000'), findsOneWidget);
+  });
+}

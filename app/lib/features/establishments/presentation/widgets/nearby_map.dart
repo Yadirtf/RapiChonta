@@ -26,7 +26,7 @@ class NearbyMap extends StatelessWidget {
           urlTemplate: Env.mapTilesUrl,
           userAgentPackageName: 'com.rapichonta.app',
           // Mismas calles de OSM, con colores más cálidos y vivos (en línea con la paleta de la web).
-          tileBuilder: (context, tile, _) => ColorFiltered(colorFilter: _brandTint, child: tile),
+          tileBuilder: (context, tile, _) => ColorFiltered(colorFilter: brandTint, child: tile),
         ),
         MarkerLayer(
           markers: [
@@ -62,7 +62,7 @@ class NearbyMap extends StatelessWidget {
 }
 
 /// Saturación ×1,25 (verdes y ríos más vivos) y un toque cálido: el fondo gris de OSM queda crema.
-const _brandTint = ColorFilter.matrix(<double>[
+const brandTint = ColorFilter.matrix(<double>[
   1.1969, -0.1788, -0.0181, 0, 4, //
   -0.0524, 1.0551, -0.0178, 0, 0, //
   -0.0505, -0.1699, 1.1704, 0, 0, //

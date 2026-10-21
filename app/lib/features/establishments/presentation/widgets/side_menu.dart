@@ -56,7 +56,14 @@ class SideMenu extends ConsumerWidget {
               const Divider(color: Colors.white24),
               const Padding(padding: EdgeInsets.fromLTRB(24, 8, 16, 4), child: OpeningSign(dark: true)),
               const Padding(padding: EdgeInsets.fromLTRB(20, 4, 16, 4), child: CurrencyPicker()),
-              _MenuItem(icon: Icons.delivery_dining_rounded, label: l10n.menuMyOrders, onTap: () {}),
+              _MenuItem(
+                icon: Icons.delivery_dining_rounded,
+                label: l10n.menuMyOrders,
+                onTap: () {
+                  Scaffold.maybeOf(context)?.closeDrawer();
+                  context.push('/pedidos');
+                },
+              ),
               _MenuItem(
                 icon: Icons.person_rounded,
                 label: account?.givenNames ?? l10n.menuMyAccount,

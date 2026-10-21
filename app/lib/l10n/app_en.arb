@@ -145,8 +145,7 @@
   "cartView": "View basket",
   "cartSubtotal": "{count, plural, =1{Subtotal (1 item)} other{Subtotal ({count} items)}}",
   "cartFeeLater": "The delivery fee is added when you confirm. You pay on delivery.",
-  "cartCheckout": "Confirm order",
-  "cartCheckoutSoon": "Soon you'll be able to confirm your order from here.",
+  "cartCheckout": "Place order",
   "cartClear": "Empty basket",
   "cartSwitchTitle": "Start a new basket?",
   "cartSwitchBody": "Your basket has items from {current}. A courier shops at one store per order; if you continue, we'll empty it and start with {next}.",
@@ -173,5 +172,258 @@
   "approxNote": "Approximate value at today's rate. Charged in pesos.",
   "approxStale": "Approximate value at the {date} rate. Charged in pesos.",
   "currencyLabel": "Show approximate prices in",
-  "currencyHint": "We charge in pesos. Dollar or euro amounts are only a reference."
+  "currencyHint": "We charge in pesos. Dollar or euro amounts are only a reference.",
+  "checkoutTitle": "Your order",
+  "checkoutBack": "Back to the store",
+  "checkoutSignInTitle": "Sign in to place your order",
+  "checkoutSignInBody": "We use your phone to tell you how your order is going and so the courier can call you.",
+  "checkoutSignIn": "Sign in with my phone",
+  "checkoutEmptyTitle": "Your basket is empty",
+  "checkoutEmptyBody": "Pick a store on the map and add what you want us to buy for you.",
+  "checkoutToMap": "See stores",
+  "checkoutStepWhere": "Where should we bring it?",
+  "checkoutStepWho": "Who receives it?",
+  "checkoutStepPay": "How will you pay on delivery?",
+  "checkoutSavedPlaces": "Your places",
+  "checkoutOtherPlace": "Another spot",
+  "checkoutMapHint": "Move the map until the pin sits at the door",
+  "checkoutDeliverHere": "Deliver here",
+  "checkoutUseMyLocation": "My location",
+  "checkoutLocating": "Finding your location…",
+  "checkoutLocationDenied": "We couldn't see your location. Move the map to the delivery spot.",
+  "checkoutZoneFee": "Delivery to {zone}: {fee}",
+  "checkoutCheckingZone": "Working out the delivery fee…",
+  "checkoutOutsideZone": "We don't reach this spot yet. Move the pin to a covered neighborhood or village.",
+  "checkoutReference": "Landmark to find you",
+  "checkoutReferencePlaceholder": "Blue two-story house across from the park",
+  "checkoutReferenceHint": "What the courier would see on arrival: color, gate, a shop nearby.",
+  "checkoutLine": "Address (optional)",
+  "checkoutLinePlaceholder": "Calle 5 # 3-20, San Miguel",
+  "checkoutSaveAs": "Save this place as",
+  "checkoutLabelHome": "Home",
+  "checkoutLabelWork": "Work",
+  "checkoutLabelFamily": "Family",
+  "checkoutLabelCustom": "Other name",
+  "checkoutLabelPlaceholder": "Farm, grandma's…",
+  "checkoutDontSave": "Don't save",
+  "checkoutForMe": "I'll receive it",
+  "checkoutForSomeone": "Someone else",
+  "checkoutForMeHint": "We'll call {phone} if needed.",
+  "checkoutRecipientName": "Recipient's name",
+  "checkoutRecipientPhone": "Their phone",
+  "checkoutRecipientHint": "The courier only sees this number once on the way.",
+  "checkoutSavedRecipients": "You've sent to",
+  "checkoutNewRecipient": "Someone new",
+  "checkoutPayHint": "You pay when you receive it. The courier brings the order and charges what the receipt says.",
+  "checkoutCashChange": "How much will you pay with?",
+  "checkoutCashExact": "Exact",
+  "checkoutCashNote": "Paying with {amount}",
+  "checkoutTransferHint": "The courier shows you their QR code or number so you can transfer.",
+  "checkoutWalletHint": "You send it to their {method} on delivery; they show you the number or QR.",
+  "checkoutNotes": "Note for the courier (optional)",
+  "checkoutNotesPlaceholder": "Doorbell broken, call on arrival",
+  "checkoutReceipt": "Order slip",
+  "checkoutLineNote": "Note",
+  "checkoutLineNotePlaceholder": "No onion, well done…",
+  "checkoutAddNote": "Add note",
+  "checkoutItems": "{count, plural, =1{{count} item} other{{count} items}}",
+  "checkoutProducts": "Items",
+  "checkoutDelivery": "Delivery",
+  "checkoutDeliveryPending": "Pick the spot",
+  "checkoutTotal": "Total to pay",
+  "checkoutPrep": "The store has it ready in about {minutes} min",
+  "checkoutFirstOrderTitle": "Your first order",
+  "checkoutFirstOrderBody": "Until your first delivery, your orders can add up to {limit} in items. You have {available} left.",
+  "checkoutFirstOrderExceeded": "You're {over} over. Remove something or wait for your first delivery.",
+  "checkoutConfirm": "Confirm order · {total}",
+  "checkoutConfirmShort": "Confirm order",
+  "checkoutClosed": "Closed · {detail}",
+  "checkoutMissingReference": "Add a landmark so we can find the place",
+  "checkoutMissingRecipient": "Add the recipient's name and phone",
+  "checkoutMissingPayment": "Choose how you'll pay",
+  "checkoutCartChanged": "We updated your basket before confirming",
+  "checkoutRemoved": "No longer available: {names}.",
+  "checkoutRepriced": "Price changed for: {names}. Check the total.",
+  "checkoutLegal": "When you confirm, a RapiChonta courier buys it for you at the store and brings it over.",
+  "checkoutOutsideShort": "No coverage here",
+  "checkoutMissingRecipientPhone": "Enter a 10-digit mobile number starting with 3",
+  "checkoutCashExactNote": "Paying the exact amount",
+  "checkoutStoreClosed": "This store is not taking orders",
+  "payCash": "Cash",
+  "payNequi": "Nequi",
+  "payDaviplata": "Daviplata",
+  "payBankTransfer": "Bank transfer",
+  "statusPendingAssignmentLabel": "Finding a courier",
+  "statusPendingAssignmentBody": "We're choosing the nearest courier for your order.",
+  "statusAcceptedLabel": "Courier assigned",
+  "statusAcceptedBody": "They're heading to the store to buy your order.",
+  "statusAtEstablishmentLabel": "At the store",
+  "statusAtEstablishmentBody": "The courier is ordering your items.",
+  "statusAwaitingCustomerLabel": "We need your decision",
+  "statusAwaitingCustomerBody": "Something is unavailable or changed price. Review and decide.",
+  "statusPreparingLabel": "Being prepared",
+  "statusPreparingBody": "It's paid at the store and being packed.",
+  "statusOnTheWayLabel": "On the way",
+  "statusOnTheWayBody": "Your order left the store for your address.",
+  "statusArrivingLabel": "Arriving",
+  "statusArrivingBody": "The courier is a few meters away. Have your payment ready.",
+  "statusPendingReviewLabel": "Delivery under review",
+  "statusPendingReviewBody": "The courier reported the delivery with a photo; RapiChonta is reviewing it.",
+  "statusDisputedLabel": "We're looking into it",
+  "statusDisputedBody": "You told us you didn't get it. We'll contact you soon.",
+  "statusDeliveredLabel": "Delivered",
+  "statusDeliveredBody": "Enjoy! Thanks for ordering with RapiChonta.",
+  "statusCancelledLabel": "Cancelled",
+  "statusCancelledBody": "This order was cancelled. You don't owe anything.",
+  "ordersTitle": "My orders",
+  "ordersBackToMap": "Back to the map",
+  "ordersSignInTitle": "Sign in to see your orders",
+  "ordersSignIn": "Sign in with my phone",
+  "ordersActive": "In progress",
+  "ordersHistory": "Past orders",
+  "ordersEmptyTitle": "You haven't ordered yet",
+  "ordersEmptyBody": "Pick a store in Villagarzón and we'll buy it and bring it over.",
+  "ordersToMap": "See stores",
+  "ordersEmptyHistory": "Your delivered and cancelled orders will show up here.",
+  "ordersMore": "Show more orders",
+  "ordersItems": "{count, plural, =1{{count} item} other{{count} items}}",
+  "ordersLoadError": "We couldn't load your orders",
+  "ordersRetry": "Try again",
+  "ordersPlacedTitle": "We got your order!",
+  "ordersPlacedBody": "Keep this code. We'll let you know at every step.",
+  "ordersCode": "Order code",
+  "ordersRoute": "How your order is going",
+  "ordersAt": "{time}",
+  "ordersReceipt": "What you ordered",
+  "ordersProducts": "Items",
+  "ordersDelivery": "Delivery to {zone}",
+  "ordersTotal": "Total",
+  "ordersDeliverTo": "We deliver to",
+  "ordersReceivedBy": "Received by",
+  "ordersYou": "You",
+  "ordersPayWith": "You pay with",
+  "ordersNotes": "Note for the courier",
+  "ordersPrep": "The store has it ready in about {minutes} min",
+  "ordersPrivacy": "For your safety and the courier's, we don't show their location: we tell you every step.",
+  "ordersNotFoundTitle": "We couldn't find that order",
+  "ordersNotFoundBody": "Check the code or see your orders.",
+  "ordersToOrders": "See my orders",
+  "ordersUpdated": "Updates automatically",
+  "ordersSignInBody": "Sign in with your phone to follow each order.",
+  "ordersDetailTitle": "Your order",
+  "errEmptyOrder": "Your basket is empty.",
+  "errTooManyLines": "Up to {max} different items per order.",
+  "errInvalidQuantity": "Each item's quantity goes from 1 to {max}.",
+  "errDuplicateProduct": "An item appears twice in the basket.",
+  "errProductsUnavailable": "Some items can't be ordered anymore. We removed them from your basket.",
+  "errProductsChanged": "Some prices changed. Check the total and confirm again.",
+  "errEstablishmentNotAcceptingOrders": "This store isn't taking orders right now.",
+  "errNewCustomerLimit": "Your first order is over the new-customer limit.",
+  "errPaymentMethodUnavailable": "That payment method isn't available.",
+  "errOrdersNotConfigured": "We're not taking orders in this town yet. Check back soon.",
+  "errAddressNotFound": "That address is no longer saved.",
+  "errRecipientNotFound": "That contact is no longer saved.",
+  "errTooManyAddresses": "You can save up to {max} places.",
+  "errOrderNotFound": "We couldn't find that order.",
+  "errRequestReused": "Please try again.",
+  "errNoCoverage": "We don't deliver to that point yet.",
+  "errOutsideOperatingHours": "We're not taking orders right now. Check when we open.",
+  "errTextRequired": "{field, select, name {The name is missing.} addressLine {The address is missing.} reference {Add a landmark so we can find the place.} recipientName {Add the recipient's name.} label {Give the place a name.} other {A required text is missing.}}",
+  "@errOtpSendLimit": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "@errPasswordLocked": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "@prepMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "@cartSubtotal": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@checkoutItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@checkoutPrep": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "@ordersItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@ordersPrep": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "@errTooManyLines": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "@errInvalidQuantity": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "@errTooManyAddresses": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "@checkoutZoneFee": {
+    "placeholders": {
+      "zone": {
+        "type": "String"
+      },
+      "fee": {
+        "type": "String"
+      }
+    }
+  },
+  "@checkoutFirstOrderBody": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      },
+      "available": {
+        "type": "String"
+      }
+    }
+  }
 }

@@ -63,4 +63,32 @@ void main() {
     expect(parsePriceCents('-1'), isNull);
     expect(parsePriceCents('1e3'), isNull);
   });
+
+  group('Canasta guardada y correcciones (E04)', () {
+    test('se guarda y se lee con sus notas; lo dañado se descarta', () {
+      var cart = CartRules.add(null, establishmentId: 'e1', establishmentName: 'Uno', product: _product('a', 100));
+      cart = CartRules.setNotes(cart, 'a', 'Sin cebolla');
+      expect(Cart.fromJson(cart.toJson()), cart);
+      expect(Cart.fromJson(cart.toJson())!.lines.single.notes, 'Sin cebolla');
+      expect(Cart.fromJson({'establishmentId': 'e1', 'establishmentName': 'Uno', 'lines': [{'productId': 'a'}]}), isNull);
+      expect(Cart.fromJson('basura'), isNull);
+    });
+
+    test('las notas vacías se quitan y viajan recortadas al pedido', () {
+      var cart = CartRules.add(null, establishmentId: 'e1', establishmentName: 'Uno', product: _product('a', 100));
+      cart = CartRules.setNotes(cart, 'a', '  bien asado ');
+      expect(cart.checkoutItems.single, {'productVersionId': 'v1', 'quantity': 1, 'notes': 'bien asado'});
+      expect(CartRules.setNotes(cart, 'a', '   ').lines.single.notes, isNull);
+    });
+
+    test('lo que la API rechaza se quita y lo que cambió toma la versión nueva', () {
+      var cart = CartRules.add(null, establishmentId: 'e1', establishmentName: 'Uno', product: _product('a', 100));
+      cart = CartRules.add(cart, establishmentId: 'e1', establishmentName: 'Uno', product: _product('b', 200));
+      final result = CartRules.applyCorrections(cart, unavailable: ['a'], changed: {'b': (versionId: 'v2', priceCents: 250)});
+      expect(result.removed, ['Pa']);
+      expect(result.repriced, ['Pb']);
+      expect(result.cart!.lines.single.versionId, 'v2');
+      expect(result.cart!.subtotalCents, 250);
+    });
+  });
 }
