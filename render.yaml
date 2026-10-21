@@ -1,60 +1,51 @@
 # Blueprint de Render para el entorno de pruebas de RapiChonta.
 # Render lo detecta automáticamente con el nombre render.yaml en la raíz.
 # Guía: Docs/08-despliegue-render.md
-
-databases:
-  - name: rapichonta-db
-    plan: free
-    databaseName: rapichonta
-    user: rapichonta
-    postgresMajorVersion: "16"
+#
+# Un solo servicio Docker con el mismo Dockerfile de SnapDeploy: la web atiende el puerto público
+# y reenvía /api/* a la API dentro del contenedor. Así la web y la API comparten dominio, que es lo
+# que exige la cookie de sesión (SameSite=Strict); con dos servicios *.onrender.com serían sitios distintos.
+# La base de datos va en Neon (PostgreSQL + PostGIS): Render solo permite una base gratuita por cuenta.
+# Al arrancar, start.sh aplica las migraciones (incluye CREATE EXTENSION postgis) y la semilla idempotente.
 
 services:
   - type: web
-    name: rapichonta-api
-    runtime: node
+    name: rapichonta
+    runtime: docker
     plan: free
-    rootDir: api
-    buildCommand: npm ci --include=dev && npx prisma generate && npm run build
-    # --include=dev: NODE_ENV=production haría que npm omita la CLI de Nest y de Prisma.
-    # Aplica migraciones (incluye CREATE EXTENSION postgis) antes de arrancar.
-    startCommand: npx prisma migrate deploy && npm run start:prod
+    # La región no se puede cambiar después: usar la misma de Neon (us-east-2 = ohio, us-east-1 = virginia, us-west-2 = oregon).
+    region: ohio
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /api/health
     autoDeploy: true
     branch: develop
     buildFilter:
       paths:
         - api/**
+        - web/**
+        - Dockerfile
+        - start.sh
     envVars:
-      - key: NODE_VERSION
-        value: "24"
-      - key: NODE_ENV
-        value: production
       - key: DATABASE_URL
-        fromDatabase:
-          name: rapichonta-db
-          property: connectionString
+        sync: false # Cadena directa de Neon (sin -pooler), con ?sslmode=require
       - key: JWT_SECRET
         generateValue: true
-      - key: CORS_ORIGIN
-        sync: false # p. ej. https://rapichonta-web.onrender.com
-
-  - type: web
-    name: rapichonta-web
-    runtime: node
-    plan: free
-    rootDir: web
-    buildCommand: npm ci --include=dev && npm run build
-    startCommand: npm start
-    autoDeploy: true
-    branch: develop
-    buildFilter:
-      paths:
-        - web/**
-    envVars:
-      - key: NODE_VERSION
-        value: "24"
-      - key: NEXT_PUBLIC_API_URL
-        sync: false # p. ej. https://rapichonta-api.onrender.com/api/v1
-      - key: NEXT_PUBLIC_MAP_STYLE_URL
-        value: https://tiles.openfreemap.org/styles/liberty
+      - key: OTP_PEPPER
+        generateValue: true
+      - key: FILES_SIGNING_SECRET
+        generateValue: true
+      - key: OTP_PROVIDER
+        value: console
+      - key: OTP_EXPOSE_CODE
+        value: "true" # Solo en pruebas: muestra el código en pantalla. Nunca en producción.
+      - key: SEED_ADMIN_PHONE
+        sync: false
+      - key: SEED_ADMIN_PASSWORD
+        sync: false # Mínimo 10 caracteres
+      - key: SEED_ADMIN_NAME
+        sync: false
+      - key: SEED_DEMO_DATA
+        value: "true"
+      - key: SENTRY_ENVIRONMENT
+        value: pruebas-render

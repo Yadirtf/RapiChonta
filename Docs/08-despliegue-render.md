@@ -1,35 +1,82 @@
 # 08 · Despliegue en Render (alternativa)
 
-> El entorno de pruebas actual está en SnapDeploy: ver [11 · Despliegue en SnapDeploy](11-despliegue-snapdeploy.md). Esta guía se conserva por si se vuelve a Render.
+> El entorno de pruebas principal está en SnapDeploy: ver [11 · Despliegue en SnapDeploy](11-despliegue-snapdeploy.md). Render es una segunda opción con la misma imagen.
 
-El archivo [`render.yaml`](../render.yaml) en la raíz describe toda la infraestructura de pruebas:
+El archivo [`render.yaml`](../render.yaml) en la raíz crea **un solo servicio Docker** (`rapichonta`) con el mismo [`Dockerfile`](../Dockerfile) de SnapDeploy:
 
-| Recurso | Tipo | Carpeta | Detalle |
-| --- | --- | --- | --- |
-| `rapichonta-db` | PostgreSQL 16 | — | PostGIS se activa con la primera migración |
-| `rapichonta-api` | Web service Node | `api/` | Aplica migraciones al arrancar; health check en `/api/health` |
-| `rapichonta-web` | Web service Node | `web/` | Next.js en modo servidor |
+| Recurso | Dónde | Detalle |
+| --- | --- | --- |
+| `rapichonta` | Render, web service Docker (gratis) | La web (Next.js) atiende el puerto público y reenvía `/api/*` a la API (NestJS) dentro del contenedor. Health check en `/api/health` |
+| Base de datos | [Neon](https://neon.com) (gratis) | PostgreSQL con PostGIS. Render no crea ninguna base |
 
-La app Flutter no se despliega en Render; se compila para las tiendas y apunta a la URL de la API con `--dart-define=API_URL=...`.
+**Por qué así:**
 
-> Render detecta el blueprint con el nombre `render.yaml`. Por eso el archivo se llama así y no `render.yml`.
+- Render permite **una sola base gratuita por cuenta**. Si ya hay una, el blueprint falla con *"cannot have more than one active free tier database"* y cancela los servicios. Además vence a los 30 días. Neon no tiene ese límite y ya se usa en SnapDeploy.
+- La cookie de sesión del panel es `SameSite=Strict`. `onrender.com` es un sufijo público, así que `rapichonta-web.onrender.com` y `rapichonta-api.onrender.com` serían sitios distintos y la sesión web se perdería al recargar. Con un solo servicio la web y la API comparten dominio y no hacen falta `CORS_ORIGIN` ni `NEXT_PUBLIC_API_URL`.
+- Al arrancar, `start.sh` aplica las migraciones (`prisma migrate deploy`, la primera hace `CREATE EXTENSION postgis`) y la semilla idempotente. No hay que entrar a ninguna *Shell*.
+- Consume ~215 MB de RAM, dentro de los 512 MB del plan gratuito.
+
+La app Flutter no se despliega en Render; para apuntarla a este servidor se compila con `API_URL=https://<servicio>.onrender.com/api/v1` (variable del repositorio o entrada del flujo `app-android.yml`).
 
 ## Primer despliegue
 
-1. En Render: **New → Blueprint**, conectar el repositorio `Yadirtf/RapiChonta` y elegir la rama `develop`.
-2. Render pide los valores marcados como `sync: false`:
-   - `CORS_ORIGIN` en la API: la URL de la web, por ejemplo `https://rapichonta-web.onrender.com`.
-   - `NEXT_PUBLIC_API_URL` en la web: la URL de la API con versión, por ejemplo `https://rapichonta-api.onrender.com/api/v1`.
-   Las URLs exactas aparecen al crear los servicios; si cambian, actualizar las variables y volver a desplegar la web (las variables `NEXT_PUBLIC_*` se fijan en el build).
-3. Cargar datos de ejemplo una vez, desde la *Shell* del servicio `rapichonta-api`: `npm run prisma:seed` (o desde tu equipo con la *External Database URL*).
-4. Abrir la web y permitir la ubicación.
+### 1. Base de datos en Neon
+
+Se puede usar la **misma base de SnapDeploy** (las migraciones y la semilla son idempotentes; los dos entornos verán los mismos datos) o una rama nueva de Neon (**Branches → New branch**) para tener datos separados.
+
+En Neon, **Connect**, desactivar *Connection pooling* y copiar la cadena directa (sin `-pooler` en el host):
+`postgresql://usuario:clave@ep-xxxx.us-east-2.aws.neon.tech/neondb?sslmode=require`
+
+Anotar la región (`us-east-2`, `us-east-1`…): el servicio de Render debe quedar en la misma. `render.yaml` usa `region: ohio` (= `us-east-2`). Si la base está en otra región, cambiar esa línea antes de crear el blueprint (`virginia` = `us-east-1`, `oregon` = `us-west-2`); la región no se puede cambiar después.
+
+### 2. Blueprint en Render
+
+1. **New → Blueprint**, conectar `Yadirtf/RapiChonta`, rama `develop`.
+2. Render pide los valores marcados `sync: false`:
+
+   | Variable | Valor |
+   | --- | --- |
+   | `DATABASE_URL` | La cadena de Neon del paso 1 |
+   | `SEED_ADMIN_PHONE` | Celular del primer administrador, por ejemplo `3001234567` |
+   | `SEED_ADMIN_PASSWORD` | Contraseña de al menos 10 caracteres |
+   | `SEED_ADMIN_NAME` | Nombre del administrador |
+
+   Si la base ya tiene ese administrador (por ejemplo, la misma de SnapDeploy), la semilla no lo duplica.
+3. **Apply**. El primer build Docker tarda varios minutos.
+
+Render genera solo `JWT_SECRET`, `OTP_PEPPER` y `FILES_SIGNING_SECRET`, y fija `OTP_PROVIDER=console`, `OTP_EXPOSE_CODE=true` (el código de acceso se ve en pantalla; **nunca en producción**) y `SEED_DEMO_DATA=true`. No definir `PORT`, `CORS_ORIGIN` ni `NEXT_PUBLIC_API_URL`.
+
+Variables opcionales, desde **Environment** del servicio (mismos valores y explicación que en [11](11-despliegue-snapdeploy.md)):
+
+- Sentry: `SENTRY_DSN` (API) y `NEXT_PUBLIC_SENTRY_DSN` (web). Render pasa las variables al build de Docker, así que la web las toma al compilar; después de agregarlas hay que redesplegar.
+- Notificaciones push (E06): `FCM_SERVICE_ACCOUNT`, `HMS_APP_ID`, `HMS_CLIENT_SECRET`, `HMS_MESSAGE_CATEGORY`. Sin ellas los avisos quedan en la bandeja de la app.
+- SMS: `OTP_PROVIDER=twilio` con `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID`.
+- Fotos en R2: `FILE_STORAGE=s3` y las variables `S3_*`.
+
+### 3. Verificar
+
+- `https://<servicio>.onrender.com/api/health` responde `{"status":"ok",...}`.
+- `https://<servicio>.onrender.com/` muestra el mapa; al permitir la ubicación aparecen los establecimientos de ejemplo.
+
+### Si un blueprint anterior falló
+
+El `render.yaml` anterior creaba `rapichonta-db`, `rapichonta-api` y `rapichonta-web`. Si quedó a medias (por ejemplo, solo `rapichonta-web` creado), borrar `rapichonta-web` (**Settings → Delete Web Service**) y el blueprint viejo (**Blueprints → … → Settings → Delete Blueprint**), y crear el blueprint nuevo. Ese servicio era Node, no Docker, y no se reutiliza.
 
 ## Despliegues siguientes
 
-Cada merge a `develop` despliega automáticamente solo el servicio cuya carpeta cambió (`buildFilter`).
+Cada merge a `develop` que toque `api/`, `web/`, `Dockerfile` o `start.sh` reconstruye la imagen y despliega (`buildFilter`). Los cambios solo en `app/` o `Docs/` no despliegan.
 
 ## Límites del plan gratuito
 
-- Los servicios se duermen tras 15 minutos sin tráfico; la primera petición tarda unos 30–60 s en despertar.
-- La base de datos gratuita vence a los 30 días y tiene 1 GB. Para el piloto (fase 2) conviene pasar a planes pagos *Starter* (API, web) y *Basic* (base de datos) con copias de seguridad.
-- Para producción se recomienda duplicar el blueprint con servicios `-prod` desplegando desde `main`.
+- El servicio se duerme tras 15 minutos sin tráfico; la primera petición tarda 30–60 s en despertar. Neon también se suspende y despierta en la primera consulta.
+- 750 horas de instancia al mes por cuenta: alcanza para este único servicio.
+- Para producción conviene un plan pago (*Starter*) y un servicio `-prod` desplegando desde `main`, con su propia base en Neon.
+
+## Problemas comunes
+
+| Síntoma | Causa | Solución |
+| --- | --- | --- |
+| *cannot have more than one active free tier database* | Blueprint anterior con base de Render | Usar este `render.yaml` (sin base de Render) |
+| `P1001: Can't reach database server` | Cadena incorrecta o Neon despertando | Revisar `DATABASE_URL` (directa, con `sslmode=require`) y redesplegar |
+| `type "geography" does not exist` | La base no tiene PostGIS | Usar Neon |
+| La sesión del panel se pierde al recargar | Web y API en dominios distintos | Usar el servicio único de este blueprint |

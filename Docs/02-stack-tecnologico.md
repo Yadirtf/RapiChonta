@@ -17,7 +17,7 @@ Criterios usados para elegir: escalar sin reescribir, comunidad grande (fácil c
 | Mapa app | flutter_map (OpenStreetMap) | 8 |
 | Idiomas web | next-intl con archivos `messages/<idioma>.json` | 4 |
 | Idiomas app | `flutter gen-l10n` con archivos `lib/l10n/app_<idioma>.arb` (JSON) | — |
-| Hosting de pruebas | SnapDeploy (un contenedor Docker con API y web) + Neon (PostgreSQL con PostGIS) | Render (`render.yaml`) |
+| Hosting de pruebas | SnapDeploy (un contenedor Docker con API y web) + Neon (PostgreSQL con PostGIS) | Render (`render.yaml`, mismo contenedor y misma base en Neon) |
 
 ## API: NestJS
 
@@ -32,7 +32,7 @@ Criterios usados para elegir: escalar sin reescribir, comunidad grande (fácil c
 
 ## Base de datos: PostgreSQL + PostGIS
 
-**Por qué:** los pedidos, pagos y estados son datos relacionales con transacciones (no se puede perder un cambio de estado ni duplicar un cobro). PostGIS agrega consultas geográficas con índices espaciales: "establecimientos a menos de 3 km ordenados por distancia" y "domiciliarios disponibles más cercanos al establecimiento" son una sola consulta SQL indexada (`ST_DWithin`). Neon (entorno de pruebas) y Render ofrecen Postgres administrado con PostGIS.
+**Por qué:** los pedidos, pagos y estados son datos relacionales con transacciones (no se puede perder un cambio de estado ni duplicar un cobro). PostGIS agrega consultas geográficas con índices espaciales: "establecimientos a menos de 3 km ordenados por distancia" y "domiciliarios disponibles más cercanos al establecimiento" son una sola consulta SQL indexada (`ST_DWithin`). Neon (entorno de pruebas) ofrece Postgres administrado con PostGIS.
 
 **Alternativas descartadas:**
 - *MongoDB:* tiene consultas geográficas, pero las transacciones entre colecciones y la integridad de pedidos/pagos son más frágiles.
