@@ -226,8 +226,7 @@ class _StatusTicket extends StatelessWidget {
               const Spacer(),
               if (order.active && order.prepMinutes > 0)
                 Flexible(
-                  child: Text(l10n.ordersPrep(order.prepMinutes),
-                      textAlign: TextAlign.end, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                  child: Text(l10n.ordersPrep(order.prepMinutes), textAlign: TextAlign.end, maxLines: 2, style: const TextStyle(color: Colors.white54, fontSize: 12)),
                 ),
             ]),
           ),
