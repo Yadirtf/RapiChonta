@@ -579,3 +579,236 @@ body {
   white-space: nowrap;
   box-shadow: 0 6px 16px rgb(20 18 31 / 0.25);
 }
+
+/* ───────────── Central de despacho (E07) ───────────── */
+
+/*
+ * Riel de comandas: la barra de cocina de la que cuelgan los pedidos. Cada comanda es un papel crema con
+ * su gancho arriba y el borde de abajo rasgado; las nuevas laten en chontaduro hasta que se envían.
+ */
+.dispatch-rail {
+  position: relative;
+  height: 14px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #e9e4d8 0%, #b9b2a3 45%, #8d8677 55%, #d8d2c4 100%);
+  box-shadow: 0 3px 6px rgb(20 18 31 / 0.18), inset 0 1px 0 rgb(255 255 255 / 0.7);
+}
+
+.comanda {
+  --paper: var(--color-cream);
+  position: relative;
+  background: var(--paper);
+  border-radius: 6px 6px 0 0;
+  box-shadow: 0 10px 22px -12px rgb(20 18 31 / 0.45), 0 1px 0 rgb(20 18 31 / 0.06);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+/* Borde rasgado: dientes pequeños, como el papel arrancado del talonario. */
+.comanda::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 100%;
+  height: 8px;
+  background: conic-gradient(from 135deg at 50% 0, var(--paper) 90deg, transparent 0) 0 0 / 12px 8px repeat-x;
+  filter: drop-shadow(0 3px 2px rgb(20 18 31 / 0.08));
+}
+
+/* Gancho del riel. */
+.comanda::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -13px;
+  width: 26px;
+  height: 18px;
+  translate: -50% 0;
+  border-radius: 6px 6px 3px 3px;
+  background: linear-gradient(180deg, #d8d2c4, #8d8677);
+  box-shadow: 0 2px 3px rgb(20 18 31 / 0.25);
+}
+
+.comanda:hover {
+  transform: translateY(-2px) rotate(-0.3deg);
+}
+
+.comanda[aria-pressed="true"] {
+  --paper: #fffdf6;
+  box-shadow: 0 0 0 3px var(--color-ink), 0 16px 28px -14px rgb(20 18 31 / 0.55);
+}
+
+.comanda.is-new {
+  animation: comanda-call 1.6s ease-out infinite;
+}
+
+.comanda.is-returned {
+  --paper: var(--color-chonta-soft);
+}
+
+@keyframes comanda-call {
+  0% {
+    box-shadow: 0 0 0 0 rgb(228 87 46 / 0.55), 0 10px 22px -12px rgb(20 18 31 / 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgb(228 87 46 / 0), 0 10px 22px -12px rgb(20 18 31 / 0.45);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(228 87 46 / 0), 0 10px 22px -12px rgb(20 18 31 / 0.45);
+  }
+}
+
+/* Sello de caucho: "¡Nuevo!", "Nadie aceptó", "Lo rechazaron". */
+.stamp {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 2.5px solid currentColor;
+  border-radius: 6px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1.3;
+  text-transform: uppercase;
+  rotate: -7deg;
+  opacity: 0.92;
+  /* Tinta irregular: el sello no carga parejo. */
+  -webkit-mask: radial-gradient(circle at 30% 40%, #000 60%, rgb(0 0 0 / 0.75) 61%) 0 0 / 7px 7px;
+  mask: radial-gradient(circle at 30% 40%, #000 60%, rgb(0 0 0 / 0.75) 61%) 0 0 / 7px 7px;
+}
+
+/* Cuenta regresiva de la oferta: un plato que se vacía. */
+.offer-clock {
+  --p: 1;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: conic-gradient(var(--color-chonta) calc(var(--p) * 360deg), rgb(20 18 31 / 0.1) 0);
+}
+
+.offer-clock > span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: var(--paper, white);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-leaf);
+  animation: live-dot 1.8s ease-out infinite;
+}
+
+@keyframes live-dot {
+  0% {
+    box-shadow: 0 0 0 0 rgb(31 122 77 / 0.6);
+  }
+  100% {
+    box-shadow: 0 0 0 9px rgb(31 122 77 / 0);
+  }
+}
+
+/* Domiciliario en el mapa: la moto en un medallón amarillo con su nombre en una plaquita. */
+.moto-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+
+.moto-marker > i {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: var(--color-brand);
+  color: var(--color-ink);
+  border: 3px solid var(--color-ink);
+  box-shadow: 0 6px 14px rgb(20 18 31 / 0.35);
+  transition: transform 150ms ease;
+}
+
+.moto-marker > b {
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--color-ink);
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.moto-marker.is-pending > i {
+  background: var(--color-cream);
+  border-style: dashed;
+}
+
+.moto-marker.is-declined > i {
+  background: #d9d6de;
+  color: #6b6875;
+  border-color: #6b6875;
+}
+
+.moto-marker[aria-pressed="true"] > i,
+.moto-marker:hover > i {
+  transform: scale(1.15);
+}
+
+.moto-marker[aria-pressed="true"] > b {
+  background: var(--color-chonta);
+}
+
+/* Pedido esperando en el mapa: el código del pedido en una mini comanda clavada en el local. */
+.order-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: var(--color-cream);
+  color: var(--color-ink);
+  border: 2px solid var(--color-ink);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 0 4px 10px rgb(20 18 31 / 0.25);
+  cursor: pointer;
+}
+
+.order-flag.is-new {
+  background: var(--color-chonta);
+  border-color: var(--color-chonta-strong);
+  color: white;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comanda,
+  .comanda.is-new,
+  .live-dot,
+  .moto-marker > i {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* Libreta de la bitácora (H07.5): margen de chontaduro detrás de la hora y un renglón por entrada. */
+.ledger {
+  background: linear-gradient(90deg, transparent 71px, rgb(228 87 46 / 0.35) 71px 73px, transparent 73px);
+}
+.ledger > li + li {
+  border-top: 1px solid rgb(20 18 31 / 0.07);
+}

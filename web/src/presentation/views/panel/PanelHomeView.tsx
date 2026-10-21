@@ -8,7 +8,7 @@ import { container } from "@/infrastructure/di/container";
 import { useAuth } from "../../auth/AuthProvider";
 import { useResource } from "../../hooks/useResource";
 
-/** Inicio del panel. Los pedidos llegan con E07; por ahora, accesos y pendientes de identidad. */
+/** Inicio del panel: pendientes del día (pedidos sin domiciliario, domiciliarios por verificar) y accesos. */
 export function PanelHomeView() {
   const t = useTranslations("panelHome");
   const { account } = useAuth();
@@ -18,6 +18,9 @@ export function PanelHomeView() {
     [manageCouriers],
   );
   const pendingCount = pending.data?.length ?? 0;
+  const canDispatch = can(account, PERMISSIONS.ASSIGN_ORDERS);
+  const board = useResource(() => (canDispatch ? container.dispatch.board() : Promise.resolve(null)), [canDispatch]);
+  const waiting = board.data?.orders.filter((o) => o.needsCourier).length ?? 0;
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-6 sm:px-8 sm:py-10">
@@ -27,6 +30,20 @@ export function PanelHomeView() {
       </header>
 
       <div className="grid gap-4 md:grid-cols-3">
+        {canDispatch && (
+          <Link href="/panel/despacho" className="group flex flex-col gap-6 rounded-[28px] bg-chonta p-6 text-white shadow-lg transition hover:-translate-y-0.5">
+            <div className="flex items-center justify-between">
+              <span className="grid size-11 place-items-center rounded-2xl bg-white text-chonta-strong">
+                <ClipboardList className="size-5" aria-hidden />
+              </span>
+              <ArrowRight className="size-5 text-white/50 transition group-hover:translate-x-1 group-hover:text-white" aria-hidden />
+            </div>
+            <div>
+              <p className="text-4xl font-extrabold">{board.loading ? "·" : waiting}</p>
+              <p className="text-white/80">{t("waitingOrders", { count: waiting })}</p>
+            </div>
+          </Link>
+        )}
         {manageCouriers && (
           <Link href="/panel/domiciliarios" className="group flex flex-col gap-6 rounded-[28px] bg-ink p-6 text-white shadow-lg transition hover:-translate-y-0.5">
             <div className="flex items-center justify-between">
@@ -72,15 +89,6 @@ export function PanelHomeView() {
             </div>
           </Link>
         )}
-        <div className="flex flex-col gap-6 rounded-[28px] border-2 border-dashed border-ink/10 p-6">
-          <span className="grid size-11 place-items-center rounded-2xl bg-white text-ink/40">
-            <ClipboardList className="size-5" aria-hidden />
-          </span>
-          <div>
-            <p className="font-bold text-ink/70">{t("ordersTitle")}</p>
-            <p className="text-sm text-ink/50">{t("ordersBody")}</p>
-          </div>
-        </div>
       </div>
     </div>
   );

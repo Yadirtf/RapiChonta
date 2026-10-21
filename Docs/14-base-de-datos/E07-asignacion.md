@@ -81,6 +81,7 @@ Quién tiene el pedido. Puede haber varias por pedido si se reasigna, pero **una
 | Columna | Tipo | Nulo | Regla |
 | --- | --- | --- | --- |
 | `order_id` | FK `orders` | no | Índice único parcial `(order_id) WHERE released_at IS NULL`: **garantiza que el primero que acepta gana** |
+| | | | Índice único parcial `(courier_user_id) WHERE released_at IS NULL`: un domiciliario lleva **un pedido a la vez** (dos aceptaciones simultáneas del mismo domiciliario no pasan) |
 | `order_offer_id`, `courier_user_id` | | no | FK compuesta → `order_offer_recipients`: solo se asigna a quien recibió la oferta. `UNIQUE (order_offer_id, courier_user_id)` |
 | `assigned_at` | `timestamptz` | no | |
 | `released_at` | `timestamptz` | sí | |
@@ -93,28 +94,33 @@ La oferta debe pertenecer al mismo pedido: FK compuesta `(order_offer_id, order_
 
 - **Domiciliario ocupado** = tiene una asignación vigente ([E08](E08-modo-domiciliario.md#disponibilidad-h081-rf-40)).
 - **Domiciliario del pedido** = la asignación vigente o, en un pedido terminado, la última (`v_order_courier`).
-- Un disparador diferido impide que un pedido en `PENDING_ASSIGNMENT` u `OFFERED` tenga una asignación vigente, o que un pedido entre `ACCEPTED` y `DISPUTED` no tenga ninguna.
+- Qué estados llevan domiciliario lo dice el catálogo: `order_statuses.requires_courier` (verdadero de `ACCEPTED` a `DISPUTED`). Un disparador diferido exige **asignación vigente ⇔ `requires_courier`** al confirmar la transacción, sin códigos de estado escritos en el SQL.
 
-## Aceptar una oferta (H08.2), en una transacción
+## Aceptar una oferta (H07.3 / H08.2), en una transacción
 
-1. Marcar la respuesta, solo si sigue pendiente y no venció:
+1. Bloquear el pedido (`SELECT ... FROM orders WHERE id = :pedido FOR UPDATE`): dos domiciliarios que aceptan a la vez quedan en fila, y el segundo ya ve el pedido tomado.
+2. Marcar la respuesta, solo si sigue pendiente y no venció:
 
    ```sql
    UPDATE order_offer_recipients r
-   SET status_id = :accepted, responded_at = now()
+   SET status_id = :accepted, responded_at = clock_timestamp()
    FROM order_offers o
    WHERE o.id = r.order_offer_id
      AND r.order_offer_id = :oferta AND r.courier_user_id = :domiciliario
-     AND r.status_id = :pending AND now() < o.expires_at;
-   -- 0 filas: la oferta venció o ya fue retirada.
+     AND r.status_id = :pending AND clock_timestamp() < o.expires_at;
+   -- 0 filas: se explica por qué (ORDER_ALREADY_TAKEN, OFFER_EXPIRED u OFFER_CLOSED).
    ```
-2. `INSERT INTO order_assignments`. Si otro domiciliario ya aceptó, el índice único parcial lo rechaza y la transacción se revierte: la app muestra "otro domiciliario tomó el pedido".
-3. Historial del pedido `OFFERED → ACCEPTED`.
-4. Los demás destinatarios `PENDING` pasan a `WITHDRAWN` y reciben `OFFER_WITHDRAWN`.
+3. `INSERT INTO order_assignments`. Los dos índices únicos parciales son la red de seguridad: ni dos asignaciones vigentes por pedido ni dos por domiciliario (`COURIER_BUSY`).
+4. Historial del pedido `OFFERED → ACCEPTED`.
+5. Los demás destinatarios `PENDING` del pedido pasan a `WITHDRAWN`; un disparador encola `OFFER_WITHDRAWN` en la bandeja de E06 (y `ORDER_OFFERED` al crear cada destinatario), y el código llama a `Notifier.kick()`.
+
+Si el operador vuelve a enviar mientras el pedido está en `OFFERED` (por ejemplo, de uno a todos), se agrega otra oferta sin otra fila de historial. `BROADCAST` excluye a quien ya dijo no o ya tiene el pedido en pantalla; `SPECIFIC` permite insistirle a quien dijo no.
 
 ## Vencimiento (H07.4)
 
-Un trabajo periódico marca `EXPIRED` a los destinatarios `PENDING` de ofertas vencidas y, si el pedido sigue en `OFFERED` sin asignación vigente, inserta en el historial `OFFERED → PENDING_ASSIGNMENT` con fuente `TIMER`. El panel resalta los pedidos cuyo último cambio fue ese.
+Un reloj en la API (`DispatchClock`) duerme hasta el próximo vencimiento (no consulta cada segundo; si no hay ofertas vivas, revisa cada 5 min). Marca `EXPIRED` a los destinatarios `PENDING` de ofertas vencidas y, si el pedido sigue en `OFFERED` sin asignación vigente, inserta en el historial `OFFERED → PENDING_ASSIGNMENT` con fuente `TIMER`.
+
+Si **todos** los destinatarios dicen "No puedo" antes del plazo, el pedido vuelve al panel en ese momento con la fuente `OFFERS_DECLINED` (catálogo `status_sources`), sin esperar el vencimiento. El panel resalta los pedidos cuyo último cambio fue cualquiera de los dos y la campana vuelve a sonar.
 
 ## Domiciliarios cercanos (H07.2, RF-31)
 
@@ -134,4 +140,13 @@ ORDER BY distancia;
 
 ## Auditoría del personal (H07.5, RNF-07)
 
-Quién asignó, reasignó o canceló ya está en `order_offers.sent_by_user_id`, `order_assignments.released_by_user_id` y `order_status_history.changed_by_user_id`. La pantalla de auditoría une esas tablas con `audit_logs` ([00](00-transversal.md#auditoría)) para lo que no tiene tabla propia.
+Quién asignó, reasignó o canceló ya está en `order_offers.sent_by_user_id`, `order_assignments.released_by_user_id` y `order_status_history.changed_by_user_id`. La vista `v_staff_activity` une esas tablas con `audit_logs` ([00](00-transversal.md#auditoría)) sin copiar nada:
+
+| Origen | Acción mostrada |
+| --- | --- |
+| `audit_logs` | Su código de `audit_actions` (personal, configuración, catálogo) |
+| `order_offers` con `sent_by_user_id` | `ORDER_OFFERED` con modo y número de destinatarios |
+| `order_status_history` hecho con un rol de personal (salvo `→ OFFERED`, que ya es la oferta) | `ORDER_STATUS_CHANGED` u `ORDER_CANCELLED`, con la nota |
+| `order_assignments` liberadas por alguien distinto del domiciliario | `ORDER_REASSIGNED` con el motivo |
+
+`GET /admin/audit` filtra por días (hora de Colombia), persona y pedido, y pagina con un cursor `(occurred_at, id)`. Un administrador con municipio ve solo lo de su municipio; lo que no es de un pedido lo ve el administrador general. Todas las tablas de origen son de solo inserción.
