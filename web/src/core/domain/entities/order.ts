@@ -86,6 +86,20 @@ export interface OrderDetail extends OrderSummary {
   timeline: { status: OrderStatusCode; at: string }[];
   /** Pasos del recorrido normal, en orden (los define la API). */
   journey: OrderStatusCode[];
+  /** Mientras se prepara (E08): la hora estimada y si el domiciliario avisó retraso (alta demanda). */
+  preparation: OrderPreparation | null;
+  /** Lo que pagó el domiciliario en el local, con la factura (URL firmada, vence sola). */
+  purchase: OrderPurchase | null;
+}
+
+export interface OrderPreparation {
+  estimatedReadyAt: string;
+  delayed: boolean;
+}
+
+export interface OrderPurchase {
+  amount: string;
+  receiptUrl: string | null;
 }
 
 export interface MyOrdersPage {

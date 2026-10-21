@@ -158,7 +158,13 @@
     "COURIER_BUSY": "Ese domiciliario ya lleva un pedido.",
     "COURIER_NOT_VERIFIED": "El domiciliario todavía no está verificado.",
     "LOCATION_CONSENT_REQUIRED": "Falta la autorización para compartir la ubicación.",
-    "LOCATION_NOT_EXPECTED": "La ubicación solo se envía mientras estás disponible."
+    "LOCATION_NOT_EXPECTED": "La ubicación solo se envía mientras estás disponible.",
+    "TRIP_NOT_FOUND": "Este pedido ya no está a cargo del domiciliario.",
+    "TRIP_STEP_NOT_ALLOWED": "El pedido cambió de estado. Revisa en qué va.",
+    "PURCHASE_AMOUNT_INVALID": "Revisa el total pagado.",
+    "RECEIPT_INVALID": "La foto de la factura no sirve. Toma otra.",
+    "CLIENT_EVENT_CONFLICT": "Ese paso ya se registró en otro pedido.",
+    "COURIER_HAS_ACTIVE_ORDER": "Termina el pedido en curso antes de cambiar a modo cliente."
   },
   "auth": {
     "signInTitle": "Entra con tu celular",
@@ -1257,7 +1263,17 @@
     "toOrders": "Ver mis pedidos",
     "updated": "Se actualiza solo",
     "signInBody": "Entra con tu celular para ver en qué va cada pedido.",
-    "detailTitle": "Tu pedido"
+    "detailTitle": "Tu pedido",
+    "highDemandTitle": "Hay alta demanda en {store}",
+    "highDemandBody": "Tu pedido tarda un poco más de lo normal. Tu domiciliario está esperándolo en el local.",
+    "readyAround": "Listo hacia las {time}",
+    "purchaseTitle": "Compra en el local",
+    "purchaseBody": "Tu domiciliario pagó {amount} en el local.",
+    "seeReceipt": "Ver factura",
+    "receiptTitle": "Factura del pedido {code}",
+    "receiptAlt": "Foto de la factura del pedido {code}",
+    "receiptOpen": "Abrir en tamaño completo",
+    "close": "Cerrar"
   },
   "coverage": {
     "title": "Cobertura",
@@ -1390,7 +1406,9 @@
     "sentAll": "{count, plural, one {Llamamos a # domiciliario} other {Llamamos a # domiciliarios}}. Tienen {seconds} s para responder.",
     "sentOne": "Enviado a {name}. Tiene {seconds} s para responder.",
     "roadTitle": "{count, plural, one {# pedido en camino} other {# pedidos en camino}}",
-    "withCourier": "Con {name} desde hace {time}"
+    "withCourier": "Con {name} desde hace {time}",
+    "prepDelayed": "Preparación retrasada",
+    "paid": "Pagó {amount} en el local"
   },
   "audit": {
     "eyebrow": "Bitácora",

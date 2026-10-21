@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Clock3, KeyRound, MapPin, MessageSquareText, PackageSearch, PartyPopper, ShieldCheck, UserRound } from "lucide-react";
+import { Clock3, KeyRound, MapPin, MessageSquareText, PackageSearch, PartyPopper, ReceiptText, ShieldCheck, UserRound } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -16,6 +16,7 @@ import { ApproxPrice } from "../../components/business/ApproxPrice";
 import { DoorCard, StorePage } from "../../components/layout/StorePage";
 import { OrderRoute } from "../../components/orders/OrderRoute";
 import { paymentIcon } from "../../components/orders/orderVisuals";
+import { HighDemandNote, ReceiptButton } from "../../components/orders/PurchaseReceipt";
 import { StatusBadge } from "../../components/orders/StatusBadge";
 import { Alert } from "../../components/ui/Alert";
 import { Button } from "../../components/ui/Button";
@@ -24,7 +25,7 @@ import { useCatalogFormat } from "../../hooks/useCatalogFormat";
 import { useErrorMessage } from "../../hooks/useErrorMessage";
 import { useResource } from "../../hooks/useResource";
 import { StoreLogo } from "./MyOrdersView";
-import { ORDER_TIME_ZONE, useOrderDate } from "./useOrderDate";
+import { ORDER_TIME_ZONE, useOrderDate, useOrderTime } from "./useOrderDate";
 
 const PlacePreviewMap = dynamic(() => import("../../components/map/PlacePreviewMap").then((m) => m.PlacePreviewMap), {
   ssr: false,
@@ -98,6 +99,7 @@ function Detail({ code, placed }: { code: string; placed: boolean }) {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
         <div className="flex min-w-0 flex-col gap-6">
           <StatusTicket order={order} />
+          {order.active && order.preparation?.delayed && <HighDemandNote store={order.establishment.name} />}
           <section className="rounded-[28px] bg-white p-5 shadow-[0_12px_32px_-20px_rgb(20_18_31/0.35)] sm:p-6" aria-labelledby="route-title">
             <h2 id="route-title" className="mb-5 font-display text-xl font-extrabold">
               {t("route")}
@@ -110,6 +112,7 @@ function Detail({ code, placed }: { code: string; placed: boolean }) {
         </div>
         <aside className="flex flex-col gap-6 lg:sticky lg:top-6">
           <OrderReceipt order={order} />
+          {order.purchase && <PurchaseCard order={order} purchase={order.purchase} />}
           <DeliveryCard order={order} />
         </aside>
       </div>
@@ -143,6 +146,7 @@ function StatusTicket({ order }: { order: OrderDetail }) {
   const t = useTranslations("orders");
   const ts = useTranslations("orderStatus");
   const when = useOrderDate();
+  const time = useOrderTime();
   return (
     <section className="ticket rounded-[26px] text-white [--notch-y:70%]">
       <div className="p-5 pb-6 sm:p-6">
@@ -171,10 +175,17 @@ function StatusTicket({ order }: { order: OrderDetail }) {
         ) : (
           <span>{t("items", { count: order.itemCount })}</span>
         )}
-        {order.prepMinutes > 0 && order.active && (
-          <span className="flex items-center gap-1">
-            <Clock3 className="size-3.5" aria-hidden /> {t("prep", { minutes: order.prepMinutes })}
+        {order.active && order.preparation ? (
+          <span className="flex items-center gap-1 font-bold text-brand">
+            <Clock3 className="size-3.5" aria-hidden /> {t("readyAround", { time: time(order.preparation.estimatedReadyAt) })}
           </span>
+        ) : (
+          order.prepMinutes > 0 &&
+          order.active && (
+            <span className="flex items-center gap-1">
+              <Clock3 className="size-3.5" aria-hidden /> {t("prep", { minutes: order.prepMinutes })}
+            </span>
+          )
         )}
       </div>
     </section>
@@ -218,6 +229,24 @@ function OrderReceipt({ order }: { order: OrderDetail }) {
           </dd>
         </div>
       </dl>
+    </section>
+  );
+}
+
+/** H08.4: lo que pagó el domiciliario en el local, con la factura. El cliente paga lo del recibo de arriba. */
+function PurchaseCard({ order, purchase }: { order: OrderDetail; purchase: NonNullable<OrderDetail["purchase"]> }) {
+  const t = useTranslations("orders");
+  const money = useCatalogFormat();
+  return (
+    <section className="flex items-center gap-3 rounded-[28px] bg-white p-4 shadow-[0_12px_32px_-20px_rgb(20_18_31/0.35)]">
+      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-cream text-chonta" aria-hidden>
+        <ReceiptText className="size-5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-display font-extrabold">{t("purchaseTitle")}</p>
+        <p className="text-sm text-ink/65">{t("purchaseBody", { amount: money.price(purchase.amount) })}</p>
+      </div>
+      {purchase.receiptUrl && <ReceiptButton url={purchase.receiptUrl} code={order.code} />}
     </section>
   );
 }

@@ -1,4 +1,4 @@
-import type { OrderStatusCode, PaymentMethodCode } from "./order";
+import type { OrderPreparation, OrderPurchase, OrderStatusCode, PaymentMethodCode } from "./order";
 
 /** E07: la central de despacho del operador. Los códigos los da la API; la vista los traduce. */
 export type OfferMode = "SPECIFIC" | "BROADCAST";
@@ -37,6 +37,9 @@ export interface DispatchOrder {
   paymentMethod: PaymentMethodCode;
   offers: DispatchOffer[];
   courier: (PersonName & { userId: string; assignedAt: string }) | null;
+  /** E08: la compra con su factura y la preparación (con la alerta de retraso que reporta el domiciliario). */
+  purchase: OrderPurchase | null;
+  preparation: OrderPreparation | null;
 }
 
 export interface DispatchBoardSnapshot {
