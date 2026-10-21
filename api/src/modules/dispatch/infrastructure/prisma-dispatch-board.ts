@@ -25,6 +25,7 @@ interface OrderRow {
   is_initial: boolean;
   waiting_since: Date | null;
   last_source: string | null;
+  status_since: Date;
   establishment_id: string;
   establishment_name: string;
   address_line: string;
@@ -76,7 +77,7 @@ export class PrismaDispatchBoard extends DispatchBoard {
     // "Busca domiciliario" = ni terminado ni con domiciliario (flags del catálogo, no códigos).
     const rows = await this.prisma.$queryRaw<OrderRow[]>`
       SELECT o.id, o.code, o.created_at, s.code AS status, NOT s.requires_courier AS needs_courier, s.is_initial,
-             w.occurred_at AS waiting_since, last.source AS last_source,
+             w.occurred_at AS waiting_since, last.source AS last_source, last.occurred_at AS status_since,
              e.id AS establishment_id, e.name AS establishment_name, e.address_line,
              ST_Y(e.location::geometry) AS est_lat, ST_X(e.location::geometry) AS est_lng,
              ST_Y(ad.location::geometry) AS lat, ST_X(ad.location::geometry) AS lng, ad.reference,
@@ -102,7 +103,7 @@ export class PrismaDispatchBoard extends DispatchBoard {
         WHERE h.order_id = o.id AND (fs.id IS NULL OR fs.requires_courier)
         ORDER BY h.recorded_at DESC LIMIT 1) w ON true
       LEFT JOIN LATERAL (
-        SELECT src.code AS source FROM order_status_history h JOIN status_change_sources src ON src.id = h.source_id
+        SELECT src.code AS source, h.occurred_at FROM order_status_history h JOIN status_change_sources src ON src.id = h.source_id
         WHERE h.order_id = o.id ORDER BY h.recorded_at DESC LIMIT 1) last ON true
       LEFT JOIN order_assignments oc ON oc.order_id = o.id AND oc.released_at IS NULL
       LEFT JOIN users cu ON cu.id = oc.courier_user_id
@@ -116,6 +117,7 @@ export class PrismaDispatchBoard extends DispatchBoard {
       code: r.code,
       createdAt: r.created_at,
       status: r.status,
+      statusSince: r.status_since,
       needsCourier: r.needs_courier,
       waitingSince: r.needs_courier ? (r.waiting_since ?? r.created_at) : null,
       returnedBy: r.is_initial && r.last_source && RETURNED.has(r.last_source) ? r.last_source : null,

@@ -12,6 +12,7 @@ export const DispatchPresenter = {
     code: o.code,
     createdAt: o.createdAt.toISOString(),
     status: o.status,
+    statusSince: o.statusSince.toISOString(),
     needsCourier: o.needsCourier,
     waitingSince: o.waitingSince?.toISOString() ?? null,
     returnedBy: o.returnedBy,

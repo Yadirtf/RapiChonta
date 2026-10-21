@@ -22,6 +22,8 @@ export interface BoardOrder {
   code: string;
   createdAt: Date;
   status: string;
+  /** Hora del último cambio de estado: distingue un regreso al panel de otro (la alerta suena una vez por cada uno). */
+  statusSince: Date;
   /** Busca domiciliario (estado inicial u ofrecido): el operador puede enviarlo. */
   needsCourier: boolean;
   /** Desde cuándo está sin domiciliario en este intento (se ve el tiempo de espera, H07.1). */

@@ -18,6 +18,8 @@ export const PERMISSIONS = {
   MANAGE_SETTINGS: "settings.manage",
   MANAGE_COMMISSION: "commission.manage",
   MANAGE_MUNICIPALITIES: "municipalities.manage",
+  ASSIGN_ORDERS: "orders.assign",
+  READ_AUDIT: "audit.read",
 } as const;
 
 export interface LegalDocumentVersion {
