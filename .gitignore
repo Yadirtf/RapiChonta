@@ -33,3 +33,6 @@ Thumbs.db
 
 # Código generado por flutter gen-l10n desde lib/l10n/*.arb
 app/lib/l10n/app_localizations*.dart
+
+# Cliente de Prisma generado (npx prisma generate)
+api/src/generated/

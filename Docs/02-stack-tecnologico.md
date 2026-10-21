@@ -6,9 +6,9 @@ Criterios usados para elegir: escalar sin reescribir, comunidad grande (fácil c
 
 | Capa | Elección | Versión base |
 | --- | --- | --- |
-| API | NestJS + TypeScript | Nest 11, Node 22 |
+| API | NestJS + TypeScript | Nest 12, TypeScript 6, Node 24 LTS |
 | Base de datos | PostgreSQL + PostGIS | Postgres 16 |
-| ORM y migraciones | Prisma | 6 |
+| ORM y migraciones | Prisma (generador `prisma-client` + adaptador `pg`) | 7 |
 | Tiempo real (fase 3) | Socket.IO sobre NestJS Gateways + Redis | — |
 | Web | Next.js (App Router) + React + TypeScript | Next 15, React 19 |
 | Estilos y animación | Tailwind CSS + Framer Motion + lucide-react | Tailwind 4 |

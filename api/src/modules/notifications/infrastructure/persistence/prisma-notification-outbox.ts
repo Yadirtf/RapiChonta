@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../../../generated/prisma/client';
 import { CatalogIds } from '../../../../shared/infrastructure/prisma/catalog-ids';
 import { PrismaService } from '../../../../shared/infrastructure/prisma/prisma.service';
 import { DELIVERY_STATUSES, NotificationTypeCode, PushProviderCode, TOKEN_INVALIDATION_REASONS } from '../../domain/notifications.codes';

@@ -1,4 +1,5 @@
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '../../generated/prisma/client';
+import { prismaAdapter } from '../../shared/infrastructure/prisma/prisma-adapter';
 import { hash } from 'argon2';
 import { join } from 'node:path';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
@@ -21,7 +22,7 @@ import { runImport } from '../catalog-import/run';
  * - Con SEED_ADMIN_PHONE + SEED_ADMIN_PASSWORD: el primer administrador (solo si el número no existe).
  * - Con SEED_DEMO_DATA=true: establecimientos de ejemplo con menú (prisma/catalog/demo), sin duplicar.
  */
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ adapter: prismaAdapter() });
 const id = (name: string) => Prisma.raw(`"${name.replace(/"/g, '')}"`);
 
 async function upsertCatalog(table: string, key: string, rows: Record<string, unknown>[], insertOnly = false) {

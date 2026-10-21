@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../../../generated/prisma/client';
 import { CatalogIds } from '../../../../shared/infrastructure/prisma/catalog-ids';
 import { RoleCode, SESSION_END_REASONS, SessionEndReasonCode, USER_STATUSES } from '../../domain/identity.codes';
 import { PhoneNumber } from '../../domain/value-objects/phone-number';

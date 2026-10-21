@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../../generated/prisma/client';
 
 /** Registro de auditoría (RNF-07) dentro de la transacción del caso de uso. Solo inserción. */
 export async function writeAudit(

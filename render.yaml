@@ -27,7 +27,7 @@ services:
         - api/**
     envVars:
       - key: NODE_VERSION
-        value: "22"
+        value: "24"
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
@@ -53,7 +53,7 @@ services:
         - web/**
     envVars:
       - key: NODE_VERSION
-        value: "22"
+        value: "24"
       - key: NEXT_PUBLIC_API_URL
         sync: false # p. ej. https://rapichonta-api.onrender.com/api/v1
       - key: NEXT_PUBLIC_MAP_STYLE_URL

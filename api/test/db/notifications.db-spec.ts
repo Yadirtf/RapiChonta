@@ -1,4 +1,5 @@
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '../../src/generated/prisma/client';
+import { prismaAdapter } from '../../src/shared/infrastructure/prisma/prisma-adapter';
 import { PrismaNotificationOutbox } from '../../src/modules/notifications/infrastructure/persistence/prisma-notification-outbox';
 import { CatalogIds } from '../../src/shared/infrastructure/prisma/catalog-ids';
 import { PrismaService } from '../../src/shared/infrastructure/prisma/prisma.service';
@@ -7,7 +8,7 @@ import { PrismaService } from '../../src/shared/infrastructure/prisma/prisma.ser
  * Reglas de E06 que garantiza PostgreSQL (Docs/14-base-de-datos/E06-notificaciones.md).
  * Requieren una base migrada y con la semilla (SEED_DEMO_DATA para tener productos).
  */
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ adapter: prismaAdapter() });
 class Rollback extends Error {}
 type Tx = Prisma.TransactionClient;
 

@@ -1,5 +1,6 @@
 "use client";
 
+import type * as GeoJSON from "geojson";
 import { maplibregl } from "@/presentation/components/map/maplibre";
 import { type GeoJSONSource, type Map as MapLibreMap, type Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";

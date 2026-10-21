@@ -1,6 +1,6 @@
 import { Injectable, Logger, Module, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client';
 import en from '../../i18n/en.json';
 import es from '../../i18n/es.json';
 import { PrismaService } from '../../shared/infrastructure/prisma/prisma.service';

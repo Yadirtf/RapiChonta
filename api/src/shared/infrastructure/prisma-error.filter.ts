@@ -1,5 +1,5 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus, Logger } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client';
 import { Response } from 'express';
 import { reportError } from './observability/sentry';
 
@@ -24,7 +24,9 @@ export class PrismaErrorFilter implements ExceptionFilter {
 
   private classify(error: Prisma.PrismaClientKnownRequestError | Prisma.PrismaClientUnknownRequestError): [HttpStatus, string] {
     const known = error instanceof Prisma.PrismaClientKnownRequestError ? error : undefined;
-    const sqlState = String((known?.meta as { code?: string } | undefined)?.code ?? '');
+    // Con el adaptador pg (Prisma 7) el SQLSTATE viaja en meta.driverAdapterError.cause.originalCode.
+    const meta = known?.meta as { code?: string; driverAdapterError?: { cause?: { originalCode?: string } } } | undefined;
+    const sqlState = String(meta?.driverAdapterError?.cause?.originalCode ?? meta?.code ?? '');
     const text = error.message;
     // 40001 (el disparador de estados) llega como P2034 "write conflict".
     if (text.includes('STATUS_CONFLICT') || sqlState === '40001' || known?.code === 'P2034') return [HttpStatus.CONFLICT, 'STATUS_CONFLICT'];

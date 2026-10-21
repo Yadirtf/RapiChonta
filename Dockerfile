@@ -5,7 +5,7 @@
 # Dos etapas en total: el plan gratuito (Small) de SnapDeploy no acepta más.
 
 # 1) Build: compila la API y la web en la misma etapa.
-FROM node:22-bookworm-slim AS build
+FROM node:24-bookworm-slim AS build
 # Prisma necesita OpenSSL para generar el cliente con el motor correcto.
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
@@ -35,7 +35,7 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
 RUN npm run build
 
 # 2) Runtime: solo lo necesario para ejecutar.
-FROM node:22-bookworm-slim
+FROM node:24-bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
@@ -47,7 +47,7 @@ ENV NODE_ENV=production \
 COPY --from=build /app/api/node_modules ./api/node_modules
 COPY --from=build /app/api/dist ./api/dist
 COPY --from=build /app/api/prisma ./api/prisma
-COPY api/package.json api/tsconfig.json ./api/
+COPY api/package.json api/tsconfig.json api/prisma.config.ts ./api/
 # Web: servidor standalone de Next.js.
 COPY --from=build /app/web/.next/standalone ./web
 COPY --from=build /app/web/.next/static ./web/.next/static

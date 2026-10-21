@@ -1,3 +1,4 @@
+import type * as GeoJSON from "geojson";
 import type { LngLat } from "./catalog-admin";
 import type { ZoneLimits } from "./business";
 import type { GeoPoint } from "./establishment";

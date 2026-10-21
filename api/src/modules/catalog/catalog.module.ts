@@ -1,5 +1,5 @@
 import { Injectable, Logger, Module, OnApplicationBootstrap } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../shared/infrastructure/prisma/prisma.service';
 import { FilesModule } from '../files/files.module';
 import { ManageCategoriesUseCase } from './application/admin/categories.use-cases';

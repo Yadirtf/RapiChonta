@@ -1,10 +1,11 @@
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '../../src/generated/prisma/client';
+import { prismaAdapter } from '../../src/shared/infrastructure/prisma/prisma-adapter';
 
 /**
  * Reglas de E02 que garantiza PostgreSQL (Docs/14-base-de-datos/E02-establecimientos-y-menus.md).
  * Requieren una base migrada y con la semilla: `npm run prisma:deploy && npm run seed:dev && npm run test:db`.
  */
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ adapter: prismaAdapter() });
 class Rollback extends Error {}
 
 async function inTransaction(work: (tx: Prisma.TransactionClient) => Promise<void>): Promise<void> {

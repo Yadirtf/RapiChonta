@@ -1,4 +1,5 @@
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '../../src/generated/prisma/client';
+import { prismaAdapter } from '../../src/shared/infrastructure/prisma/prisma-adapter';
 import { GeoCircle } from '../../src/modules/business-config/domain/value-objects/geo-circle';
 import { COVERAGE_LIMITS } from '../../src/modules/business-config/domain/value-objects/zone-limits';
 import { PrismaZonesRepository } from '../../src/modules/business-config/infrastructure/prisma-zones.repository';
@@ -9,7 +10,7 @@ import { PrismaService } from '../../src/shared/infrastructure/prisma/prisma.ser
  * Reglas de E03 que garantiza PostgreSQL (Docs/14-base-de-datos/E03-zonas-horario-configuracion.md).
  * Requieren una base migrada y con la semilla: `npm run prisma:deploy && npm run seed:dev && npm run test:db`.
  */
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ adapter: prismaAdapter() });
 class Rollback extends Error {}
 
 async function inTransaction(work: (tx: Prisma.TransactionClient) => Promise<void>): Promise<void> {

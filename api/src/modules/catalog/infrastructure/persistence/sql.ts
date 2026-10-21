@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../../../generated/prisma/client';
 import { GeoPoint } from '../../domain/value-objects/geo-point';
 import { GeoPolygon } from '../../domain/value-objects/geo-polygon';
 

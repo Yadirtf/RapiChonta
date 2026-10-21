@@ -4,8 +4,11 @@
 # Las versiones mayores que solo funcionan juntas (familia NestJS con TypeScript, Next con su ESLint,
 # Jest con ts-jest) llegan en un único PR: por separado rompen `npm ci` por dependencias pares, como
 # pasó con @nestjs/schematics 12 (pide TypeScript 6) y @nestjs/testing 12 (pide @nestjs/common 12).
+# Prisma (prisma + @prisma/*) siempre llega en un solo PR: la CLI y el cliente deben tener la misma versión.
 # Node y @types/node no suben de versión mayor solos: se cambian a mano, juntos y solo a versiones LTS
 # (Dockerfile, ci.yml y package.json a la vez).
+# TypeScript 7 se ignora por ahora: su paquete ya no trae la API de JavaScript que usan ts-jest, la CLI de
+# Nest, typescript-eslint y Next.js. Se retoma cuando esas herramientas lo soporten.
 # Las alertas de seguridad abren su PR apenas se publican, sin esperar al lunes.
 version: 2
 
@@ -20,7 +23,11 @@ updates:
     ignore:
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      - dependency-name: typescript
+        versions: [">=7"]
     groups:
+      prisma:
+        patterns: ["prisma", "@prisma/*"]
       menores:
         update-types: [minor, patch]
       nestjs:
@@ -40,6 +47,8 @@ updates:
     ignore:
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      - dependency-name: typescript
+        versions: [">=7"]
     groups:
       menores:
         update-types: [minor, patch]
