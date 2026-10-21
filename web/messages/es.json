@@ -1305,5 +1305,12 @@
     },
     "vertexHint": "Arrastra para mover; doble toque para quitar",
     "midpointHint": "Agregar un punto aquí"
+  },
+  "errorPage": {
+    "title": "Se nos regó el canasto",
+    "body": "Algo falló de nuestro lado mientras cargábamos esta pantalla. Tu pedido y tu cuenta están bien.",
+    "retry": "Intentar de nuevo",
+    "home": "Ir al inicio",
+    "code": "Código para soporte: {digest}"
   }
 }
