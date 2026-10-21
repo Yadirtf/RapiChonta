@@ -1,6 +1,7 @@
 "use client";
 
-import maplibregl, { type Map as MapLibreMap } from "maplibre-gl";
+import { maplibregl } from "./maplibre";
+import { type Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Home, Store } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";

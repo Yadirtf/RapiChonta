@@ -1,0 +1,67 @@
+# Actualizaciones automáticas de dependencias (H05.2). Cada lunes Dependabot revisa cada ecosistema y
+# abre PR hacia develop; pasan por el mismo CI que cualquier otro cambio.
+# Los parches y menores de un mismo ecosistema llegan juntos en un solo PR para no llenar la bandeja;
+# las versiones mayores llegan una por una porque suelen pedir cambios en el código.
+# Las alertas de seguridad abren su PR apenas se publican, sin esperar al lunes.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /api
+    target-branch: develop
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: America/Bogota }
+    labels: ["dependencias", "área: api"]
+    commit-message: { prefix: "deps(api)" }
+    open-pull-requests-limit: 5
+    groups:
+      menores:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /web
+    target-branch: develop
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: America/Bogota }
+    labels: ["dependencias", "área: web"]
+    commit-message: { prefix: "deps(web)" }
+    open-pull-requests-limit: 5
+    groups:
+      menores:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /.github/scripts
+    target-branch: develop
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: America/Bogota }
+    labels: ["dependencias", "área: infra"]
+    commit-message: { prefix: "deps(flujo)" }
+    groups:
+      todo:
+        patterns: ["*"]
+
+  - package-ecosystem: pub
+    directory: /app
+    target-branch: develop
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: America/Bogota }
+    labels: ["dependencias", "área: app"]
+    commit-message: { prefix: "deps(app)" }
+    open-pull-requests-limit: 5
+    groups:
+      menores:
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directory: /
+    target-branch: develop
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: America/Bogota }
+    labels: ["dependencias", "área: infra"]
+    commit-message: { prefix: "deps(docker)" }
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule: { interval: weekly, day: monday, time: "06:00", timezone: America/Bogota }
+    labels: ["dependencias", "área: infra"]
+    commit-message: { prefix: "deps(actions)" }
+    groups:
+      todo:
+        patterns: ["*"]

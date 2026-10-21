@@ -1,6 +1,7 @@
 "use client";
 
-import maplibregl, { type GeoJSONSource, type Map as MapLibreMap, type Marker } from "maplibre-gl";
+import { maplibregl } from "@/presentation/components/map/maplibre";
+import { type GeoJSONSource, type Map as MapLibreMap, type Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Zone } from "@/core/domain/entities/business";

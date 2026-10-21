@@ -85,3 +85,8 @@
 - name: "agente: claude"
   color: "D97757"
   description: "Asignado a un agente Claude del proyecto"
+
+# Dependencias (las pone Dependabot en sus PR; ver .github/dependabot.yml)
+- name: "dependencias"
+  color: "0366D6"
+  description: "Actualización automática de dependencias"
