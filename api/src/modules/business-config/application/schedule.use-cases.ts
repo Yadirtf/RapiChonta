@@ -35,17 +35,18 @@ export interface ScheduleView {
  */
 @Injectable()
 export class OpeningHours {
-  private readonly cache = new Map<number, { at: number; calendar: OpeningCalendar }>();
+  private readonly cache = new Map<number, { at: number; day: string; calendar: OpeningCalendar }>();
 
   constructor(private readonly schedule: ScheduleRepository) {}
 
-  async calendar(municipality: MunicipalityInfo): Promise<OpeningCalendar> {
+  async calendar(municipality: MunicipalityInfo, now = new Date()): Promise<OpeningCalendar> {
     const cached = this.cache.get(municipality.id);
-    if (cached && Date.now() - cached.at < 30_000) return cached.calendar;
-    const today = new OpeningCalendar(municipality.timeZone, []).localDate(new Date());
+    const today = new OpeningCalendar(municipality.timeZone, []).localDate(now);
+    // El caché vale para el mismo día local: los días especiales se leen desde "hoy".
+    if (cached && cached.day === today && Date.now() - cached.at < 30_000) return cached.calendar;
     const [slots, exceptions] = await Promise.all([this.schedule.weekly(municipality.id), this.schedule.exceptions(municipality.id, today)]);
     const calendar = new OpeningCalendar(municipality.timeZone, groupByWeekday(slots), new Map(exceptions.map((e) => [e.date, e.slots])));
-    this.cache.set(municipality.id, { at: Date.now(), calendar });
+    this.cache.set(municipality.id, { at: Date.now(), day: today, calendar });
     return calendar;
   }
 
@@ -117,7 +118,7 @@ export class GetBusinessStatusUseCase {
 
   async execute(municipalityId?: number, now = new Date()) {
     const municipality = await this.scope.resolve(null, municipalityId);
-    const state = (await this.hours.calendar(municipality)).stateAt(now);
+    const state = (await this.hours.calendar(municipality, now)).stateAt(now);
     return { municipality, state };
   }
 }
@@ -135,7 +136,7 @@ export class EnsureOpenForOrders {
 
   async execute(municipalityId: number, now = new Date()): Promise<void> {
     const municipality = await this.scope.resolve(null, municipalityId);
-    const state = (await this.hours.calendar(municipality)).stateAt(now);
+    const state = (await this.hours.calendar(municipality, now)).stateAt(now);
     if (!state.open) throw BusinessErrors.outsideOperatingHours(state.nextOpeningAt);
   }
 }

@@ -4,7 +4,7 @@
  * Los textos visibles no viven aquí: la web y la app traducen por `code`.
  */
 
-type Row = Record<string, string | number | boolean | string[] | null>;
+type Row = Record<string, string | number | boolean | string[] | Date | null>;
 
 export interface CatalogSeed {
   table: string;
@@ -246,6 +246,58 @@ export const CATALOGS: CatalogSeed[] = [
     key: 'code',
     rows: ordered(['INTEGER', 'MONEY_COP', 'SECONDS', 'METERS', 'DAYS'].map((code) => ({ code }))),
   },
+
+  // ─────────────── E04 · Pedido del cliente ───────────────
+  {
+    table: 'fulfillment_modes',
+    key: 'code',
+    rows: ordered([
+      { code: 'COURIER_PURCHASE', deactivated_at: null },
+      // Comercios aliados (E15): existe para que el diseño no cambie, pero no se usa hasta entonces.
+      { code: 'MERCHANT_DIRECT', deactivated_at: new Date('2026-10-21T00:00:00Z') },
+    ]),
+  },
+  {
+    // sort_order es el orden del recorrido: la línea de tiempo del cliente lo sigue.
+    table: 'order_statuses',
+    key: 'code',
+    rows: ordered(
+      (
+        [
+          // code, visible al cliente, paso del recorrido, revela datos de entrega, cuenta como entregado
+          ['PENDING_ASSIGNMENT', true, true, false, false],
+          ['OFFERED', false, false, false, false],
+          ['ACCEPTED', true, true, false, false],
+          ['AT_ESTABLISHMENT', true, true, false, false],
+          ['AWAITING_CUSTOMER', true, false, false, false],
+          ['PREPARING', true, true, false, false],
+          ['ON_THE_WAY', true, true, true, false],
+          ['ARRIVING', true, true, true, false],
+          ['PENDING_REVIEW', true, false, true, false],
+          ['DISPUTED', true, false, true, false],
+          ['DELIVERED', true, true, false, true],
+          ['CANCELLED', true, false, false, false],
+        ] as const
+      ).map(([code, visible, milestone, reveals, delivered]) =>
+        STATUS(
+          code,
+          { is_visible_to_customer: visible, is_milestone: milestone, reveals_delivery_details: reveals, counts_as_delivered: delivered },
+          code === 'PENDING_ASSIGNMENT',
+          code === 'DELIVERED' || code === 'CANCELLED',
+        ),
+      ),
+    ),
+  },
+  {
+    table: 'status_change_sources',
+    key: 'code',
+    rows: ordered([
+      { code: 'USER_ACTION', is_automatic: false },
+      { code: 'OFFLINE_SYNC', is_automatic: false },
+      { code: 'GEOFENCE', is_automatic: true },
+      { code: 'TIMER', is_automatic: true },
+    ]),
+  },
 ];
 
 /** Máquinas de estado en datos: pares permitidos `desde → hacia`. */
@@ -299,6 +351,38 @@ export const TRANSITIONS: { table: string; catalog: string; pairs: [string, stri
       ['SOLD_OUT', 'DISCONTINUED'],
     ],
   },
+];
+
+/**
+ * Máquina de estados del pedido (Docs/14-base-de-datos/E04): quién puede hacer cada cambio. `system`: lo hace
+ * la API sin una persona (geocerca, temporizador). Solo se agregan pares y roles; quitar uno es una migración.
+ */
+export const ORDER_TRANSITIONS: { from: string; to: string; roles: string[]; system?: boolean }[] = [
+  { from: 'PENDING_ASSIGNMENT', to: 'OFFERED', roles: ['OPERATOR', 'ADMIN'] },
+  { from: 'PENDING_ASSIGNMENT', to: 'CANCELLED', roles: ['CUSTOMER', 'OPERATOR', 'ADMIN'] },
+  { from: 'OFFERED', to: 'ACCEPTED', roles: ['COURIER'] },
+  { from: 'OFFERED', to: 'PENDING_ASSIGNMENT', roles: [], system: true },
+  { from: 'OFFERED', to: 'CANCELLED', roles: ['CUSTOMER', 'OPERATOR', 'ADMIN'] },
+  { from: 'ACCEPTED', to: 'AT_ESTABLISHMENT', roles: [], system: true },
+  { from: 'ACCEPTED', to: 'PENDING_ASSIGNMENT', roles: ['COURIER', 'OPERATOR', 'ADMIN'] },
+  { from: 'ACCEPTED', to: 'CANCELLED', roles: ['OPERATOR', 'ADMIN'] },
+  { from: 'AT_ESTABLISHMENT', to: 'AWAITING_CUSTOMER', roles: ['COURIER'] },
+  { from: 'AT_ESTABLISHMENT', to: 'PREPARING', roles: ['COURIER'] },
+  { from: 'AT_ESTABLISHMENT', to: 'PENDING_ASSIGNMENT', roles: ['OPERATOR', 'ADMIN'] },
+  { from: 'AT_ESTABLISHMENT', to: 'CANCELLED', roles: ['OPERATOR', 'ADMIN'] },
+  { from: 'AWAITING_CUSTOMER', to: 'AT_ESTABLISHMENT', roles: ['CUSTOMER'], system: true },
+  { from: 'AWAITING_CUSTOMER', to: 'CANCELLED', roles: ['CUSTOMER'], system: true },
+  { from: 'PREPARING', to: 'ON_THE_WAY', roles: ['COURIER'] },
+  { from: 'ON_THE_WAY', to: 'ARRIVING', roles: [], system: true },
+  { from: 'ON_THE_WAY', to: 'DELIVERED', roles: ['CUSTOMER'] },
+  { from: 'ON_THE_WAY', to: 'DISPUTED', roles: ['CUSTOMER'] },
+  { from: 'ARRIVING', to: 'DELIVERED', roles: ['CUSTOMER'] },
+  { from: 'ARRIVING', to: 'DISPUTED', roles: ['CUSTOMER'] },
+  { from: 'ARRIVING', to: 'PENDING_REVIEW', roles: ['COURIER'] },
+  { from: 'PENDING_REVIEW', to: 'DELIVERED', roles: ['OPERATOR', 'ADMIN'] },
+  { from: 'PENDING_REVIEW', to: 'DISPUTED', roles: ['OPERATOR', 'ADMIN'] },
+  { from: 'DISPUTED', to: 'DELIVERED', roles: ['OPERATOR', 'ADMIN'] },
+  { from: 'DISPUTED', to: 'CANCELLED', roles: ['OPERATOR', 'ADMIN'] },
 ];
 
 const CUSTOMER_PERMISSIONS = ['orders.create', 'orders.read_own', 'orders.confirm_delivery', 'adjustments.decide', 'incidents.report'];

@@ -8,6 +8,7 @@ import {
   GEOGRAPHY,
   INITIAL_LEGAL_VERSION,
   LEGAL_REQUIREMENTS,
+  ORDER_TRANSITIONS,
   ROLE_PERMISSIONS,
   SETTINGS,
   TRANSITIONS,
@@ -49,6 +50,21 @@ async function seedCatalogs() {
         ON CONFLICT DO NOTHING
       `;
     }
+  }
+
+  for (const { from, to, roles, system = false } of ORDER_TRANSITIONS) {
+    await prisma.$executeRaw`
+      INSERT INTO order_status_transitions (from_status_id, to_status_id, allows_system)
+      SELECT f.id, t.id, ${system} FROM order_statuses f, order_statuses t WHERE f.code = ${from} AND t.code = ${to}
+      ON CONFLICT (from_status_id, to_status_id) DO UPDATE SET allows_system = EXCLUDED.allows_system
+    `;
+    if (!roles.length) continue;
+    await prisma.$executeRaw`
+      INSERT INTO order_status_transition_roles (from_status_id, to_status_id, role_id)
+      SELECT f.id, t.id, r.id FROM order_statuses f, order_statuses t, roles r
+      WHERE f.code = ${from} AND t.code = ${to} AND r.code IN (${Prisma.join(roles)})
+      ON CONFLICT DO NOTHING
+    `;
   }
 
   const permissions = [...new Set(Object.values(ROLE_PERMISSIONS).flat())];
