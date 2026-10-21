@@ -42,7 +42,7 @@
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/platform-express": "^11.2.7",
     "@nestjs/throttler": "^6.7.1",
-    "@prisma/client": "^6.19.3",
+    "@prisma/client": "^7.10.1",
     "@sentry/nestjs": "^11.8.0",
     "argon2": "^0.45.1",
     "class-transformer": "^0.5.1",
