@@ -5,7 +5,7 @@ import { Clock3, KeyRound, MapPin, MessageSquareText, PackageSearch, PartyPopper
 import { useLocale, useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useRef, type ReactNode } from "react";
+import { createElement, useEffect, useRef, type ReactNode } from "react";
 import { toCents } from "@/core/domain/entities/money";
 import { addressPoint, type OrderDetail } from "@/core/domain/entities/order";
 import { container } from "@/infrastructure/di/container";
@@ -225,7 +225,6 @@ function OrderReceipt({ order }: { order: OrderDetail }) {
 function DeliveryCard({ order }: { order: OrderDetail }) {
   const t = useTranslations("orders");
   const tp = useTranslations("payment");
-  const PayIcon = paymentIcon(order.paymentMethod);
   return (
     <section className="overflow-hidden rounded-[28px] bg-white shadow-[0_12px_32px_-20px_rgb(20_18_31/0.35)]">
       <PlacePreviewMap point={addressPoint(order.address)} className="h-40" />
@@ -245,7 +244,7 @@ function DeliveryCard({ order }: { order: OrderDetail }) {
             <span className="font-bold">{t("you")}</span>
           )}
         </Row>
-        <Row icon={<PayIcon className="size-4" />} term={t("payWith")}>
+        <Row icon={createElement(paymentIcon(order.paymentMethod), { className: "size-4" })} term={t("payWith")}>
           <span className="font-bold">{tp.has(order.paymentMethod) ? tp(order.paymentMethod) : order.paymentMethod}</span>
         </Row>
         {order.notes && (

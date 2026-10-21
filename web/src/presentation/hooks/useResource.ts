@@ -12,7 +12,8 @@ export function useResource<T>(loader: () => Promise<T>, deps: unknown[]) {
   const [loading, setLoading] = useState(true);
   const request = useRef(0);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Las dependencias las define quien llama (como en useEffect): por eso no son un arreglo literal.
+  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/use-memo
   const load = useCallback(loader, deps);
 
   const reload = useCallback(async () => {
