@@ -1,6 +1,7 @@
 export interface MunicipalityInfo {
   id: number;
   name: string;
+  department: string;
   timeZone: string;
   center: { lat: number; lng: number };
   launched: boolean;

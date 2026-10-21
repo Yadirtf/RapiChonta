@@ -7,7 +7,9 @@ import { useEffect, useRef, useState } from "react";
 import type { GeoPoint } from "@/core/domain/entities/establishment";
 import type { SavedAddress } from "@/core/domain/entities/order";
 import { TextField } from "../../components/ui/Field";
-import { DEFAULT_CENTER, useGeolocation } from "../../hooks/useGeolocation";
+import { useCatalogFormat } from "../../hooks/useCatalogFormat";
+import { useCoverage } from "../../hooks/useCoverage";
+import { useGeolocation } from "../../hooks/useGeolocation";
 import { MIN_REFERENCE, PLACE_LABELS, type CheckoutDraft, type PlaceLabel } from "./checkout-draft";
 import { ChoiceChip } from "./StepCard";
 
@@ -17,7 +19,12 @@ const DeliveryPinMap = dynamic(() => import("../../components/map/DeliveryPinMap
   loading: () => <div className="blueprint size-full animate-pulse" />,
 });
 
-export type ZoneState = { kind: "idle" } | { kind: "loading" } | { kind: "zone"; name: string; fee: string } | { kind: "outside" };
+export type ZoneState =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "zone"; name: string; fee: string }
+  /** `distanceMeters`: cuánto falta para llegar a la cobertura (la API lo calcula hasta el borde). */
+  | { kind: "outside"; distanceMeters: number | null };
 
 const LABEL_ICONS: Record<PlaceLabel, typeof Home> = { home: Home, work: Briefcase, family: Heart, custom: PenLine };
 
@@ -78,14 +85,15 @@ export function DeliveryStep({ draft, onChange, addresses, zone, store, showErro
 
 function PointPicker({ draft, onChange, zone, store, showErrors, labelText }: Omit<Props, "addresses"> & { labelText: (l: PlaceLabel) => string }) {
   const t = useTranslations("checkout");
-  const { position, status } = useGeolocation();
-  const [focus, setFocus] = useState<{ point: GeoPoint; key: number }>({ point: draft.point ?? DEFAULT_CENTER, key: 0 });
+  const { position, status, home } = useGeolocation();
+  const coverage = useCoverage();
+  const [focus, setFocus] = useState<{ point: GeoPoint; key: number }>({ point: draft.point ?? home, key: 0 });
   const touched = useRef(!!draft.point);
 
   // Si el cliente comparte su ubicación, el mapa arranca en su puerta (salvo que ya haya movido el pin).
   useEffect(() => {
     if (status === "loading" || touched.current) return;
-    const start = status === "granted" ? position : DEFAULT_CENTER;
+    const start = status === "granted" ? position : home;
     setFocus((f) => ({ point: start, key: f.key + 1 }));
     onChange({ point: start });
   }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -117,6 +125,7 @@ function PointPicker({ draft, onChange, zone, store, showErrors, labelText }: Om
           focus={focus.point}
           focusKey={focus.key}
           store={store}
+          coverage={coverage}
           label={pinLabel}
           onPick={(point) => {
             touched.current = true;
@@ -136,11 +145,7 @@ function PointPicker({ draft, onChange, zone, store, showErrors, labelText }: Om
         )}
       </div>
       {status === "denied" && <p className="text-xs text-ink/55">{t("locationDenied")}</p>}
-      {zone.kind === "outside" && (
-        <p className="flex items-start gap-2 rounded-2xl bg-chonta-soft px-3.5 py-3 text-sm font-semibold text-chonta-strong" role="status">
-          <MapPinOff className="mt-0.5 size-4 shrink-0" aria-hidden /> {t("outsideZone")}
-        </p>
-      )}
+      {zone.kind === "outside" && <OutsideNotice zone={zone} />}
 
       <TextField
         label={t("reference")}
@@ -179,17 +184,29 @@ function PointPicker({ draft, onChange, zone, store, showErrors, labelText }: Om
 /** Con un lugar guardado basta decir a qué zona va y cuánto cuesta el domicilio. */
 function ZoneLine({ zone }: { zone: ZoneState }) {
   const t = useTranslations("checkout");
-  if (zone.kind === "outside") {
-    return (
-      <p className="flex items-start gap-2 rounded-2xl bg-chonta-soft px-3.5 py-3 text-sm font-semibold text-chonta-strong" role="status">
-        <MapPinOff className="mt-0.5 size-4 shrink-0" aria-hidden /> {t("outsideZone")}
-      </p>
-    );
-  }
+  if (zone.kind === "outside") return <OutsideNotice zone={zone} />;
   return (
     <p className="flex items-center gap-2 rounded-2xl bg-leaf/10 px-3.5 py-3 text-sm font-semibold text-leaf" role="status">
       <Bike className="size-4 shrink-0" aria-hidden />
       {zone.kind === "zone" ? t("zoneFee", { zone: zone.name, fee: zone.fee }) : t("checkingZone")}
+    </p>
+  );
+}
+
+/**
+ * Fuera de cobertura: además de decirlo, cuánto falta ("a 600 m"), porque en un pueblo eso suele ser una
+ * esquina más allá y el cliente puede mover el pin hasta donde lo encuentre el domiciliario.
+ */
+function OutsideNotice({ zone }: { zone: Extract<ZoneState, { kind: "outside" }> }) {
+  const t = useTranslations("checkout");
+  const format = useCatalogFormat();
+  return (
+    <p className="flex items-start gap-2 rounded-2xl bg-chonta-soft px-3.5 py-3 text-sm font-semibold text-chonta-strong" role="status">
+      <MapPinOff className="mt-0.5 size-4 shrink-0" aria-hidden />
+      <span>
+        {t("outsideZone")}
+        {zone.distanceMeters !== null && zone.distanceMeters > 0 && <span className="mt-0.5 block font-bold">{t("outsideDistance", { distance: format.distance(zone.distanceMeters) })}</span>}
+      </span>
     </p>
   );
 }

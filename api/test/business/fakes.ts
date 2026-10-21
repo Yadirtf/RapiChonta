@@ -19,7 +19,7 @@ export const admin: Principal = {
 export const scopedAdmin = (municipalityId: number): Principal => ({ ...admin, userId: `admin-${municipalityId}`, municipalityId });
 
 export class MemoryMunicipalities extends MunicipalityDirectory {
-  rows: MunicipalityInfo[] = [{ id: 1, name: 'Villagarzón', timeZone: 'America/Bogota', center: { lat: 1.03, lng: -76.62 }, launched: true }];
+  rows: MunicipalityInfo[] = [{ id: 1, name: 'Villagarzón', department: 'Putumayo', timeZone: 'America/Bogota', center: { lat: 1.03, lng: -76.62 }, launched: true }];
   async list(scope: number | null) {
     return this.rows.filter((m) => scope === null || m.id === scope);
   }

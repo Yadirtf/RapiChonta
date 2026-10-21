@@ -4,8 +4,10 @@ import maplibregl, { type Map as MapLibreMap, type Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import type { CoverageArea } from "@/core/domain/entities/business";
 import type { Establishment, GeoPoint } from "@/core/domain/entities/establishment";
 import { CategoryIcon } from "../catalog/CategoryIcon";
+import { paintCoverage } from "./coverageOverlay";
 import { createBrandMap } from "./mapStyle";
 
 interface Props {
@@ -13,6 +15,8 @@ interface Props {
   establishments: Establishment[];
   selectedId?: string | null;
   onSelect?: (establishment: Establishment) => void;
+  /** Hasta dónde llegan los domiciliarios: lo de afuera se ve más oscuro. */
+  coverage?: CoverageArea[] | null;
 }
 
 interface PlaceMarker {
@@ -22,7 +26,7 @@ interface PlaceMarker {
   element: HTMLButtonElement;
 }
 
-export function NearbyMap({ center, establishments, selectedId, onSelect }: Props) {
+export function NearbyMap({ center, establishments, selectedId, onSelect, coverage }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef<PlaceMarker[]>([]);
@@ -39,6 +43,11 @@ export function NearbyMap({ center, establishments, selectedId, onSelect }: Prop
     mapRef.current = map;
     return () => map.remove();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (map && coverage) paintCoverage(map, coverage, { dim: 0.22 });
+  }, [coverage]);
 
   useEffect(() => {
     const map = mapRef.current;

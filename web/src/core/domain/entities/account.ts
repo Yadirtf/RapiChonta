@@ -17,6 +17,7 @@ export const PERMISSIONS = {
   MANAGE_HOURS: "hours.manage",
   MANAGE_SETTINGS: "settings.manage",
   MANAGE_COMMISSION: "commission.manage",
+  MANAGE_MUNICIPALITIES: "municipalities.manage",
 } as const;
 
 export interface LegalDocumentVersion {

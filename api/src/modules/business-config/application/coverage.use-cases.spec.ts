@@ -15,7 +15,7 @@ const CENTRO: [number, number][] = [
 
 function setup() {
   const municipalities = new MemoryMunicipalities();
-  municipalities.rows.push({ id: 2, name: 'Mocoa', timeZone: 'America/Bogota', center: { lat: 1.15, lng: -76.65 }, launched: false });
+  municipalities.rows.push({ id: 2, name: 'Mocoa', department: 'Putumayo', timeZone: 'America/Bogota', center: { lat: 1.15, lng: -76.65 }, launched: false });
   const scope = new MunicipalityScope(municipalities);
   const zones = new MemoryZones();
   zones.establishments.set('tienda-1', 1);

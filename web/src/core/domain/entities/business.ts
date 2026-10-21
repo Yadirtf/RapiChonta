@@ -8,14 +8,23 @@ export const ZONE_KINDS: readonly ZoneKind[] = ["URBAN", "RURAL"];
 export interface Municipality {
   id: number;
   name: string;
+  department: string;
   timeZone: string;
   center: GeoPoint;
+  /** Abierto: aparece en el mapa del cliente y recibe pedidos. */
+  launched: boolean;
 }
+
+/** Cómo se trazó un área (catálogo `zone_shapes`): a mano o como radio alrededor de un centro. */
+export type ZoneShape = "POLYGON" | "CIRCLE";
 
 export interface Zone {
   id: string;
   name: string;
   kind: ZoneKind;
+  shape: ZoneShape;
+  /** Solo si se trazó como radio. */
+  circle: { center: GeoPoint; radiusMeters: number } | null;
   area: LngLat[];
   areaSquareMeters: number;
   /** Texto decimal ("3000.00"). */
@@ -23,6 +32,9 @@ export interface Zone {
   feeSince: string;
   sortOrder: number;
 }
+
+/** Cobertura del municipio: una zona de tipo COVERAGE (se administra en la página Cobertura). */
+export type CoverageZone = Omit<Zone, "kind"> & { kind: "COVERAGE" };
 
 export interface ZoneInput {
   name: string;
@@ -42,8 +54,32 @@ export interface ZoneLimits {
 export interface BusinessOptions {
   municipalities: Municipality[];
   zoneKinds: ZoneKind[];
-  limits: { zone: ZoneLimits; slotsPerDay: number };
+  limits: { zone: ZoneLimits; coverage: ZoneLimits; radius: { minMeters: number; maxMeters: number }; slotsPerDay: number };
 }
+
+/** Cobertura de un municipio (H03.5): hasta dónde llegan los domiciliarios, con tarifa base. */
+export type CoverageInput = { fee: string } & ({ shape: "CIRCLE"; center: GeoPoint; radiusMeters: number } | { shape: "POLYGON"; area: LngLat[] });
+
+/** Lo que le falta a un municipio para abrir. */
+export type ReadinessItem = "coverage" | "hours" | "commission";
+export const READINESS_ITEMS: readonly ReadinessItem[] = ["coverage", "hours", "commission"];
+
+export interface MunicipalityOverview {
+  municipality: Municipality;
+  coverage: CoverageZone | null;
+  zoneCount: number;
+  readiness: Record<ReadinessItem, boolean>;
+}
+
+/** Cobertura pública de un municipio abierto: la unión de sus zonas (MultiPolygon [lng, lat]). */
+export interface CoverageArea {
+  municipality: { id: number; name: string; center: GeoPoint };
+  polygons: LngLat[][][];
+}
+
+export type CoverageCheck =
+  | { covered: true; municipality: { id: number; name: string }; zone: { name: string; kind: string }; fee: string }
+  | { covered: false; nearest: { municipalityName: string; distanceMeters: number } | null };
 
 export interface FeeChange {
   fee: string;

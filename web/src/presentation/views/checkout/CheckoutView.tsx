@@ -136,7 +136,8 @@ function Checkout({ cart }: { cart: Cart }) {
       (error) => {
         if (cancelled) return;
         if (isApiError(error, "NO_COVERAGE")) {
-          setZone({ kind: "outside" });
+          const meters = error.details?.distanceMeters;
+          setZone({ kind: "outside", distanceMeters: typeof meters === "number" ? meters : null });
           setQuoteError(null);
         } else if (!correct(error)) {
           setZone({ kind: "idle" });

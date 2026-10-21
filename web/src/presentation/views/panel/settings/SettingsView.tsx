@@ -15,6 +15,7 @@ import { Dialog } from "../../../components/ui/Dialog";
 import { useCatalogFormat } from "../../../hooks/useCatalogFormat";
 import { useErrorMessage } from "../../../hooks/useErrorMessage";
 import { useResource } from "../../../hooks/useResource";
+import { usePanelMunicipality } from "../PanelMunicipality";
 
 /** Grupos del panel: por lo que vive cada persona del equipo, no por cómo se llaman las claves. */
 const GROUPS: { id: string; icon: ReactNode; keys: string[] }[] = [
@@ -33,7 +34,8 @@ const messageKey = (key: string) => key.replaceAll(".", "_");
 export function SettingsView() {
   const t = useTranslations("settings");
   const errorMessage = useErrorMessage();
-  const { data, error, loading, setData } = useResource(() => container.businessAdmin.settings(), []);
+  const { municipalityId } = usePanelMunicipality();
+  const { data, error, loading, setData } = useResource(() => container.businessAdmin.settings(municipalityId), [municipalityId]);
   const [historyOf, setHistoryOf] = useState<Setting | null>(null);
   const { account } = useAuth();
   const canCommission = !!account && can(account, PERMISSIONS.MANAGE_COMMISSION);
@@ -134,6 +136,7 @@ function SettingRow({
   onSaved: (s: Setting) => void;
   onHistory: () => void;
 }) {
+  const { municipalityId } = usePanelMunicipality();
   const t = useTranslations("settings");
   const format = useFormatter();
   const describe = useSettingFormat();
@@ -161,7 +164,7 @@ function SettingRow({
     setSaving(true);
     setError(null);
     try {
-      onSaved(await container.businessAdmin.changeSetting(setting.key, value.trim(), scope));
+      onSaved(await container.businessAdmin.changeSetting(setting.key, value.trim(), scope, municipalityId));
     } catch (e) {
       setError(e);
     } finally {
@@ -244,7 +247,8 @@ function SettingHistoryDialog({ setting, onClose }: { setting: Setting | null; o
   const t = useTranslations("settings");
   const format = useFormatter();
   const describe = useSettingFormat();
-  const { data, loading } = useResource(() => (setting ? container.businessAdmin.settingHistory(setting.key) : Promise.resolve([])), [setting?.key]);
+  const { municipalityId } = usePanelMunicipality();
+  const { data, loading } = useResource(() => (setting ? container.businessAdmin.settingHistory(setting.key, municipalityId) : Promise.resolve([])), [setting?.key, municipalityId]);
   return (
     <Dialog open={!!setting} onClose={onClose} title={t("history")} description={setting ? t(`keys.${messageKey(setting.key)}.label`) : undefined} closeLabel={t("close")}>
       {loading ? (
@@ -276,7 +280,8 @@ function CommissionCard() {
   const t = useTranslations("settings");
   const format = useFormatter();
   const errorMessage = useErrorMessage();
-  const { data, error, setData } = useResource(() => container.businessAdmin.commission(), []);
+  const { municipalityId } = usePanelMunicipality();
+  const { data, error, setData } = useResource(() => container.businessAdmin.commission(municipalityId), [municipalityId]);
   const [value, setValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<unknown>(null);
@@ -292,7 +297,7 @@ function CommissionCard() {
     setSaving(true);
     setSaveError(null);
     try {
-      setData(await container.businessAdmin.changeCommission(parsed));
+      setData(await container.businessAdmin.changeCommission(parsed, municipalityId));
     } catch (e) {
       setSaveError(e);
     } finally {

@@ -14,6 +14,7 @@ import { Dialog } from "../../../components/ui/Dialog";
 import { TextField } from "../../../components/ui/Field";
 import { useErrorMessage } from "../../../hooks/useErrorMessage";
 import { useResource } from "../../../hooks/useResource";
+import { usePanelMunicipality } from "../PanelMunicipality";
 
 /** La semana se muestra de lunes a domingo; la API numera 0 = domingo. */
 const WEEK = [1, 2, 3, 4, 5, 6, 0] as const;
@@ -44,7 +45,8 @@ export function ScheduleView() {
   const errorMessage = useErrorMessage();
   const openingText = useOpeningText();
   const options = useResource(() => container.businessAdmin.options(), []);
-  const { data, error, loading, setData } = useResource(() => container.businessAdmin.schedule(), []);
+  const { municipalityId } = usePanelMunicipality();
+  const { data, error, loading, setData } = useResource(() => container.businessAdmin.schedule(municipalityId), [municipalityId]);
   const maxSlots = options.data?.limits.slotsPerDay ?? 4;
 
   const [week, setWeek] = useState<Week | null>(null);
@@ -85,7 +87,7 @@ export function ScheduleView() {
     setSaving(true);
     setSaveError(null);
     try {
-      const next = await container.businessAdmin.setWeekly(WEEK.map((weekday) => ({ weekday, slots: week[weekday] })));
+      const next = await container.businessAdmin.setWeekly(WEEK.map((weekday) => ({ weekday, slots: week[weekday] })), municipalityId);
       setData(next);
       setSavedAt(Date.now());
     } catch (e) {
@@ -97,7 +99,7 @@ export function ScheduleView() {
 
   const removeException = async (date: string) => {
     try {
-      setData(await container.businessAdmin.removeException(date));
+      setData(await container.businessAdmin.removeException(date, municipalityId));
     } catch (e) {
       setSaveError(e);
     }
@@ -467,6 +469,7 @@ function ExceptionItem({ exception, onRemove }: { exception: ScheduleException; 
 }
 
 function ExceptionDialog({ open, minDate, maxSlots, onClose, onSaved }: { open: boolean; minDate: string; maxSlots: number; onClose: () => void; onSaved: (s: Schedule) => void }) {
+  const { municipalityId } = usePanelMunicipality();
   const t = useTranslations("schedule");
   const errorMessage = useErrorMessage();
   const [date, setDate] = useState(minDate);
@@ -495,7 +498,7 @@ function ExceptionDialog({ open, minDate, maxSlots, onClose, onSaved }: { open: 
           closed,
           slots: closed ? [] : slots,
           reason: reason.trim() || null,
-        }),
+        }, municipalityId),
       );
     } catch (e) {
       setError(e);

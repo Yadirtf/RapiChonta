@@ -8,13 +8,14 @@ import { MunicipalityDirectory, MunicipalityInfo, MunicipalityReadiness } from '
 interface Row {
   id: number;
   name: string;
+  department: string;
   time_zone: string;
   lat: number;
   lng: number;
   launched: boolean;
 }
 
-const toInfo = (r: Row): MunicipalityInfo => ({ id: r.id, name: r.name, timeZone: r.time_zone, center: { lat: r.lat, lng: r.lng }, launched: r.launched });
+const toInfo = (r: Row): MunicipalityInfo => ({ id: r.id, name: r.name, department: r.department, timeZone: r.time_zone, center: { lat: r.lat, lng: r.lng }, launched: r.launched });
 
 @Injectable()
 export class PrismaMunicipalityDirectory extends MunicipalityDirectory {
@@ -23,12 +24,12 @@ export class PrismaMunicipalityDirectory extends MunicipalityDirectory {
   }
 
   async list(scope: number | null): Promise<MunicipalityInfo[]> {
-    const where = scope === null ? Prisma.empty : Prisma.sql`WHERE id = ${scope}`;
-    return (await this.prisma.$queryRaw<Row[]>`${this.select()} ${where} ORDER BY name`).map(toInfo);
+    const where = scope === null ? Prisma.empty : Prisma.sql`WHERE m.id = ${scope}`;
+    return (await this.prisma.$queryRaw<Row[]>`${this.select()} ${where} ORDER BY m.name`).map(toInfo);
   }
 
   async find(id: number): Promise<MunicipalityInfo | null> {
-    const [row] = await this.prisma.$queryRaw<Row[]>`${this.select()} WHERE id = ${id}`;
+    const [row] = await this.prisma.$queryRaw<Row[]>`${this.select()} WHERE m.id = ${id}`;
     return row ? toInfo(row) : null;
   }
 
@@ -64,8 +65,8 @@ export class PrismaMunicipalityDirectory extends MunicipalityDirectory {
 
   private select() {
     return Prisma.sql`
-      SELECT id, name, time_zone, ST_Y(center::geometry) AS lat, ST_X(center::geometry) AS lng,
-             coalesce(launched_at <= now(), false) AS launched
-      FROM municipalities`;
+      SELECT m.id, m.name, d.name AS department, m.time_zone, ST_Y(m.center::geometry) AS lat, ST_X(m.center::geometry) AS lng,
+             coalesce(m.launched_at <= now(), false) AS launched
+      FROM municipalities m JOIN departments d ON d.id = m.department_id`;
   }
 }

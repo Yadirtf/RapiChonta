@@ -9,7 +9,7 @@ import { OpeningState } from '../../domain/value-objects/opening-calendar';
 
 /** Respuestas HTTP del módulo: fechas ISO, dinero como texto decimal y franjas "HH:MM". */
 export const BusinessPresenter = {
-  municipality: (m: MunicipalityInfo) => ({ id: m.id, name: m.name, timeZone: m.timeZone, center: m.center, launched: m.launched }),
+  municipality: (m: MunicipalityInfo) => ({ id: m.id, name: m.name, department: m.department, timeZone: m.timeZone, center: m.center, launched: m.launched }),
 
   overview: (o: MunicipalityOverview) => ({
     municipality: BusinessPresenter.municipality(o.municipality),

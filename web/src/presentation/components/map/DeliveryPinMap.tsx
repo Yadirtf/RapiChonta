@@ -5,7 +5,9 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Home, Store } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
+import type { CoverageArea } from "@/core/domain/entities/business";
 import type { GeoPoint } from "@/core/domain/entities/establishment";
+import { paintCoverage } from "./coverageOverlay";
 import { createBrandMap } from "./mapStyle";
 
 interface Props {
@@ -18,6 +20,8 @@ interface Props {
   label?: ReactNode;
   /** Ubicación del local, como referencia de qué tan lejos queda la entrega. */
   store?: GeoPoint;
+  /** Cobertura (H03.5): el cliente ve hasta dónde llegamos antes de soltar el pin. */
+  coverage?: CoverageArea[] | null;
   className?: string;
 }
 
@@ -25,7 +29,7 @@ interface Props {
  * Mapa de entrega (H04.2) con el pin fijo en el centro: el cliente arrastra el mapa hasta su puerta.
  * El pin "se levanta" mientras el mapa se mueve y cae al soltar, y solo entonces se cotiza la zona.
  */
-export function DeliveryPinMap({ focus, focusKey, onPick, label, store, className = "" }: Props) {
+export function DeliveryPinMap({ focus, focusKey, onPick, label, store, coverage, className = "" }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const onPickRef = useRef(onPick);
@@ -45,6 +49,11 @@ export function DeliveryPinMap({ focus, focusKey, onPick, label, store, classNam
     mapRef.current = map;
     return () => map.remove();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (map && coverage) paintCoverage(map, coverage);
+  }, [coverage]);
 
   useEffect(() => {
     mapRef.current?.flyTo({ center: [focus.lng, focus.lat], zoom: 17, speed: 1.6 });
