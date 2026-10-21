@@ -181,7 +181,9 @@ test('el reporte de progreso cuenta por fase y épica', async () => {
   await progreso({ github: gh.github, context: contexto(), core });
   const reporte = gh.estado.issues.find((i) => i.body.includes(lib.MARCA_PROGRESO));
   assert.ok(reporte);
-  assert.match(reporte.body, /\*\*1 de 66 historias y tareas hechas/);
+  // El total sale del backlog sembrado: crece cada vez que se agrega una historia.
+  const total = gh.estado.issues.filter((i) => etiquetas(i).some((l) => l === 'tipo: historia' || l === 'tipo: tarea')).length;
+  assert.match(reporte.body, new RegExp(`\\*\\*1 de ${total} historias y tareas hechas`));
   assert.match(reporte.body, /\| \[E01 · Identidad y acceso\]\([^)]+\) \| 1 \| backlog \| 1\/5 \|/);
 });
 
