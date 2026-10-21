@@ -1,0 +1,28 @@
+/**
+ * Códigos de catálogo que usa el módulo de pedidos (Docs/14-base-de-datos/E04-pedido-del-cliente.md).
+ * Los estados del pedido no están aquí: el código usa sus marcas (is_initial, is_terminal,
+ * is_visible_to_customer, is_milestone, counts_as_delivered), así que agregar un estado es una fila nueva.
+ */
+export const FULFILLMENT_MODES = {
+  /** MVP: el domiciliario compra en nombre del cliente. */
+  COURIER_PURCHASE: 'COURIER_PURCHASE',
+} as const;
+
+export const STATUS_CHANGE_SOURCES = {
+  USER_ACTION: 'USER_ACTION',
+} as const;
+
+export const ORDER_PERMISSIONS = {
+  CREATE: 'orders.create',
+  READ_OWN: 'orders.read_own',
+} as const;
+
+/** Tope del carrito para clientes sin pedidos entregados (RF-22), por municipio. */
+export const NEW_CUSTOMER_LIMIT_SETTING = 'orders.new_customer_max_cop';
+
+/** Códigos que deben existir para que la API arranque (se verifican al iniciar). */
+export const REQUIRED_ORDER_CODES: Record<string, readonly string[]> = {
+  fulfillment_modes: Object.values(FULFILLMENT_MODES),
+  status_change_sources: Object.values(STATUS_CHANGE_SOURCES),
+  roles: ['CUSTOMER'],
+};

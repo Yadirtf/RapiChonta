@@ -120,7 +120,7 @@ stateDiagram-v2
   CANCELLED --> [*]
 ```
 
-La lista completa de transiciones y quién puede hacer cada una está en [14 · E04](14-base-de-datos/E04-pedido-del-cliente.md#máquina-de-estados-del-pedido), donde vive como datos (`order_status_transitions`). Hoy está implementada en `api/src/modules/orders/domain/entities/order-status.ts`; al migrar a la base normalizada, ese archivo debe coincidir con la semilla del catálogo. Desde `PREPARING` el pedido ya no se puede cancelar porque el dinero ya se gastó; cualquier problema posterior se maneja como incidencia.
+La lista completa de transiciones y quién puede hacer cada una está en [14 · E04](14-base-de-datos/E04-pedido-del-cliente.md#máquina-de-estados-del-pedido), donde vive como datos (`order_status_transitions`). La semilla del catálogo (`ORDER_TRANSITIONS` en `api/src/database/seed/catalogs.ts`) la carga y un disparador la hace cumplir en cada cambio de estado. Desde `PREPARING` el pedido ya no se puede cancelar porque el dinero ya se gastó; cualquier problema posterior se maneja como incidencia.
 
 ## Detección automática por ubicación (geocercas)
 

@@ -6,6 +6,7 @@ import { HttpAuthRepository } from "../repositories/http-auth-repository";
 import { HttpBusinessAdminRepository, HttpBusinessPublicRepository } from "../repositories/http-business-repository";
 import { HttpCatalogAdminRepository } from "../repositories/http-catalog-admin-repository";
 import { HttpEstablishmentRepository } from "../repositories/http-establishment-repository";
+import { HttpOrderRepository } from "../repositories/http-order-repository";
 
 /** Composición de dependencias: único lugar donde se conectan casos de uso con sus adaptadores. */
 const establishmentRepository = new HttpEstablishmentRepository();
@@ -20,4 +21,5 @@ export const container = {
   files: new HttpFileUploader(),
   businessAdmin: new HttpBusinessAdminRepository(),
   business: new HttpBusinessPublicRepository(),
+  orders: new HttpOrderRepository(),
 };

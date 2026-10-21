@@ -1,0 +1,266 @@
+import 'package:equatable/equatable.dart';
+
+import '../../../establishments/domain/entities/establishment.dart';
+
+/// Pedido del cliente (E04). Los montos van en centavos; los estados y medios de pago son códigos del
+/// catálogo de la API que la app traduce (uno nuevo se ve con su código hasta tener texto propio).
+
+class SavedAddress extends Equatable {
+  const SavedAddress({required this.id, required this.location, this.label, this.line, this.reference, this.isDefault = false});
+
+  final String id;
+  final String? label;
+  final String? line;
+  final String? reference;
+  final GeoPoint location;
+  final bool isDefault;
+
+  @override
+  List<Object?> get props => [id, label, line, reference, location, isDefault];
+}
+
+class SavedRecipient extends Equatable {
+  const SavedRecipient({required this.id, required this.fullName, required this.phone});
+
+  final String id;
+  final String fullName;
+  final String phone;
+
+  @override
+  List<Object?> get props => [id, fullName, phone];
+}
+
+/// Dónde se entrega: un lugar guardado o un punto del mapa (la referencia se exige al confirmar).
+sealed class DeliveryTarget {
+  const DeliveryTarget();
+  Map<String, dynamic> toJson();
+}
+
+class SavedPlace extends DeliveryTarget {
+  const SavedPlace(this.addressId);
+  final String addressId;
+
+  @override
+  Map<String, dynamic> toJson() => {'addressId': addressId};
+}
+
+class MapPoint extends DeliveryTarget {
+  const MapPoint(this.point, {this.reference, this.line, this.label});
+
+  final GeoPoint point;
+  final String? reference;
+  final String? line;
+
+  /// Con nombre ("Casa") se guarda para la próxima vez.
+  final String? label;
+
+  @override
+  Map<String, dynamic> toJson() => {
+        // Siete decimales (~1 cm): el mismo punto no se vuelve a cotizar por ruido del mapa.
+        'latitude': (point.lat * 1e7).round() / 1e7,
+        'longitude': (point.lng * 1e7).round() / 1e7,
+        if (reference != null) 'reference': reference,
+        if (line != null) 'line': line,
+        if (label != null) 'label': label,
+      };
+}
+
+/// Quién recibe: el cliente (null), alguien a quien ya le envió o una persona nueva.
+sealed class RecipientChoice {
+  const RecipientChoice();
+  Map<String, dynamic> toJson();
+}
+
+class KnownRecipient extends RecipientChoice {
+  const KnownRecipient(this.recipientId);
+  final String recipientId;
+
+  @override
+  Map<String, dynamic> toJson() => {'recipientId': recipientId};
+}
+
+class NewRecipient extends RecipientChoice {
+  const NewRecipient({required this.fullName, required this.phoneE164});
+  final String fullName;
+  final String phoneE164;
+
+  @override
+  Map<String, dynamic> toJson() => {'fullName': fullName, 'phone': phoneE164};
+}
+
+class NewCustomerLimit extends Equatable {
+  const NewCustomerLimit({required this.limitCents, required this.availableCents, required this.exceeded});
+
+  final int limitCents;
+
+  /// Lo que queda después de los pedidos en curso.
+  final int availableCents;
+  final bool exceeded;
+
+  @override
+  List<Object?> get props => [limitCents, availableCents, exceeded];
+}
+
+class OrderQuote extends Equatable {
+  const OrderQuote({
+    required this.itemsCents,
+    required this.feeCents,
+    required this.totalCents,
+    required this.prepMinutes,
+    required this.zoneName,
+    this.newCustomerLimit,
+  });
+
+  final int itemsCents;
+  final int feeCents;
+  final int totalCents;
+  final int prepMinutes;
+  final String zoneName;
+  final NewCustomerLimit? newCustomerLimit;
+
+  @override
+  List<Object?> get props => [itemsCents, feeCents, totalCents, zoneName, newCustomerLimit];
+}
+
+class OrderSummary extends Equatable {
+  const OrderSummary({
+    required this.code,
+    required this.establishmentId,
+    required this.establishmentName,
+    required this.createdAt,
+    required this.status,
+    required this.statusAt,
+    required this.active,
+    required this.itemCount,
+    required this.totalCents,
+    this.logoUrl,
+  });
+
+  final String code;
+  final String establishmentId;
+  final String establishmentName;
+  final String? logoUrl;
+  final DateTime createdAt;
+  final String status;
+  final DateTime statusAt;
+  final bool active;
+  final int itemCount;
+  final int totalCents;
+
+  @override
+  List<Object?> get props => [code, status, statusAt, active];
+}
+
+class OrderLine extends Equatable {
+  const OrderLine({required this.productId, required this.name, required this.unitCents, required this.quantity, this.notes});
+
+  final String productId;
+  final String name;
+  final int unitCents;
+  final int quantity;
+  final String? notes;
+
+  int get subtotalCents => unitCents * quantity;
+
+  @override
+  List<Object?> get props => [productId, unitCents, quantity, notes];
+}
+
+class TimelineEntry extends Equatable {
+  const TimelineEntry(this.status, this.at);
+  final String status;
+  final DateTime at;
+
+  @override
+  List<Object?> get props => [status, at];
+}
+
+class OrderDetail extends OrderSummary {
+  const OrderDetail({
+    required super.code,
+    required super.establishmentId,
+    required super.establishmentName,
+    super.logoUrl,
+    required super.createdAt,
+    required super.status,
+    required super.statusAt,
+    required super.active,
+    required super.itemCount,
+    required super.totalCents,
+    required this.lines,
+    required this.itemsCents,
+    required this.feeCents,
+    required this.prepMinutes,
+    required this.zoneName,
+    required this.address,
+    required this.paymentMethod,
+    required this.timeline,
+    required this.journey,
+    this.recipient,
+    this.notes,
+  });
+
+  final List<OrderLine> lines;
+  final int itemsCents;
+  final int feeCents;
+  final int prepMinutes;
+  final String zoneName;
+  final SavedAddress address;
+  final ({String fullName, String? phone})? recipient;
+  final String paymentMethod;
+  final String? notes;
+  final List<TimelineEntry> timeline;
+
+  /// Hitos del recorrido normal, en orden (los define la API).
+  final List<String> journey;
+
+  @override
+  List<Object?> get props => [...super.props, timeline];
+}
+
+class OrderHistory {
+  const OrderHistory({required this.active, required this.past, required this.journey, this.nextBefore});
+
+  final List<OrderSummary> active;
+  final List<OrderSummary> past;
+  final String? nextBefore;
+  final List<String> journey;
+}
+
+enum StopState { done, current, upcoming }
+
+typedef RouteStop = ({String status, StopState state, DateTime? at});
+
+/// Reglas del pedido para la vista, puras para poder probarlas.
+abstract final class OrderRules {
+  /// La ruta del pedido (RF-50): los pasos por los que pasó y, si sigue activo, los que faltan del recorrido
+  /// normal. Un desvío (esperando tu decisión, en revisión) aparece donde ocurrió; uno cancelado no muestra pendientes.
+  static List<RouteStop> route({required List<TimelineEntry> timeline, required List<String> journey, required bool active}) {
+    final stops = <RouteStop>[
+      for (var i = 0; i < timeline.length; i++)
+        (status: timeline[i].status, state: i == timeline.length - 1 && active ? StopState.current : StopState.done, at: timeline[i].at),
+    ];
+    if (!active) return stops;
+    final reached = timeline.fold(-1, (max, t) {
+      final index = journey.indexOf(t.status);
+      return index > max ? index : max;
+    });
+    return [...stops, for (final status in journey.skip(reached + 1)) (status: status, state: StopState.upcoming, at: null)];
+  }
+
+  /// Avance del recorrido normal (0 a 1) para la barra de los pedidos activos.
+  static double progress(String status, List<String> journey) {
+    final index = journey.indexOf(status);
+    return index < 0 || journey.length < 2 ? 0 : index / (journey.length - 1);
+  }
+
+  /// Billetes con los que podría pagar en efectivo: el siguiente múltiplo de $10.000, $20.000, $50.000 y
+  /// $100.000 por encima del total, sin repetir. Así el domiciliario lleva el cambio.
+  static List<int> cashSuggestions(int totalCents) {
+    final amounts = {
+      for (final step in const [1000000, 2000000, 5000000, 10000000]) (totalCents / step).ceil() * step,
+    }.where((a) => a > totalCents).toList()
+      ..sort();
+    return amounts.take(3).toList();
+  }
+}

@@ -168,23 +168,24 @@ Nombre, precio y tiempo de preparación se leen de la versión. El carrito (H04.
 - `is_visible_to_customer`: aparece en la línea de tiempo del cliente (RF-50).
 - `reveals_delivery_details`: desde aquí el domiciliario ve la dirección exacta y el teléfono de quien recibe (H01.2).
 - `counts_as_delivered`: cuenta como pedido entregado (tope de cliente nuevo, comisión, métricas).
+- `is_milestone`: hito del recorrido normal, en el orden de `sort_order`. La línea de tiempo del cliente muestra los hitos que faltan y la barra de avance de Mis pedidos se mide sobre ellos; los desvíos (`AWAITING_CUSTOMER`, `PENDING_REVIEW`, `DISPUTED`) aparecen solo si ocurren.
 
 "Pedido activo" (Mis pedidos y panel) es `NOT is_terminal`; no hace falta otra columna.
 
-| code | is_initial | is_terminal | visible al cliente | revela datos | entregado |
-| --- | --- | --- | --- | --- | --- |
-| `PENDING_ASSIGNMENT` | sí | | sí | | |
-| `OFFERED` | | | | | |
-| `ACCEPTED` | | | sí | | |
-| `AT_ESTABLISHMENT` | | | sí | | |
-| `AWAITING_CUSTOMER` | | | sí | | |
-| `PREPARING` | | | sí | | |
-| `ON_THE_WAY` | | | sí | sí | |
-| `ARRIVING` | | | sí | sí | |
-| `PENDING_REVIEW` | | | sí | sí | |
-| `DISPUTED` | | | sí | sí | |
-| `DELIVERED` | | sí | sí | | sí |
-| `CANCELLED` | | sí | sí | | |
+| code | is_initial | is_terminal | visible al cliente | hito | revela datos | entregado |
+| --- | --- | --- | --- | --- | --- | --- |
+| `PENDING_ASSIGNMENT` | sí | | sí | sí | | |
+| `OFFERED` | | | | | | |
+| `ACCEPTED` | | | sí | sí | | |
+| `AT_ESTABLISHMENT` | | | sí | sí | | |
+| `AWAITING_CUSTOMER` | | | sí | | | |
+| `PREPARING` | | | sí | sí | | |
+| `ON_THE_WAY` | | | sí | sí | sí | |
+| `ARRIVING` | | | sí | sí | sí | |
+| `PENDING_REVIEW` | | | sí | | sí | |
+| `DISPUTED` | | | sí | | sí | |
+| `DELIVERED` | | sí | sí | sí | | sí |
+| `CANCELLED` | | sí | sí | | | |
 
 `order_status_transitions` (`from_status_id`, `to_status_id`, PK compuesta, `allows_system boolean`) y `order_status_transition_roles` (`from_status_id`, `to_status_id`, `role_id`) dicen qué cambios existen y quién puede hacerlos:
 
@@ -221,9 +222,9 @@ Nombre, precio y tiempo de preparación se leen de la versión. El carrito (H04.
 | `changed_by_user_id` | FK `users` | sí | Nulo si la fuente es automática |
 | `acting_role_id` | FK `roles` | sí | Rol activo de la sesión; el disparador verifica que esté en `order_status_transition_roles` para ese cambio |
 | `source_id` | FK `status_change_sources` | no | `USER_ACTION`, `OFFLINE_SYNC`, `GEOFENCE`, `TIMER` |
-| `client_event_id` | `uuid` | sí | `UNIQUE`. Lo genera la app sin señal; reenviar el mismo evento no lo duplica (RF-46) |
+| `client_event_id` | `uuid` | sí | `UNIQUE`. Lo genera la app sin señal; reenviar el mismo evento no lo duplica (RF-46). En la primera fila es el `clientRequestId` de la confirmación: reintentar el mismo pedido devuelve el que ya existe |
 | `occurred_at` | `timestamptz` | no | Cuándo pasó (hora del dispositivo si llegó sin señal) |
-| `recorded_at` | `timestamptz` | no | `DEFAULT now()`; cuándo lo recibió el servidor |
+| `recorded_at` | `timestamptz` | no | `DEFAULT clock_timestamp()` (no `now()`): dos cambios en la misma transacción quedan en orden; cuándo lo recibió el servidor |
 | `note` | `varchar(300)` | sí | |
 
 `status_change_sources` (sistema) con `is_automatic boolean` (`GEOFENCE` y `TIMER`): `CHECK` por disparador de que `changed_by_user_id` es nulo si y solo si la fuente es automática.
@@ -237,7 +238,8 @@ Esta tabla es la línea de tiempo del cliente (H09.1, filtrada por `is_visible_t
 | `v_order_lines` | Línea efectiva: producto, nombre, precio unitario efectivo, cantidad, si quedó quitada | `order_items` + versión + decisiones de [E09](E09-producto-faltante.md) |
 | `v_order_amounts` | `items_total`, `delivery_fee`, `customer_total`, `commission_amount` | `v_order_lines`, `delivery_zone_fees.amount`, `round(delivery_fee × commission_rates.rate, 2)` |
 | `v_customer_delivered_counts` | Pedidos entregados por cliente | `orders` con estado `counts_as_delivered` |
-| `v_order_courier` | Domiciliario del pedido | La asignación vigente o, si el pedido terminó, la última ([E07](E07-asignacion.md)) |
+| `v_order_customer_status` | Último estado visible al cliente y su hora | `order_status_history` filtrado por `is_visible_to_customer` (`DISTINCT ON`): con `OFFERED` el cliente sigue viendo "Buscando domiciliario" |
+| `v_order_courier` | Domiciliario del pedido | La asignación vigente o, si el pedido terminó, la última ([E07](E07-asignacion.md); se crea con esa épica) |
 
 Tope de cliente nuevo (H04.3, RF-22), sin guardar ninguna marca:
 
@@ -246,13 +248,34 @@ SELECT coalesce(d.delivered, 0) = 0 AS es_nuevo
 FROM users u
 LEFT JOIN v_customer_delivered_counts d ON d.customer_user_id = u.id
 WHERE u.id = :cliente;
--- Si es nuevo y el total del carrito supera orders.new_customer_max_cop, se rechaza.
+-- Si es nuevo, los productos de este pedido más los de sus pedidos en curso no pueden
+-- superar orders.new_customer_max_cop (parámetro por municipio). El domicilio no cuenta:
+-- el tope protege lo que el domiciliario compra con su dinero.
 ```
+
+La cotización (`POST /orders/quote`) devuelve el tope, lo disponible y si se excede, para que la pantalla lo muestre antes de confirmar.
 
 ## Confirmar el pedido (H04.3), en una transacción
 
+0. Si el `clientRequestId` ya creó un pedido de este cliente, devolver ese pedido (otro cliente con el mismo id recibe `REQUEST_REUSED`).
 1. Verificar horario ([E03](E03-zonas-horario-configuracion.md#horario-de-operación-h032-rf-15)), establecimiento con `accepts_orders`, productos con `is_orderable` y tope de cliente nuevo.
 2. Buscar la tarifa vigente de la zona donde cae la dirección y la comisión vigente del municipio.
 3. Insertar `orders` con `status_id` = `PENDING_ASSIGNMENT` (el estado `is_initial`).
 4. Insertar `order_items` con la versión vigente de cada producto.
 5. Insertar la primera fila de `order_status_history` (`from` nulo → `PENDING_ASSIGNMENT`). Un disparador diferido verifica al confirmar la transacción que el pedido tiene al menos una línea y su primera fila de historial.
+
+Si el código choca (`orders_code_key`), se repite la transacción con otro código; desde el tercer intento el código crece un carácter.
+
+Errores que la pantalla resuelve sola: `PRODUCTS_UNAVAILABLE` (`details.productIds`) quita esos productos de la canasta y `PRODUCTS_CHANGED` (`details.changes`: producto, versión y precio nuevos) los actualiza, para que el cliente revise el total antes de volver a confirmar. Sin comisión vigente en el municipio la API responde `ORDERS_NOT_CONFIGURED`: el administrador debe configurarla en el panel antes de abrir pedidos.
+
+## Libreta del cliente (H04.2)
+
+- La referencia es obligatoria al confirmar un punto nuevo; para cotizar basta el punto.
+- Guardar con un nombre que ya existe ("Casa") archiva la anterior y crea la nueva: el pedido viejo sigue apuntando a la suya.
+- El primer lugar con nombre queda como predeterminado; hasta 10 lugares guardados (`TOO_MANY_ADDRESSES`).
+- El destinatario nuevo se guarda por teléfono: volver a escribir el mismo número reutiliza el contacto.
+
+## Pendiente para otras épicas
+
+- Cancelación por el cliente: necesita el motivo (`order_cancellations`), llega con [E10](E10-entrega-e-incidencias.md).
+- `v_order_courier`: con [E07](E07-asignacion.md). `origin_adjustment_id` de las líneas: con [E09](E09-producto-faltante.md).

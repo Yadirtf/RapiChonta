@@ -145,8 +145,7 @@
   "cartView": "Ver canasta",
   "cartSubtotal": "{count, plural, =1{Subtotal (1 producto)} other{Subtotal ({count} productos)}}",
   "cartFeeLater": "El valor del domicilio se suma al confirmar. Pagas al recibir.",
-  "cartCheckout": "Confirmar pedido",
-  "cartCheckoutSoon": "Muy pronto podrás confirmar tu pedido desde aquí.",
+  "cartCheckout": "Hacer el pedido",
   "cartClear": "Vaciar canasta",
   "cartSwitchTitle": "¿Empezar una canasta nueva?",
   "cartSwitchBody": "Tu canasta tiene productos de {current}. Un domiciliario compra en un solo local por pedido; si sigues, la vaciamos y empiezas con {next}.",
@@ -337,6 +336,231 @@
   "@approxStale": {
     "placeholders": {
       "date": {
+        "type": "String"
+      }
+    }
+  },
+  "checkoutTitle": "Tu pedido",
+  "checkoutBack": "Volver al local",
+  "checkoutSignInTitle": "Entra para hacer tu pedido",
+  "checkoutSignInBody": "Con tu celular te avisamos en qué va el pedido y el domiciliario te puede llamar.",
+  "checkoutSignIn": "Entrar con mi celular",
+  "checkoutEmptyTitle": "Tu canasta está vacía",
+  "checkoutEmptyBody": "Elige un local del mapa y agrega lo que quieras que te compremos.",
+  "checkoutToMap": "Ver locales",
+  "checkoutStepWhere": "¿Dónde te lo llevamos?",
+  "checkoutStepWho": "¿Quién lo recibe?",
+  "checkoutStepPay": "¿Cómo pagas al recibir?",
+  "checkoutSavedPlaces": "Tus lugares",
+  "checkoutOtherPlace": "Otro punto",
+  "checkoutMapHint": "Mueve el mapa hasta que el pin quede en la puerta",
+  "checkoutDeliverHere": "Entregar aquí",
+  "checkoutUseMyLocation": "Mi ubicación",
+  "checkoutLocating": "Buscando tu ubicación…",
+  "checkoutLocationDenied": "No pudimos ver tu ubicación. Mueve el mapa hasta el punto de entrega.",
+  "checkoutZoneFee": "Domicilio a {zone}: {fee}",
+  "checkoutCheckingZone": "Calculando el domicilio…",
+  "checkoutOutsideZone": "Aquí todavía no llegamos. Mueve el pin a un barrio o vereda con cobertura.",
+  "checkoutReference": "Referencia para encontrarte",
+  "checkoutReferencePlaceholder": "Casa azul de dos pisos, frente al parque",
+  "checkoutReferenceHint": "Lo que vería el domiciliario al llegar: color, portón, un negocio cerca.",
+  "checkoutLine": "Dirección (opcional)",
+  "checkoutLinePlaceholder": "Calle 5 # 3-20, barrio San Miguel",
+  "checkoutSaveAs": "Guardar este lugar como",
+  "checkoutLabelHome": "Casa",
+  "checkoutLabelWork": "Trabajo",
+  "checkoutLabelFamily": "Familia",
+  "checkoutLabelCustom": "Otro nombre",
+  "checkoutLabelPlaceholder": "Finca, donde la abuela…",
+  "checkoutDontSave": "No guardar",
+  "checkoutForMe": "Yo lo recibo",
+  "checkoutForSomeone": "Otra persona",
+  "checkoutForMeHint": "Te llamamos al {phone} si hace falta.",
+  "checkoutRecipientName": "Nombre de quien recibe",
+  "checkoutRecipientPhone": "Su celular",
+  "checkoutRecipientHint": "El domiciliario solo verá este número cuando vaya en camino.",
+  "checkoutSavedRecipients": "Ya le has enviado a",
+  "checkoutNewRecipient": "Alguien más",
+  "checkoutPayHint": "Pagas cuando recibes. El domiciliario lleva el pedido y te cobra lo de la factura.",
+  "checkoutCashChange": "¿Con cuánto pagas?",
+  "checkoutCashExact": "Exacto",
+  "checkoutCashNote": "Pago con {amount}",
+  "checkoutTransferHint": "El domiciliario te muestra su código QR o su número para que transfieras.",
+  "checkoutWalletHint": "Le envías a su {method} al recibir; te muestra el número o el QR.",
+  "checkoutNotes": "Nota para el domiciliario (opcional)",
+  "checkoutNotesPlaceholder": "Timbre dañado, llamar al llegar",
+  "checkoutReceipt": "Comanda",
+  "checkoutLineNote": "Nota",
+  "checkoutLineNotePlaceholder": "Sin cebolla, bien asado…",
+  "checkoutAddNote": "Agregar nota",
+  "checkoutItems": "{count, plural, =1{{count} producto} other{{count} productos}}",
+  "checkoutProducts": "Productos",
+  "checkoutDelivery": "Domicilio",
+  "checkoutDeliveryPending": "Elige el punto",
+  "checkoutTotal": "Total a pagar",
+  "checkoutPrep": "El local lo tiene listo en unos {minutes} min",
+  "checkoutFirstOrderTitle": "Tu primer pedido",
+  "checkoutFirstOrderBody": "Mientras recibes tu primera entrega, tus pedidos pueden sumar hasta {limit} en productos. Te quedan {available}.",
+  "checkoutFirstOrderExceeded": "Te pasas por {over}. Quita algo o espera a recibir tu primer pedido.",
+  "checkoutConfirm": "Confirmar pedido · {total}",
+  "checkoutConfirmShort": "Confirmar pedido",
+  "checkoutClosed": "Cerrado · {detail}",
+  "checkoutMissingReference": "Escribe una referencia para encontrar el lugar",
+  "checkoutMissingRecipient": "Escribe el nombre y el celular de quien recibe",
+  "checkoutMissingPayment": "Elige cómo vas a pagar",
+  "checkoutCartChanged": "Actualizamos tu canasta antes de confirmar",
+  "checkoutRemoved": "Ya no se pueden pedir: {names}.",
+  "checkoutRepriced": "Cambió el precio de: {names}. Revisa el total.",
+  "checkoutLegal": "Al confirmar, un domiciliario de RapiChonta compra por ti en el local y te lo lleva.",
+  "checkoutOutsideShort": "Sin cobertura aquí",
+  "checkoutMissingRecipientPhone": "Escribe un celular de 10 dígitos que empiece por 3",
+  "checkoutCashExactNote": "Pago con el valor exacto",
+  "checkoutStoreClosed": "Este local no está recibiendo pedidos",
+  "payCash": "Efectivo",
+  "payNequi": "Nequi",
+  "payDaviplata": "Daviplata",
+  "payBankTransfer": "Transferencia",
+  "statusPendingAssignmentLabel": "Buscando domiciliario",
+  "statusPendingAssignmentBody": "Estamos eligiendo al domiciliario más cercano para tu pedido.",
+  "statusAcceptedLabel": "Domiciliario asignado",
+  "statusAcceptedBody": "Ya va para el local a hacer tu compra.",
+  "statusAtEstablishmentLabel": "En el local",
+  "statusAtEstablishmentBody": "El domiciliario está pidiendo tus productos.",
+  "statusAwaitingCustomerLabel": "Necesitamos tu decisión",
+  "statusAwaitingCustomerBody": "Algo no está disponible o cambió de precio. Revisa y decide.",
+  "statusPreparingLabel": "Preparando",
+  "statusPreparingBody": "Ya se pagó en el local; están alistando tu pedido.",
+  "statusOnTheWayLabel": "En camino",
+  "statusOnTheWayBody": "Tu pedido salió del local hacia tu dirección.",
+  "statusArrivingLabel": "Llegando",
+  "statusArrivingBody": "El domiciliario está a pocos metros. Ten listo el pago.",
+  "statusPendingReviewLabel": "Entrega en revisión",
+  "statusPendingReviewBody": "El domiciliario reportó la entrega con foto; RapiChonta la está revisando.",
+  "statusDisputedLabel": "Lo estamos revisando",
+  "statusDisputedBody": "Nos contaste que no lo recibiste. Te contactamos pronto.",
+  "statusDeliveredLabel": "Entregado",
+  "statusDeliveredBody": "¡Buen provecho! Gracias por pedir con RapiChonta.",
+  "statusCancelledLabel": "Cancelado",
+  "statusCancelledBody": "Este pedido se canceló. No tienes nada que pagar.",
+  "ordersTitle": "Mis pedidos",
+  "ordersBackToMap": "Volver al mapa",
+  "ordersSignInTitle": "Entra para ver tus pedidos",
+  "ordersSignIn": "Entrar con mi celular",
+  "ordersActive": "En curso",
+  "ordersHistory": "Pedidos anteriores",
+  "ordersEmptyTitle": "Aún no has pedido nada",
+  "ordersEmptyBody": "Elige un local de Villagarzón y te lo compramos y llevamos.",
+  "ordersToMap": "Ver locales",
+  "ordersEmptyHistory": "Aquí verás tus pedidos entregados y cancelados.",
+  "ordersMore": "Ver más pedidos",
+  "ordersItems": "{count, plural, =1{{count} producto} other{{count} productos}}",
+  "ordersLoadError": "No pudimos cargar tus pedidos",
+  "ordersRetry": "Reintentar",
+  "ordersPlacedTitle": "¡Recibimos tu pedido!",
+  "ordersPlacedBody": "Guarda este código. Te avisamos en cada paso.",
+  "ordersCode": "Código del pedido",
+  "ordersRoute": "Así va tu pedido",
+  "ordersAt": "{time}",
+  "ordersReceipt": "Lo que pediste",
+  "ordersProducts": "Productos",
+  "ordersDelivery": "Domicilio a {zone}",
+  "ordersTotal": "Total",
+  "ordersDeliverTo": "Entregamos en",
+  "ordersReceivedBy": "Recibe",
+  "ordersYou": "Tú",
+  "ordersPayWith": "Pagas con",
+  "ordersNotes": "Nota para el domiciliario",
+  "ordersPrep": "El local lo tiene listo en unos {minutes} min",
+  "ordersPrivacy": "Por tu seguridad y la del domiciliario, no mostramos su ubicación: te contamos cada paso.",
+  "ordersNotFoundTitle": "No encontramos ese pedido",
+  "ordersNotFoundBody": "Revisa el código o mira tus pedidos.",
+  "ordersToOrders": "Ver mis pedidos",
+  "ordersUpdated": "Se actualiza solo",
+  "ordersSignInBody": "Entra con tu celular para ver en qué va cada pedido.",
+  "ordersDetailTitle": "Tu pedido",
+  "errEmptyOrder": "Tu canasta está vacía.",
+  "errTooManyLines": "Máximo {max} productos distintos por pedido.",
+  "errInvalidQuantity": "La cantidad de cada producto va de 1 a {max}.",
+  "errDuplicateProduct": "Hay un producto repetido en la canasta.",
+  "errProductsUnavailable": "Algunos productos ya no se pueden pedir. Los quitamos de tu canasta.",
+  "errProductsChanged": "Cambió el precio de algunos productos. Revisa el total y confirma de nuevo.",
+  "errEstablishmentNotAcceptingOrders": "Este local no está recibiendo pedidos en este momento.",
+  "errNewCustomerLimit": "Tu primer pedido supera el tope para clientes nuevos.",
+  "errPaymentMethodUnavailable": "Ese medio de pago no está disponible.",
+  "errOrdersNotConfigured": "Aún no recibimos pedidos en este municipio. Vuelve pronto.",
+  "errAddressNotFound": "Esa dirección ya no está guardada.",
+  "errRecipientNotFound": "Ese contacto ya no está guardado.",
+  "errTooManyAddresses": "Puedes guardar hasta {max} lugares.",
+  "errOrderNotFound": "No encontramos ese pedido.",
+  "errRequestReused": "Vuelve a intentarlo.",
+  "errNoCoverage": "Todavía no llegamos a ese punto de entrega.",
+  "errOutsideOperatingHours": "Ahora no estamos recibiendo pedidos. Revisa a qué hora abrimos.",
+  "errTextRequired": "{field, select, name {Falta el nombre.} addressLine {Falta la dirección.} reference {Escribe una referencia para encontrar el lugar.} recipientName {Escribe el nombre de quien recibe.} label {Ponle un nombre al lugar.} other {Falta un texto obligatorio.}}",
+  "@checkoutItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@checkoutPrep": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "@ordersItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@ordersPrep": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "@errTooManyLines": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "@errInvalidQuantity": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "@errTooManyAddresses": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "@checkoutZoneFee": {
+    "placeholders": {
+      "zone": {
+        "type": "String"
+      },
+      "fee": {
+        "type": "String"
+      }
+    }
+  },
+  "@checkoutFirstOrderBody": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      },
+      "available": {
         "type": "String"
       }
     }

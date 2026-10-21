@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/widgets.dart' show StringCharacters;
 
 import 'establishment.dart';
 
@@ -12,6 +13,7 @@ class CartLine extends Equatable {
     required this.priceCents,
     required this.quantity,
     this.imageUrl,
+    this.notes,
   });
 
   factory CartLine.of(MenuProduct product) => CartLine(
@@ -30,17 +32,31 @@ class CartLine extends Equatable {
   final String? imageUrl;
   final int quantity;
 
-  CartLine copyWith({int? quantity, String? versionId, String? name, int? priceCents, String? imageUrl}) => CartLine(
+  /// Indicación para el domiciliario ("sin cebolla"); viaja con el pedido.
+  final String? notes;
+
+  CartLine copyWith({int? quantity, String? versionId, String? name, int? priceCents, String? imageUrl, String? Function()? notes}) => CartLine(
         productId: productId,
         versionId: versionId ?? this.versionId,
         name: name ?? this.name,
         priceCents: priceCents ?? this.priceCents,
         imageUrl: imageUrl ?? this.imageUrl,
         quantity: quantity ?? this.quantity,
+        notes: notes != null ? notes() : this.notes,
       );
 
+  Map<String, dynamic> toJson() => {
+        'productId': productId,
+        'versionId': versionId,
+        'name': name,
+        'priceCents': priceCents,
+        'imageUrl': imageUrl,
+        'quantity': quantity,
+        'notes': notes,
+      };
+
   @override
-  List<Object?> get props => [productId, versionId, priceCents, quantity];
+  List<Object?> get props => [productId, versionId, priceCents, quantity, notes];
 }
 
 class Cart extends Equatable {
@@ -48,6 +64,7 @@ class Cart extends Equatable {
 
   static const maxQuantity = 20;
   static const maxLines = 40;
+  static const maxNotes = 200;
 
   final String establishmentId;
   final String establishmentName;
@@ -60,6 +77,41 @@ class Cart extends Equatable {
 
   /// true si agregar de este establecimiento obliga a vaciar la canasta.
   bool belongsToOther(String establishmentId) => lines.isNotEmpty && this.establishmentId != establishmentId;
+
+  Map<String, dynamic> toJson() => {
+        'establishmentId': establishmentId,
+        'establishmentName': establishmentName,
+        'lines': [for (final l in lines) l.toJson()],
+      };
+
+  /// Lectura defensiva de lo guardado en el teléfono (puede venir de una versión vieja de la app).
+  static Cart? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final id = json['establishmentId'];
+    final name = json['establishmentName'];
+    final raw = json['lines'];
+    if (id is! String || name is! String || raw is! List) return null;
+    final lines = <CartLine>[
+      for (final l in raw.whereType<Map>())
+        if (l['productId'] is String && l['versionId'] is String && l['name'] is String && l['priceCents'] is int && l['quantity'] is int && (l['quantity'] as int) > 0)
+          CartLine(
+            productId: l['productId'] as String,
+            versionId: l['versionId'] as String,
+            name: l['name'] as String,
+            priceCents: l['priceCents'] as int,
+            imageUrl: l['imageUrl'] is String ? l['imageUrl'] as String : null,
+            quantity: (l['quantity'] as int).clamp(1, maxQuantity),
+            notes: l['notes'] is String ? (l['notes'] as String).characters.take(maxNotes).toString() : null,
+          ),
+    ].take(maxLines).toList();
+    return lines.isEmpty ? null : Cart(establishmentId: id, establishmentName: name, lines: lines);
+  }
+
+  /// Lo que la API recibe al cotizar o confirmar: la versión que vio el cliente, la cantidad y su nota.
+  List<Map<String, dynamic>> get checkoutItems => [
+        for (final l in lines)
+          {'productVersionId': l.versionId, 'quantity': l.quantity, 'notes': (l.notes?.trim().isEmpty ?? true) ? null : l.notes!.trim()},
+      ];
 
   @override
   List<Object?> get props => [establishmentId, lines];
@@ -85,6 +137,47 @@ abstract final class CartRules {
         if (l.productId != productId) l else if (q > 0) l.copyWith(quantity: q),
     ];
     return lines.isEmpty ? null : Cart(establishmentId: cart.establishmentId, establishmentName: cart.establishmentName, lines: lines);
+  }
+
+  /// Nota de una línea; vacía la quita.
+  static Cart setNotes(Cart cart, String productId, String notes) {
+    final text = notes.characters.take(Cart.maxNotes).toString();
+    return Cart(
+      establishmentId: cart.establishmentId,
+      establishmentName: cart.establishmentName,
+      lines: [for (final l in cart.lines) l.productId == productId ? l.copyWith(notes: () => text.trim().isEmpty ? null : text) : l],
+    );
+  }
+
+  /// Aplica lo que respondió la API al confirmar: quita lo que ya no se puede pedir (PRODUCTS_UNAVAILABLE)
+  /// y toma la versión y el precio nuevos (PRODUCTS_CHANGED) para que el cliente revise antes de volver a confirmar.
+  static ({Cart? cart, List<String> removed, List<String> repriced}) applyCorrections(
+    Cart cart, {
+    Iterable<String> unavailable = const [],
+    Map<String, ({String versionId, int priceCents})> changed = const {},
+  }) {
+    final gone = unavailable.toSet();
+    final removed = <String>[];
+    final repriced = <String>[];
+    final lines = <CartLine>[];
+    for (final line in cart.lines) {
+      if (gone.contains(line.productId) || gone.contains(line.versionId)) {
+        removed.add(line.name);
+        continue;
+      }
+      final change = changed[line.productId];
+      if (change == null) {
+        lines.add(line);
+        continue;
+      }
+      repriced.add(line.name);
+      lines.add(line.copyWith(versionId: change.versionId, priceCents: change.priceCents));
+    }
+    return (
+      cart: lines.isEmpty ? null : Cart(establishmentId: cart.establishmentId, establishmentName: cart.establishmentName, lines: lines),
+      removed: removed,
+      repriced: repriced,
+    );
   }
 
   /// Pone la canasta al día con el menú recién cargado: quita lo que ya no se puede pedir y toma el

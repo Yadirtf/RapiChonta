@@ -100,6 +100,7 @@ model PaymentMethod {
   requiresBank     Boolean   @map("requires_bank")
 
   collectionAccounts CourierCollectionAccount[]
+  orders             Order[]
 
   @@map("payment_methods")
 }
@@ -308,6 +309,10 @@ model User {
   hoursCreated           OperatingHour[]
   settingValuesCreated   SettingValue[]
   commissionRatesCreated CommissionRate[]
+  addresses              Address[]
+  recipients             CustomerRecipient[]
+  orders                 Order[]
+  orderStatusChanges     OrderStatusHistory[]
 
   @@index([statusId])
   @@map("users")
@@ -340,10 +345,12 @@ model Role {
   isStaff              Boolean   @map("is_staff")
   requiresMunicipality Boolean   @map("requires_municipality")
 
-  permissions       RolePermission[]
-  userRoles         UserRole[]
-  sessions          Session[]
-  legalRequirements LegalDocumentRequirement[]
+  permissions          RolePermission[]
+  userRoles            UserRole[]
+  sessions             Session[]
+  legalRequirements    LegalDocumentRequirement[]
+  orderTransitionRoles OrderStatusTransitionRole[]
+  orderStatusChanges   OrderStatusHistory[]
 
   @@map("roles")
 }
@@ -888,6 +895,7 @@ model Establishment {
   phones        EstablishmentPhone[]
   menuSections  MenuSection[]
   products      Product[]
+  orders        Order[]
 
   @@index([location], type: Gist)
   @@index([area], type: Gist)
@@ -1026,6 +1034,7 @@ model ProductVersion {
   product         Product              @relation(fields: [productId], references: [id], onDelete: Restrict)
   createdBy       User                 @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
   texts           ProductVersionText[]
+  orderItems      OrderItem[]
 
   @@unique([productId, createdAt])
   @@map("product_versions")
@@ -1093,6 +1102,7 @@ model DeliveryZoneFee {
   createdAt       DateTime     @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(6)
   deliveryZone    DeliveryZone @relation(fields: [deliveryZoneId], references: [id], onDelete: Restrict)
   createdBy       User         @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  orders          Order[]
 
   @@unique([deliveryZoneId, createdAt])
   @@map("delivery_zone_fees")
@@ -1174,6 +1184,7 @@ model CommissionRate {
   createdAt       DateTime     @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(6)
   municipality    Municipality @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
   createdBy       User         @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  orders          Order[]
 
   @@unique([municipalityId, createdAt])
   @@map("commission_rates")
@@ -1189,4 +1200,190 @@ model ExchangeRate {
 
   @@unique([currencyId, fetchedAt])
   @@map("exchange_rates")
+}
+
+// ═══════════════════════════ E04 · Pedido del cliente ═══════════════════════════
+
+/// Dirección guardada del cliente (H04.2). line, reference y location son inmutables: editar es archivar y crear otra.
+model Address {
+  id          String                                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerUserId String                                @map("owner_user_id") @db.Uuid
+  /// "Casa", "Trabajo". Nulo = dirección de un solo uso (no aparece en la lista del cliente).
+  label       String?                               @db.VarChar(40)
+  line        String?                               @db.VarChar(200)
+  reference   String?                               @db.VarChar(200)
+  location    Unsupported("geography(Point, 4326)")
+  isDefault   Boolean                               @default(false) @map("is_default")
+  createdAt   DateTime                              @default(now()) @map("created_at") @db.Timestamptz(6)
+  archivedAt  DateTime?                             @map("archived_at") @db.Timestamptz(6)
+  owner       User                                  @relation(fields: [ownerUserId], references: [id], onDelete: Restrict)
+  orders      Order[]
+
+  @@unique([id, ownerUserId])
+  @@index([ownerUserId, createdAt(sort: Desc)])
+  @@index([location], type: Gist)
+  @@map("addresses")
+}
+
+/// Contacto privado del cliente que recibe un pedido para otra persona (no es una persona registrada).
+model CustomerRecipient {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerUserId String    @map("owner_user_id") @db.Uuid
+  fullName    String    @map("full_name") @db.VarChar(120)
+  phoneE164   String?   @map("phone_e164") @db.VarChar(16)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  archivedAt  DateTime? @map("archived_at") @db.Timestamptz(6)
+  owner       User      @relation(fields: [ownerUserId], references: [id], onDelete: Restrict)
+  orders      Order[]
+
+  @@unique([id, ownerUserId])
+  @@map("customer_recipients")
+}
+
+/// Quién compra: el domiciliario (MVP) o el comercio aliado (E15).
+model FulfillmentMode {
+  id            Int       @id @default(autoincrement()) @db.SmallInt
+  code          String    @unique @db.VarChar(40)
+  sortOrder     Int       @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  orders        Order[]
+
+  @@map("fulfillment_modes")
+}
+
+model OrderStatus {
+  id                     Int       @id @default(autoincrement()) @db.SmallInt
+  code                   String    @unique @db.VarChar(40)
+  sortOrder              Int       @map("sort_order") @db.SmallInt
+  deactivatedAt          DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  isInitial              Boolean   @map("is_initial")
+  isTerminal             Boolean   @map("is_terminal")
+  /// Aparece en la línea de tiempo del cliente (RF-50).
+  isVisibleToCustomer    Boolean   @map("is_visible_to_customer")
+  /// Paso del recorrido normal: la línea de tiempo lo muestra como pendiente aunque aún no llegue.
+  isMilestone            Boolean   @map("is_milestone")
+  /// Desde aquí el domiciliario ve la dirección exacta y el teléfono de quien recibe.
+  revealsDeliveryDetails Boolean   @map("reveals_delivery_details")
+  /// Cuenta como entregado (tope de cliente nuevo, comisión, métricas).
+  countsAsDelivered      Boolean   @map("counts_as_delivered")
+
+  orders          Order[]
+  transitionsFrom OrderStatusTransition[] @relation("OrderTransitionFrom")
+  transitionsTo   OrderStatusTransition[] @relation("OrderTransitionTo")
+  historyTo       OrderStatusHistory[]    @relation("OrderHistoryTo")
+
+  @@map("order_statuses")
+}
+
+/// Máquina de estados del pedido en datos. allows_system: la puede hacer el sistema (geocerca, temporizador).
+model OrderStatusTransition {
+  fromStatusId Int                         @map("from_status_id") @db.SmallInt
+  toStatusId   Int                         @map("to_status_id") @db.SmallInt
+  allowsSystem Boolean                     @default(false) @map("allows_system")
+  fromStatus   OrderStatus                 @relation("OrderTransitionFrom", fields: [fromStatusId], references: [id], onDelete: Restrict)
+  toStatus     OrderStatus                 @relation("OrderTransitionTo", fields: [toStatusId], references: [id], onDelete: Restrict)
+  roles        OrderStatusTransitionRole[]
+  history      OrderStatusHistory[]
+
+  @@id([fromStatusId, toStatusId])
+  @@map("order_status_transitions")
+}
+
+/// Qué rol activo puede hacer cada cambio de estado.
+model OrderStatusTransitionRole {
+  fromStatusId Int                   @map("from_status_id") @db.SmallInt
+  toStatusId   Int                   @map("to_status_id") @db.SmallInt
+  roleId       Int                   @map("role_id") @db.SmallInt
+  transition   OrderStatusTransition @relation(fields: [fromStatusId, toStatusId], references: [fromStatusId, toStatusId], onDelete: Cascade)
+  role         Role                  @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@id([fromStatusId, toStatusId, roleId])
+  @@map("order_status_transition_roles")
+}
+
+/// Por qué medio llegó un cambio de estado: acción de una persona, sincronización sin señal, geocerca o temporizador.
+model StatusChangeSource {
+  id            Int                  @id @default(autoincrement()) @db.SmallInt
+  code          String               @unique @db.VarChar(40)
+  sortOrder     Int                  @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?            @map("deactivated_at") @db.Timestamptz(6)
+  isAutomatic   Boolean              @map("is_automatic")
+  history       OrderStatusHistory[]
+
+  @@map("status_change_sources")
+}
+
+/// El pedido guarda solo lo suyo: totales, comisión en pesos y domiciliario se calculan (v_order_amounts, E07).
+model Order {
+  id                String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code              String               @unique @db.VarChar(12)
+  customerUserId    String               @map("customer_user_id") @db.Uuid
+  establishmentId   String               @map("establishment_id") @db.Uuid
+  deliveryAddressId String               @map("delivery_address_id") @db.Uuid
+  recipientId       String?              @map("recipient_id") @db.Uuid
+  deliveryZoneFeeId String               @map("delivery_zone_fee_id") @db.Uuid
+  commissionRateId  String               @map("commission_rate_id") @db.Uuid
+  paymentMethodId   Int                  @map("payment_method_id") @db.SmallInt
+  fulfillmentModeId Int                  @map("fulfillment_mode_id") @db.SmallInt
+  /// Estado actual: solo lo escribe el disparador de order_status_history.
+  statusId          Int                  @map("status_id") @db.SmallInt
+  customerNotes     String?              @map("customer_notes") @db.VarChar(500)
+  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  customer          User                 @relation(fields: [customerUserId], references: [id], onDelete: Restrict)
+  establishment     Establishment        @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  deliveryAddress   Address              @relation(fields: [deliveryAddressId, customerUserId], references: [id, ownerUserId], onDelete: Restrict)
+  recipient         CustomerRecipient?   @relation(fields: [recipientId, customerUserId], references: [id, ownerUserId], onDelete: Restrict)
+  deliveryZoneFee   DeliveryZoneFee      @relation(fields: [deliveryZoneFeeId], references: [id], onDelete: Restrict)
+  commissionRate    CommissionRate       @relation(fields: [commissionRateId], references: [id], onDelete: Restrict)
+  paymentMethod     PaymentMethod        @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
+  fulfillmentMode   FulfillmentMode      @relation(fields: [fulfillmentModeId], references: [id], onDelete: Restrict)
+  status            OrderStatus          @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  items             OrderItem[]
+  statusHistory     OrderStatusHistory[]
+
+  @@index([customerUserId, createdAt(sort: Desc)])
+  @@index([customerUserId, statusId])
+  @@index([statusId])
+  @@index([establishmentId, createdAt])
+  @@map("orders")
+}
+
+/// Línea del pedido: nombre, precio y tiempo se leen de la versión del producto (no se copian).
+model OrderItem {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId          String         @map("order_id") @db.Uuid
+  productVersionId String         @map("product_version_id") @db.Uuid
+  quantity         Int            @db.SmallInt
+  notes            String?        @db.VarChar(200)
+  order            Order          @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  productVersion   ProductVersion @relation(fields: [productVersionId], references: [id], onDelete: Restrict)
+
+  @@unique([id, orderId])
+  @@index([orderId])
+  @@map("order_items")
+}
+
+/// Línea de tiempo del pedido: una fila inmutable por cambio de estado.
+model OrderStatusHistory {
+  id              String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId         String                 @map("order_id") @db.Uuid
+  fromStatusId    Int?                   @map("from_status_id") @db.SmallInt
+  toStatusId      Int                    @map("to_status_id") @db.SmallInt
+  changedByUserId String?                @map("changed_by_user_id") @db.Uuid
+  actingRoleId    Int?                   @map("acting_role_id") @db.SmallInt
+  sourceId        Int                    @map("source_id") @db.SmallInt
+  /// Lo genera el dispositivo: reenviar el mismo evento (sin señal o doble toque) no lo duplica.
+  clientEventId   String?                @unique @map("client_event_id") @db.Uuid
+  occurredAt      DateTime               @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(6)
+  recordedAt      DateTime               @default(dbgenerated("clock_timestamp()")) @map("recorded_at") @db.Timestamptz(6)
+  note            String?                @db.VarChar(300)
+  order           Order                  @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  toStatus        OrderStatus            @relation("OrderHistoryTo", fields: [toStatusId], references: [id], onDelete: Restrict)
+  transition      OrderStatusTransition? @relation(fields: [fromStatusId, toStatusId], references: [fromStatusId, toStatusId], onDelete: Restrict)
+  changedBy       User?                  @relation(fields: [changedByUserId], references: [id], onDelete: Restrict)
+  actingRole      Role?                  @relation(fields: [actingRoleId], references: [id], onDelete: Restrict)
+  source          StatusChangeSource     @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, recordedAt])
+  @@map("order_status_history")
 }
