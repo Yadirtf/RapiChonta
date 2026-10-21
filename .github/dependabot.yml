@@ -1,7 +1,11 @@
 # Actualizaciones automáticas de dependencias (H05.2). Cada lunes Dependabot revisa cada ecosistema y
 # abre PR hacia develop; pasan por el mismo CI que cualquier otro cambio.
-# Los parches y menores de un mismo ecosistema llegan juntos en un solo PR para no llenar la bandeja;
-# las versiones mayores llegan una por una porque suelen pedir cambios en el código.
+# Los parches y menores de un mismo ecosistema llegan juntos en un solo PR para no llenar la bandeja.
+# Las versiones mayores que solo funcionan juntas (familia NestJS con TypeScript, Next con su ESLint,
+# Jest con ts-jest) llegan en un único PR: por separado rompen `npm ci` por dependencias pares, como
+# pasó con @nestjs/schematics 12 (pide TypeScript 6) y @nestjs/testing 12 (pide @nestjs/common 12).
+# Node y @types/node no suben de versión mayor solos: se cambian a mano, juntos y solo a versiones LTS
+# (Dockerfile, ci.yml y package.json a la vez).
 # Las alertas de seguridad abren su PR apenas se publican, sin esperar al lunes.
 version: 2
 
@@ -13,9 +17,18 @@ updates:
     labels: ["dependencias", "área: api"]
     commit-message: { prefix: "deps(api)" }
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       menores:
         update-types: [minor, patch]
+      nestjs:
+        patterns: ["@nestjs/*", "typescript"]
+        update-types: [major]
+      pruebas:
+        patterns: ["jest", "@types/jest", "ts-jest"]
+        update-types: [major]
 
   - package-ecosystem: npm
     directory: /web
@@ -24,9 +37,15 @@ updates:
     labels: ["dependencias", "área: web"]
     commit-message: { prefix: "deps(web)" }
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       menores:
         update-types: [minor, patch]
+      next:
+        patterns: ["next", "@next/*", "eslint-config-next", "eslint", "@eslint/*", "typescript"]
+        update-types: [major]
 
   - package-ecosystem: npm
     directory: /.github/scripts
@@ -55,6 +74,9 @@ updates:
     schedule: { interval: weekly, day: monday, time: "06:00", timezone: America/Bogota }
     labels: ["dependencias", "área: infra"]
     commit-message: { prefix: "deps(docker)" }
+    ignore:
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /

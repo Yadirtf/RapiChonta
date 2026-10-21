@@ -32,7 +32,7 @@ export function ErrorScreen({ text, onRetry }: { text: ErrorScreenText; onRetry:
           </button>
           {/* Carga completa (no navegación del cliente): si el error vino del enrutador, así sale limpio. */}
           <button
-            onClick={() => window.location.assign("/")}
+            onClick={() => window.location.assign(new URL("/", window.location.origin))}
             className="inline-flex h-13 items-center justify-center rounded-2xl px-6 font-bold text-ink/75 ring-1 ring-ink/15 transition hover:bg-white"
           >
             {text.home}
