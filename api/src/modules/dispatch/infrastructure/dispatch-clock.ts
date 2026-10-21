@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import { DispatchSignal } from '../application/dispatch-signal';
+import { AVAILABILITY_IDLE_MINUTES } from '../domain/dispatch.codes';
 import { nextSweepDelay } from '../domain/offer-plan';
 import { DispatchMaintenance } from '../domain/ports/dispatch-maintenance';
 
@@ -16,7 +17,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Reloj del despacho. En lugar de revisar cada segundo, duerme hasta justo después de la próxima oferta por
- * vencer; un envío nuevo lo despierta (`reschedule`). Una vez al día borra las ubicaciones viejas (RNF-06).
+ * vencer; un envío nuevo lo despierta (`reschedule`). En cada pasada cierra los turnos abandonados y una vez al día
+ * borra las ubicaciones viejas (RNF-06).
  */
 @Injectable()
 export class DispatchClock extends DispatchSignal implements OnApplicationBootstrap, OnApplicationShutdown {
@@ -66,6 +68,9 @@ export class DispatchClock extends DispatchSignal implements OnApplicationBootst
         const returned = await this.maintenance.expireOffers();
         if (returned) this.logger.log(`${returned} pedido(s) volvieron al panel: nadie aceptó a tiempo`);
       } while (this.again);
+      // En la misma pasada (como mucho cada idleMs): turnos de quien dejó de reportar ubicación (RNF-06).
+      const closed = await this.maintenance.closeIdleAvailability(AVAILABILITY_IDLE_MINUTES);
+      if (closed) this.logger.log(`${closed} turno(s) Disponible cerrados por inactividad`);
       this.schedule(nextSweepDelay(await this.maintenance.nextExpiry(), now(), this.options));
     } catch (error) {
       this.logger.error(`Reloj del despacho: ${(error as Error).message}`);

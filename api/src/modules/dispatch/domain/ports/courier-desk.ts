@@ -6,7 +6,8 @@ export interface CourierStatus {
   /** Falta aceptar la versión vigente de la autorización de ubicación. */
   locationConsentPending: boolean;
   availableSince: Date | null;
-  activeOrderCode: string | null;
+  /** El pedido en curso (uno a la vez) y su estado. */
+  activeOrder: { code: string; status: string } | null;
 }
 
 export interface LocationReading {
@@ -23,6 +24,8 @@ export interface CourierOffer {
   establishment: { name: string; addressLine: string; location: GeoPoint };
   zone: { name: string; kind: string };
   itemCount: number;
+  /** Qué hay que comprar: nombre en el idioma del domiciliario, cantidad y nota del cliente. */
+  lines: { name: string; quantity: number; notes: string | null }[];
   itemsTotal: string;
   deliveryFee: string;
   paymentMethod: string;
@@ -42,7 +45,9 @@ export abstract class CourierDesk {
   /** Hay turno abierto o un pedido en curso: solo entonces se guardan ubicaciones (RNF-06). */
   abstract expectsLocation(courierUserId: string): Promise<boolean>;
   abstract recordLocations(courierUserId: string, readings: LocationReading[]): Promise<void>;
-  abstract pendingOffers(courierUserId: string): Promise<CourierOffer[]>;
+  /** La lectura guardada más reciente: referencia para descartar saltos imposibles. */
+  abstract lastReading(courierUserId: string): Promise<LocationReading | null>;
+  abstract pendingOffers(courierUserId: string, language: string): Promise<CourierOffer[]>;
   /** Actualización condicional + índice único: si dos aceptan a la vez, solo uno gana (H07.3). */
   abstract accept(offerId: string, courierUserId: string): Promise<ResponseResult>;
   /** "No puedo". Si ya nadie más puede responder, el pedido vuelve al panel (fuente OFFERS_DECLINED). */

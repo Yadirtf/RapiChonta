@@ -1,11 +1,19 @@
 /**
- * Qué propósitos de `file_purposes` se pueden subir hoy y con qué permiso. Los demás (factura, foto de
- * entrega, documento del domiciliario) se habilitan en sus historias (H08.4, H10.4, H01.3).
+ * Qué propósitos de `file_purposes` se pueden subir hoy y con qué permiso. Los demás (foto de entrega,
+ * documento del domiciliario) se habilitan en sus historias (H10.4, H01.3).
  */
 export const UPLOADABLE_PURPOSES: Record<string, string> = {
   PRODUCT_IMAGE: 'products.manage',
   ESTABLISHMENT_LOGO: 'establishments.manage',
+  // H08.4: la factura de la compra, que sube el domiciliario desde la cámara.
+  PURCHASE_RECEIPT: 'orders.progress',
 };
+
+/**
+ * Propósitos que nunca se reutilizan por huella: cada factura es de una sola compra y de quien la subió
+ * (order_purchases exige que la suba quien registra la compra). Las fotos de catálogo sí se comparten.
+ */
+export const PRIVATE_PURPOSES: readonly string[] = ['PURCHASE_RECEIPT'];
 
 /** Tipos que la API acepta aunque el catálogo permita otros: solo imágenes rasterizadas (un SVG puede llevar scripts). */
 export const SAFE_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;

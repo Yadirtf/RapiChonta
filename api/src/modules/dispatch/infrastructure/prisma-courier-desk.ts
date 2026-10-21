@@ -34,17 +34,27 @@ export class PrismaCourierDesk extends CourierDesk {
   }
 
   async status(courierUserId: string): Promise<CourierStatus | null> {
-    const [row] = await this.prisma.$queryRaw<{ verified: boolean; consent_pending: boolean; available_since: Date | null; order_code: string | null }[]>`
+    const [row] = await this.prisma.$queryRaw<
+      { verified: boolean; consent_pending: boolean; available_since: Date | null; order_code: string | null; order_status: string | null }[]
+    >`
       SELECT vs.can_receive_offers AS verified,
              EXISTS (SELECT 1 FROM v_pending_consents pc WHERE pc.user_id = cp.user_id AND pc.document_type_code = ${LOCATION_CONSENT}) AS consent_pending,
-             av.started_at AS available_since, o.code AS order_code
+             av.started_at AS available_since, o.code AS order_code, os.code AS order_status
       FROM courier_profiles cp
       JOIN courier_verification_statuses vs ON vs.id = cp.verification_status_id
       LEFT JOIN v_open_availability av ON av.courier_user_id = cp.user_id
       LEFT JOIN order_assignments a ON a.courier_user_id = cp.user_id AND a.released_at IS NULL
       LEFT JOIN orders o ON o.id = a.order_id
+      LEFT JOIN order_statuses os ON os.id = o.status_id
       WHERE cp.user_id = ${courierUserId}::uuid`;
-    return row ? { verified: row.verified, locationConsentPending: row.consent_pending, availableSince: row.available_since, activeOrderCode: row.order_code } : null;
+    return row
+      ? {
+          verified: row.verified,
+          locationConsentPending: row.consent_pending,
+          availableSince: row.available_since,
+          activeOrder: row.order_code && row.order_status ? { code: row.order_code, status: row.order_status } : null,
+        }
+      : null;
   }
 
   async openAvailability(courierUserId: string): Promise<void> {
@@ -77,7 +87,14 @@ export class PrismaCourierDesk extends CourierDesk {
            AS r(lat, lng, accuracy, recorded_at)`;
   }
 
-  async pendingOffers(courierUserId: string): Promise<CourierOffer[]> {
+  async lastReading(courierUserId: string): Promise<LocationReading | null> {
+    const [row] = await this.prisma.$queryRaw<{ lat: number; lng: number; accuracy: string | null; recorded_at: Date }[]>`
+      SELECT ST_Y(location::geometry) AS lat, ST_X(location::geometry) AS lng, accuracy_m::text AS accuracy, recorded_at
+      FROM courier_location_pings WHERE courier_user_id = ${courierUserId}::uuid ORDER BY recorded_at DESC LIMIT 1`;
+    return row ? { location: point(row.lat, row.lng), accuracyM: row.accuracy === null ? null : Number(row.accuracy), recordedAt: row.recorded_at } : null;
+  }
+
+  async pendingOffers(courierUserId: string, language: string): Promise<CourierOffer[]> {
     const rows = await this.prisma.$queryRaw<
       {
         offer_id: string;
@@ -114,6 +131,7 @@ export class PrismaCourierDesk extends CourierDesk {
       LEFT JOIN v_courier_last_location ll ON ll.courier_user_id = r.courier_user_id
       WHERE r.courier_user_id = ${courierUserId}::uuid
       ORDER BY oo.expires_at`;
+    const lines = await this.offerLines(rows.map((r) => r.code), language);
     return rows.map((r) => ({
       offerId: r.offer_id,
       orderCode: r.code,
@@ -121,11 +139,30 @@ export class PrismaCourierDesk extends CourierDesk {
       establishment: { name: r.name, addressLine: r.address_line, location: point(r.est_lat, r.est_lng) },
       zone: { name: r.zone_name, kind: r.zone_kind },
       itemCount: r.item_count,
+      lines: lines.get(r.code) ?? [],
       itemsTotal: r.items_total,
       deliveryFee: r.delivery_fee,
       paymentMethod: r.payment_method,
       distanceMeters: r.distance === null ? null : Math.round(r.distance),
     }));
+  }
+
+  /** Lo que hay que comprar de cada pedido ofrecido, en el idioma del domiciliario (español si falta el texto). */
+  private async offerLines(codes: string[], language: string): Promise<Map<string, CourierOffer['lines']>> {
+    const byOrder = new Map<string, CourierOffer['lines']>();
+    if (!codes.length) return byOrder;
+    const rows = await this.prisma.$queryRaw<{ code: string; name: string; quantity: number; notes: string | null }[]>`
+      SELECT o.code, COALESCE(tl.name, te.name) AS name, l.quantity::int AS quantity, l.notes
+      FROM orders o
+      JOIN v_order_lines l ON l.order_id = o.id AND NOT l.is_removed
+      JOIN languages les ON les.code = 'es'
+      LEFT JOIN languages ll ON ll.code = ${language}
+      JOIN product_version_texts te ON te.product_version_id = l.product_version_id AND te.language_id = les.id
+      LEFT JOIN product_version_texts tl ON tl.product_version_id = l.product_version_id AND tl.language_id = ll.id
+      WHERE o.code = ANY(${codes}::text[])
+      ORDER BY o.code, l.unit_price * l.quantity DESC`;
+    for (const r of rows) byOrder.set(r.code, [...(byOrder.get(r.code) ?? []), { name: r.name, quantity: r.quantity, notes: r.notes }]);
+    return byOrder;
   }
 
   /**

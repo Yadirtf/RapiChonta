@@ -45,6 +45,10 @@ interface OrderRow {
   courier_given: string | null;
   courier_family: string | null;
   assigned_at: Date | null;
+  purchase_amount: string | null;
+  receipt_file_id: string | null;
+  estimated_ready_at: Date | null;
+  is_delayed: boolean | null;
 }
 
 interface OfferRow {
@@ -85,7 +89,8 @@ export class PrismaDispatchBoard extends DispatchBoard {
              (SELECT coalesce(sum(l.quantity), 0)::int FROM v_order_lines l WHERE l.order_id = o.id AND NOT l.is_removed) AS item_count,
              a.items_total::text AS items_total, a.delivery_fee::text AS delivery_fee, a.customer_total::text AS total,
              pm.code AS payment_method,
-             oc.courier_user_id, cp.given_names AS courier_given, cp.family_names AS courier_family, oc.assigned_at
+             oc.courier_user_id, cp.given_names AS courier_given, cp.family_names AS courier_family, oc.assigned_at,
+             mv.amount::text AS purchase_amount, op.receipt_file_id, pr.estimated_ready_at, pr.is_delayed
       FROM orders o
       JOIN order_statuses s ON s.id = o.status_id AND NOT s.is_terminal
       JOIN establishments e ON e.id = o.establishment_id AND e.municipality_id = ${municipalityId}
@@ -108,6 +113,9 @@ export class PrismaDispatchBoard extends DispatchBoard {
       LEFT JOIN order_assignments oc ON oc.order_id = o.id AND oc.released_at IS NULL
       LEFT JOIN users cu ON cu.id = oc.courier_user_id
       LEFT JOIN people cp ON cp.id = cu.person_id
+      LEFT JOIN order_purchases op ON op.order_id = o.id
+      LEFT JOIN cash_movements mv ON mv.id = op.cash_movement_id
+      LEFT JOIN v_order_preparation pr ON pr.order_id = o.id
       ORDER BY s.requires_courier, w.occurred_at NULLS LAST, o.created_at`;
     if (!rows.length) return [];
 
@@ -128,6 +136,8 @@ export class PrismaDispatchBoard extends DispatchBoard {
       paymentMethod: r.payment_method,
       liveOffers: offers.get(r.id) ?? [],
       courier: r.courier_user_id ? { userId: r.courier_user_id, name: name(r.courier_given!, r.courier_family), assignedAt: r.assigned_at! } : null,
+      purchase: r.purchase_amount && r.receipt_file_id ? { amount: r.purchase_amount, receiptFileId: r.receipt_file_id } : null,
+      preparation: r.estimated_ready_at ? { estimatedReadyAt: r.estimated_ready_at, delayed: r.is_delayed === true } : null,
     }));
   }
 

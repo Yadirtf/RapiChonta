@@ -37,6 +37,10 @@ export interface BoardOrder {
   paymentMethod: string;
   liveOffers: LiveOffer[];
   courier: { userId: string; name: PersonName; assignedAt: Date } | null;
+  /** H08.4: lo pagado en el local y la foto de la factura (el operador la revisa). */
+  purchase: { amount: string; receiptFileId: string } | null;
+  /** H08.5: hora estimada de listo y si el local dijo "Sigue en preparación" (alerta del panel). */
+  preparation: { estimatedReadyAt: Date; delayed: boolean } | null;
 }
 
 /** Domiciliario despachable ahora: verificado, Disponible, visto hace poco y sin pedido en curso. */

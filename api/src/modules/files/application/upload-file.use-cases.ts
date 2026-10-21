@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import { Principal } from '../../identity/domain/principal';
 import { FileErrors } from '../domain/files.errors';
-import { SAFE_IMAGE_TYPES, sniffImageType, storageKeyOf, UPLOADABLE_PURPOSES } from '../domain/file-purposes';
+import { PRIVATE_PURPOSES, SAFE_IMAGE_TYPES, sniffImageType, storageKeyOf, UPLOADABLE_PURPOSES } from '../domain/file-purposes';
 import { FileRepository } from '../domain/file.repository';
 import { FileStorage, PresignedRequest } from '../domain/file-storage.port';
 import { FileSigner } from './file-signer';
@@ -43,7 +43,7 @@ export class RequestUploadUseCase {
     const sha = input.sha256.toLowerCase();
     if (!/^[0-9a-f]{64}$/.test(sha)) throw FileErrors.invalidChecksum();
 
-    const existing = await this.files.findReusable(input.purpose, sha, this.storage.driver === 'database');
+    const existing = PRIVATE_PURPOSES.includes(input.purpose) ? null : await this.files.findReusable(input.purpose, sha, this.storage.driver === 'database');
     if (existing) return { fileId: existing, alreadyUploaded: true };
 
     const fileId = randomUUID();

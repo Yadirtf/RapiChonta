@@ -5,6 +5,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { BusinessConfigModule } from './modules/business-config/business-config.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { DispatchModule } from './modules/dispatch/dispatch.module';
+import { FulfillmentModule } from './modules/fulfillment/fulfillment.module';
 import { FilesModule } from './modules/files/files.module';
 import { HealthModule } from './modules/health/health.module';
 import { IdentityModule } from './modules/identity/identity.module';
@@ -27,6 +28,7 @@ import { PrismaModule } from './shared/infrastructure/prisma/prisma.module';
     OrdersModule,
     NotificationsModule,
     DispatchModule,
+    FulfillmentModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { CatalogIds } from '../../../shared/infrastructure/prisma/catalog-ids';
 import { PrismaService } from '../../../shared/infrastructure/prisma/prisma.service';
-import { LOCATION_RETENTION_SETTING, RECIPIENT_STATUSES, RETURN_SOURCES } from '../domain/dispatch.codes';
+import { AVAILABILITY_END_REASONS, LOCATION_RETENTION_SETTING, RECIPIENT_STATUSES, RETURN_SOURCES } from '../domain/dispatch.codes';
 import { DISPATCH_ORDER_STATUSES } from '../domain/order-statuses';
 import { DispatchMaintenance } from '../domain/ports/dispatch-maintenance';
 
@@ -50,6 +50,18 @@ export class PrismaDispatchMaintenance extends DispatchMaintenance {
   async nextExpiry(): Promise<Date | null> {
     const [row] = await this.prisma.$queryRaw<{ next: Date | null }[]>`SELECT min(expires_at) AS next FROM v_live_offers`;
     return row?.next ?? null;
+  }
+
+  async closeIdleAvailability(idleMinutes: number): Promise<number> {
+    const reason = await this.ids.of('availability_end_reasons', AVAILABILITY_END_REASONS.INACTIVITY_TIMEOUT);
+    return this.prisma.$executeRaw`
+      UPDATE courier_availability_periods p
+      SET ended_at = greatest(coalesce(l.recorded_at, p.started_at), p.started_at) + interval '1 millisecond', end_reason_id = ${reason}
+      FROM courier_availability_periods o
+      LEFT JOIN v_courier_last_location l ON l.courier_user_id = o.courier_user_id AND l.recorded_at >= o.started_at
+      WHERE p.id = o.id AND p.ended_at IS NULL
+        AND coalesce(l.recorded_at, p.started_at) < now() - make_interval(mins => ${idleMinutes})
+        AND NOT EXISTS (SELECT 1 FROM order_assignments a WHERE a.courier_user_id = p.courier_user_id AND a.released_at IS NULL)`;
   }
 
   async purgeLocations(): Promise<number> {

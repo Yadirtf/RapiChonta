@@ -103,6 +103,7 @@ model PaymentMethod {
 
   collectionAccounts CourierCollectionAccount[]
   orders             Order[]
+  cashMovements      CashMovement[]
 
   @@map("payment_methods")
 }
@@ -140,6 +141,7 @@ model File {
   collectionAccountQrs  CourierCollectionAccount[]
   establishmentLogos    Establishment[]
   productImages         ProductImage[]
+  purchaseReceipts      OrderPurchase[]
   content               FileContent?
 
   @@index([purposeId, sha256])
@@ -318,6 +320,8 @@ model User {
   notifications          Notification[]
   offersSent             OrderOffer[]
   assignmentsReleased    OrderAssignment[]            @relation("OrderAssignmentReleasedBy")
+  cashMovementsCreated   CashMovement[]
+  preparationDelays      OrderPreparationDelay[]
 
   @@index([statusId])
   @@map("users")
@@ -691,6 +695,7 @@ model CourierProfile {
   offersReceived      OrderOfferRecipient[]
   availabilityPeriods CourierAvailabilityPeriod[]
   locationPings       CourierLocationPing[]
+  cashBoxes           CashBox[]
 
   @@map("courier_profiles")
 }
@@ -718,6 +723,7 @@ model FundingMode {
   sortOrder     Int                  @map("sort_order") @db.SmallInt
   deactivatedAt DateTime?            @map("deactivated_at") @db.Timestamptz(6)
   courierModes  CourierFundingMode[]
+  movementTypes CashMovementType[]
 
   @@map("funding_modes")
 }
@@ -849,6 +855,7 @@ model CourierCollectionAccount {
   bank              Bank?            @relation(fields: [bankId], references: [id], onDelete: Restrict)
   bankAccountType   BankAccountType? @relation(fields: [bankAccountTypeId], references: [id], onDelete: Restrict)
   qrFile            File?            @relation(fields: [qrFileId], references: [id], onDelete: Restrict)
+  cashMovements     CashMovement[]
 
   @@index([courierUserId])
   @@map("courier_collection_accounts")
@@ -1342,34 +1349,37 @@ model StatusChangeSource {
 
 /// El pedido guarda solo lo suyo: totales, comisión en pesos y domiciliario se calculan (v_order_amounts, E07).
 model Order {
-  id                String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code              String               @unique @db.VarChar(12)
-  customerUserId    String               @map("customer_user_id") @db.Uuid
-  establishmentId   String               @map("establishment_id") @db.Uuid
-  deliveryAddressId String               @map("delivery_address_id") @db.Uuid
-  recipientId       String?              @map("recipient_id") @db.Uuid
-  deliveryZoneFeeId String               @map("delivery_zone_fee_id") @db.Uuid
-  commissionRateId  String               @map("commission_rate_id") @db.Uuid
-  paymentMethodId   Int                  @map("payment_method_id") @db.SmallInt
-  fulfillmentModeId Int                  @map("fulfillment_mode_id") @db.SmallInt
+  id                String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code              String                  @unique @db.VarChar(12)
+  customerUserId    String                  @map("customer_user_id") @db.Uuid
+  establishmentId   String                  @map("establishment_id") @db.Uuid
+  deliveryAddressId String                  @map("delivery_address_id") @db.Uuid
+  recipientId       String?                 @map("recipient_id") @db.Uuid
+  deliveryZoneFeeId String                  @map("delivery_zone_fee_id") @db.Uuid
+  commissionRateId  String                  @map("commission_rate_id") @db.Uuid
+  paymentMethodId   Int                     @map("payment_method_id") @db.SmallInt
+  fulfillmentModeId Int                     @map("fulfillment_mode_id") @db.SmallInt
   /// Estado actual: solo lo escribe el disparador de order_status_history.
-  statusId          Int                  @map("status_id") @db.SmallInt
-  customerNotes     String?              @map("customer_notes") @db.VarChar(500)
-  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  customer          User                 @relation(fields: [customerUserId], references: [id], onDelete: Restrict)
-  establishment     Establishment        @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
-  deliveryAddress   Address              @relation(fields: [deliveryAddressId, customerUserId], references: [id, ownerUserId], onDelete: Restrict)
-  recipient         CustomerRecipient?   @relation(fields: [recipientId, customerUserId], references: [id, ownerUserId], onDelete: Restrict)
-  deliveryZoneFee   DeliveryZoneFee      @relation(fields: [deliveryZoneFeeId], references: [id], onDelete: Restrict)
-  commissionRate    CommissionRate       @relation(fields: [commissionRateId], references: [id], onDelete: Restrict)
-  paymentMethod     PaymentMethod        @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
-  fulfillmentMode   FulfillmentMode      @relation(fields: [fulfillmentModeId], references: [id], onDelete: Restrict)
-  status            OrderStatus          @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  statusId          Int                     @map("status_id") @db.SmallInt
+  customerNotes     String?                 @map("customer_notes") @db.VarChar(500)
+  createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  customer          User                    @relation(fields: [customerUserId], references: [id], onDelete: Restrict)
+  establishment     Establishment           @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  deliveryAddress   Address                 @relation(fields: [deliveryAddressId, customerUserId], references: [id, ownerUserId], onDelete: Restrict)
+  recipient         CustomerRecipient?      @relation(fields: [recipientId, customerUserId], references: [id, ownerUserId], onDelete: Restrict)
+  deliveryZoneFee   DeliveryZoneFee         @relation(fields: [deliveryZoneFeeId], references: [id], onDelete: Restrict)
+  commissionRate    CommissionRate          @relation(fields: [commissionRateId], references: [id], onDelete: Restrict)
+  paymentMethod     PaymentMethod           @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
+  fulfillmentMode   FulfillmentMode         @relation(fields: [fulfillmentModeId], references: [id], onDelete: Restrict)
+  status            OrderStatus             @relation(fields: [statusId], references: [id], onDelete: Restrict)
   items             OrderItem[]
   statusHistory     OrderStatusHistory[]
   notifications     Notification[]
   offers            OrderOffer[]
   assignments       OrderAssignment[]
+  cashMovements     CashMovement[]
+  purchase          OrderPurchase?
+  preparationDelays OrderPreparationDelay[]
 
   @@index([customerUserId, createdAt(sort: Desc)])
   @@index([customerUserId, statusId])
@@ -1662,4 +1672,95 @@ model CourierLocationPing {
   @@index([courierUserId, recordedAt(sort: Desc)])
   @@index([receivedAt])
   @@map("courier_location_pings")
+}
+
+// ─────────────── E08 · Compra en el local y preparación (Docs/14-base-de-datos/E08-modo-domiciliario.md) ───────────────
+// La compra es un movimiento PURCHASE de la caja del domiciliario: aquí llega la base del libro de E11
+// (cash_movement_types, cash_boxes, cash_movements). El cierre, la base entregada y los ajustes llegan con E11.
+
+/// OPENING, PURCHASE, COLLECTION, RETURN, ADJUSTMENT_IN, ADJUSTMENT_OUT. direction: +1 aumenta lo que el domiciliario debe entregar.
+model CashMovementType {
+  id                           Int            @id @default(autoincrement()) @db.SmallInt
+  code                         String         @unique @db.VarChar(40)
+  sortOrder                    Int            @map("sort_order") @db.SmallInt
+  deactivatedAt                DateTime?      @map("deactivated_at") @db.Timestamptz(6)
+  direction                    Int            @db.SmallInt
+  requiresOrder                Boolean        @map("requires_order")
+  requiresPaymentMethod        Boolean        @map("requires_payment_method")
+  isManual                     Boolean        @map("is_manual")
+  usesCourierCollectionAccount Boolean        @map("uses_courier_collection_account")
+  onlyForFundingModeId         Int?           @map("only_for_funding_mode_id") @db.SmallInt
+  onlyForFundingMode           FundingMode?   @relation(fields: [onlyForFundingModeId], references: [id], onDelete: Restrict)
+  movements                    CashMovement[]
+
+  @@map("cash_movement_types")
+}
+
+/// Caja del domiciliario por día (fecha en la zona horaria del municipio). El saldo se calcula; no se guarda.
+model CashBox {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  courierUserId String         @map("courier_user_id") @db.Uuid
+  businessDate  DateTime       @map("business_date") @db.Date
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  courier       CourierProfile @relation(fields: [courierUserId], references: [userId], onDelete: Restrict)
+  movements     CashMovement[]
+
+  @@unique([courierUserId, businessDate])
+  @@map("cash_boxes")
+}
+
+/// Todo peso que se mueve de verdad, una fila inmutable. El signo lo da el tipo (amount siempre > 0).
+model CashMovement {
+  id                  String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cashBoxId           String                    @map("cash_box_id") @db.Uuid
+  movementTypeId      Int                       @map("movement_type_id") @db.SmallInt
+  amount              Decimal                   @db.Decimal(12, 2)
+  orderId             String?                   @map("order_id") @db.Uuid
+  paymentMethodId     Int?                      @map("payment_method_id") @db.SmallInt
+  collectionAccountId String?                   @map("collection_account_id") @db.Uuid
+  reversesMovementId  String?                   @unique @map("reverses_movement_id") @db.Uuid
+  createdByUserId     String?                   @map("created_by_user_id") @db.Uuid
+  note                String?
+  createdAt           DateTime                  @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(6)
+  cashBox             CashBox                   @relation(fields: [cashBoxId], references: [id], onDelete: Restrict)
+  movementType        CashMovementType          @relation(fields: [movementTypeId], references: [id], onDelete: Restrict)
+  order               Order?                    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  paymentMethod       PaymentMethod?            @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
+  collectionAccount   CourierCollectionAccount? @relation(fields: [collectionAccountId], references: [id], onDelete: Restrict)
+  reverses            CashMovement?             @relation("CashMovementReverses", fields: [reversesMovementId], references: [id], onDelete: Restrict)
+  reversedBy          CashMovement?             @relation("CashMovementReverses")
+  createdBy           User?                     @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  purchases           OrderPurchase[]
+
+  @@unique([id, orderId])
+  @@index([cashBoxId])
+  @@index([orderId])
+  @@map("cash_movements")
+}
+
+/// H08.4: la compra en el local. El monto es el movimiento PURCHASE; quién y cuándo, el movimiento y el historial.
+model OrderPurchase {
+  orderId        String       @id @map("order_id") @db.Uuid
+  cashMovementId String       @unique @map("cash_movement_id") @db.Uuid
+  receiptFileId  String       @unique @map("receipt_file_id") @db.Uuid
+  order          Order        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  cashMovement   CashMovement @relation(fields: [cashMovementId, orderId], references: [id, orderId], onDelete: Restrict)
+  receiptFile    File         @relation(fields: [receiptFileId], references: [id], onDelete: Restrict)
+
+  @@map("order_purchases")
+}
+
+/// H08.5: "Sigue en preparación". Retrasado = tiene al menos una fila; el próximo aviso se cuenta desde la última.
+model OrderPreparationDelay {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId          String   @map("order_id") @db.Uuid
+  reportedByUserId String   @map("reported_by_user_id") @db.Uuid
+  reportedAt       DateTime @default(dbgenerated("clock_timestamp()")) @map("reported_at") @db.Timestamptz(6)
+  /// Lo genera la app: reenviar el mismo aviso desde la cola sin señal no lo duplica (H08.8).
+  clientEventId    String?  @unique @map("client_event_id") @db.Uuid
+  order            Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  reportedBy       User     @relation(fields: [reportedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, reportedAt])
+  @@map("order_preparation_delays")
 }

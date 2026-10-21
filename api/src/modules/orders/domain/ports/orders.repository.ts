@@ -58,6 +58,10 @@ export interface OrderDetail extends OrderSummary {
   timeline: { code: string; at: Date }[];
   /** Pasos del recorrido normal (is_milestone), para mostrar los que faltan. */
   journey: string[];
+  /** H08.5: desde la compra, cuándo debería estar listo y si el local tiene alta demanda ("Sigue en preparación"). */
+  preparation: { estimatedReadyAt: Date; delayed: boolean } | null;
+  /** H08.4: lo que el domiciliario pagó en el local y la foto de la factura. Nunca su ubicación. */
+  purchase: { amount: string; receiptFileId: string } | null;
 }
 
 export abstract class OrdersRepository {

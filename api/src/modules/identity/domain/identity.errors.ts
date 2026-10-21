@@ -31,6 +31,8 @@ export const IdentityErrors = {
   sessionInvalid: () => new AuthenticationError('SESSION_INVALID', 'La sesión no es válida'),
   refreshReused: () => new AuthenticationError('REFRESH_REUSED', 'La sesión se cerró por seguridad'),
   roleNotGranted: () => new PermissionDeniedError('ROLE_NOT_GRANTED', 'No tiene ese rol'),
+  /** H08.7: con un pedido en curso no se pasa a modo cliente (lo terminaría sin compartir ubicación). */
+  courierHasActiveOrder: () => new ConflictError('COURIER_HAS_ACTIVE_ORDER', 'Termina el pedido en curso antes de cambiar a modo cliente'),
   passwordRequired: () => new AuthenticationError('PASSWORD_REQUIRED', 'Ese modo exige su contraseña'),
   userNotFound: () => new NotFoundError('USER_NOT_FOUND', 'Usuario no encontrado'),
   courierNotFound: () => new NotFoundError('COURIER_NOT_FOUND', 'Domiciliario no encontrado'),

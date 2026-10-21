@@ -59,6 +59,8 @@ export class OrdersPresenter {
       notes: o.customerNotes,
       timeline: o.timeline.map((t) => ({ status: t.code, at: t.at.toISOString() })),
       journey: o.journey,
+      preparation: o.preparation ? { estimatedReadyAt: o.preparation.estimatedReadyAt.toISOString(), delayed: o.preparation.delayed } : null,
+      purchase: o.purchase ? { amount: o.purchase.amount, receiptUrl: this.urls.url(o.purchase.receiptFileId) } : null,
     };
   }
 

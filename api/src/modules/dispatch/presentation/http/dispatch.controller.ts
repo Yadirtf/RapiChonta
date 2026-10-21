@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import { FileUrls } from '../../../files/application/file-urls';
 import { ROLES } from '../../../identity/domain/identity.codes';
 import { Principal } from '../../../identity/domain/principal';
 import { CurrentPrincipal, RequirePermissions, Roles } from '../../../identity/presentation/http/decorators/auth.decorators';
@@ -8,7 +9,8 @@ import { DispatchBoardUseCase, SendOfferUseCase } from '../../application/dispat
 import { StaffActivityUseCase } from '../../application/staff-activity.use-cases';
 import { COURIER_FRESH_SECONDS, DISPATCH_PERMISSIONS as P } from '../../domain/dispatch.codes';
 import { DispatchPresenter as V } from './dispatch-presenter';
-import { AuditQueryDto, AvailabilityDto, BoardQueryDto, CouriersQueryDto, LocationBatchDto, SendOfferDto } from './dispatch.dto';
+import { AuditQueryDto, AvailabilityDto, BoardQueryDto, CouriersQueryDto, LocationBatchDto, OffersQueryDto, SendOfferDto } from './dispatch.dto';
+import { contentLanguage } from '../../../catalog/application/public/get-establishment.use-case';
 
 /** El panel consulta cada 5 s: el límite global (100/min) se queda corto con dos pantallas abiertas. */
 const POLLING = { default: { limit: 240, ttl: 60_000 } };
@@ -20,6 +22,7 @@ export class DispatchController {
   constructor(
     private readonly board: DispatchBoardUseCase,
     private readonly sendOffer: SendOfferUseCase,
+    private readonly urls: FileUrls,
   ) {}
 
   /** GET /api/v1/dispatch/orders — pedidos activos del municipio con sus ofertas vivas y domiciliario. */
@@ -28,7 +31,7 @@ export class DispatchController {
   @RequirePermissions(P.READ_ALL)
   async orders(@CurrentPrincipal() principal: Principal, @Query() query: BoardQueryDto) {
     const { municipality, orders } = await this.board.orders(principal, query.municipalityId);
-    return { municipalityId: municipality.id, serverTime: new Date().toISOString(), orders: orders.map(V.order) };
+    return { municipalityId: municipality.id, serverTime: new Date().toISOString(), orders: orders.map((o) => V.order(o, (fileId) => this.urls.url(fileId))) };
   }
 
   /** GET /api/v1/dispatch/couriers — verificados, Disponibles, vistos en los últimos 2 min y libres (H07.2). */
@@ -49,7 +52,7 @@ export class DispatchController {
   }
 }
 
-/** Lado API del domiciliario (H08.1 y H08.2); las pantallas de la app llegan con E08. */
+/** Lado del domiciliario (H08.1 y H08.2): Disponible, ubicación y respuesta a ofertas. */
 @Controller('courier')
 @Roles(ROLES.COURIER)
 export class CourierController {
@@ -78,14 +81,15 @@ export class CourierController {
   async locations(@CurrentPrincipal() principal: Principal, @Body() body: LocationBatchDto) {
     return this.availability.reportLocations(
       principal,
-      body.readings.map((r) => ({ latitude: r.latitude, longitude: r.longitude, accuracyM: r.accuracyM, recordedAt: new Date(r.recordedAt) })),
+      body.readings.map((r) => ({ latitude: r.latitude, longitude: r.longitude, accuracyM: r.accuracyM, recordedAt: new Date(r.recordedAt), mocked: r.mocked })),
     );
   }
 
+  /** GET /api/v1/courier/offers — lo ofrecido con local, productos, total a comprar y tarifa (H08.2). */
   @Get('offers')
   @RequirePermissions(P.RESPOND)
-  async pending(@CurrentPrincipal() principal: Principal) {
-    return (await this.offers.pending(principal)).map(V.courierOffer);
+  async pending(@CurrentPrincipal() principal: Principal, @Query() query: OffersQueryDto) {
+    return (await this.offers.pending(principal, contentLanguage(query.lang))).map(V.courierOffer);
   }
 
   /** "Tomar pedido": el primero gana; si otro lo tomó responde 409 ORDER_ALREADY_TAKEN. */

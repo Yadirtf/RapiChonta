@@ -10,7 +10,7 @@ import { CompleteUploadUseCase, ReceiveUploadUseCase, RequestUploadUseCase } fro
 class InMemoryFiles extends FileRepository {
   readonly files = new Map<string, NewFile>();
   async purposeRules(code: string) {
-    return code === 'PRODUCT_IMAGE' ? { maxSizeBytes: 5 * 1024 * 1024, allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'] } : null;
+    return code === 'PRODUCT_IMAGE' || code === 'PURCHASE_RECEIPT' ? { maxSizeBytes: 5 * 1024 * 1024, allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'] } : null;
   }
   async findReusable(purpose: string, sha256: string) {
     return [...this.files.values()].find((f) => f.purpose === purpose && f.sha256 === sha256)?.id ?? null;
@@ -72,6 +72,16 @@ describe('subida de fotos (H02.3)', () => {
       fileId: 'f-1',
       alreadyUploaded: true,
     });
+  });
+
+  it('la factura de una compra (H08.4) siempre se sube aparte y solo con orders.progress', async () => {
+    const { files, request } = setup();
+    const courier: Principal = { userId: 'c-1', sessionId: 's', role: 'COURIER', permissions: new Set(['orders.progress']), municipalityId: null };
+    await files.create({ id: 'f-9', purpose: 'PURCHASE_RECEIPT', storageKey: 'files/f-9', mimeType: 'image/png', sizeBytes: PNG.length, sha256: sha(PNG), uploadedByUserId: 'c-2', content: PNG });
+    const input = { purpose: 'PURCHASE_RECEIPT', mimeType: 'image/png', sizeBytes: PNG.length, sha256: sha(PNG) };
+    const ticket = await request.execute(courier, input);
+    expect(ticket.alreadyUploaded).toBe(false);
+    await expect(request.execute(operator, input)).rejects.toMatchObject({ code: 'FILE_PURPOSE_NOT_ALLOWED' });
   });
 
   it('valida permiso, tipo y tamaño antes de firmar', async () => {

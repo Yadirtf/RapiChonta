@@ -64,5 +64,8 @@ export const REQUIRED_DISPATCH_CODES: Record<string, readonly string[]> = {
   legal_document_types: [LOCATION_CONSENT],
 };
 
+/** Un turno Disponible sin ubicación por este tiempo (y sin pedido) se cierra solo: la app ya no está trabajando. */
+export const AVAILABILITY_IDLE_MINUTES = 15;
+
 /** Solo se ofrece a quien se vio en los últimos 2 minutos (H07.2). */
 export const COURIER_FRESH_SECONDS = 120;

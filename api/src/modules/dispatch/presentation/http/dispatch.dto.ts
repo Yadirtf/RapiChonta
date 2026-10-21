@@ -69,6 +69,18 @@ export class LocationReadingDto {
   /** Hora del GPS (puede llegar tarde si no había señal). */
   @IsISO8601({ strict: true })
   recordedAt: string;
+
+  /** Android la marca como de una app de ubicación simulada: se descarta (H08.3). */
+  @IsOptional()
+  @IsBoolean()
+  mocked?: boolean;
+}
+
+export class OffersQueryDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(5)
+  lang?: string;
 }
 
 export class LocationBatchDto {
