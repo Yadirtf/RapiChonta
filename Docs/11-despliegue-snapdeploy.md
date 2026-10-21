@@ -55,6 +55,7 @@ SnapDeploy permite **un contenedor por repositorio y rama**. Si ya existe un con
    | `FILES_SIGNING_SECRET` | Otra cadena aleatoria (`openssl rand -hex 32`) | Secreto. Opcional; firma las URLs de las fotos. Si falta se deriva de `JWT_SECRET` |
    | `SENTRY_DSN`, `SENTRY_ENVIRONMENT` | DSN del proyecto `rapichonta-api` en Sentry y `pruebas` | Opcional. Ver "Errores en Sentry y logs" abajo |
    | `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_ENVIRONMENT` | DSN del proyecto `rapichonta-web` y `pruebas` | Opcional. Se leen al **compilar** la imagen (argumentos de build del `Dockerfile`) |
+   | `FCM_SERVICE_ACCOUNT`, `HMS_APP_ID`, `HMS_CLIENT_SECRET`, `HMS_MESSAGE_CATEGORY` | Credenciales de Firebase y de Huawei Push Kit | Opcional. Ver "Notificaciones push" abajo |
 
    La cookie de la sesión web va con `Secure` porque el `Dockerfile` usa `NODE_ENV=production`; solo para probar la imagen en local por `http://` se define `COOKIE_SECURE=false`.
 
@@ -114,6 +115,26 @@ Qué se envía y qué no:
 - Nunca datos personales: sin usuario, IP, cookies, cuerpos ni la consulta de la URL (lleva la ubicación). Teléfonos, correos y números largos se tapan en los mensajes antes de enviarlos.
 
 Logs de la API: con `NODE_ENV=production` cada línea es un JSON con `level`, `context`, `message` y `requestId`, más una línea por petición (`GET /api/v1/... 200 34 ms`, sin la consulta). La respuesta trae el mismo id en `X-Request-Id`, así un reporte de un cliente se encuentra en el log y en Sentry. `LOG_FORMAT=pretty` vuelve al formato legible.
+
+## Notificaciones push (E06)
+
+Sin credenciales todo funciona igual: los avisos quedan en la bandeja de la app (campana) y no llegan a la barra del teléfono. Con `PUSH_PROVIDERS_MODE=fake` la API escribe en el log lo que habría enviado.
+
+**Firebase (FCM: Android con Google e iOS)**
+
+1. En [console.firebase.google.com](https://console.firebase.google.com) crear el proyecto `rapichonta` y agregar una app Android con el paquete `com.rapichonta.rapichonta`.
+2. API: Configuración del proyecto → Cuentas de servicio → Generar nueva clave privada. El JSON completo (o en base64) va en `FCM_SERVICE_ACCOUNT` del contenedor. Es secreto.
+3. App: de la misma configuración (app Android) se copian a las variables del repositorio `FIREBASE_API_KEY`, `FIREBASE_PROJECT_ID`, `FIREBASE_MESSAGING_SENDER_ID` y `FIREBASE_ANDROID_APP_ID`. No hace falta `google-services.json`: el flujo "App Android" las inyecta con `--dart-define`. Para iOS falta además subir la llave APNs a Firebase y `FIREBASE_IOS_APP_ID`.
+
+**Huawei Push Kit (teléfonos Huawei sin Google)**
+
+1. En [AppGallery Connect](https://developer.huawei.com/consumer/en/service/josp/agc/index.html) crear el proyecto y la app Android con el paquete `com.rapichonta.rapichonta`, y activar Push Kit (Crecer → Push Kit).
+2. Registrar la huella SHA-256 del certificado con que se firma el APK (hoy, la clave de debug que genera el flujo; se ve con `keytool -list -v`). Sin ella el teléfono no entrega token.
+3. API: `HMS_APP_ID` y `HMS_CLIENT_SECRET` (Mi proyecto → General → App ID y Client secret; `HMS_CLIENT_ID` solo si difiere del App ID).
+4. App: descargar `agconnect-services.json` y pegar su contenido en la variable del repositorio `AGCONNECT_SERVICES_JSON`. El flujo lo copia al APK y compila con `HMS_PUSH_ENABLED=true`.
+5. Pedir la **autoclasificación de mensajes** en Push Kit (categoría de pedidos/entregas, p. ej. `EXPRESS`) y ponerla en `HMS_MESSAGE_CATEGORY`. Sin aprobación, EMUI muestra los avisos como de marketing: sin sonido y con cupo diario.
+
+La app prueba FCM primero y, si el teléfono no tiene servicios de Google, Huawei; recuerda el que funcionó. Registra el token al iniciar sesión (`PUT /me/push-token`) y lo borra al cerrarla.
 
 ## App Flutter
 
