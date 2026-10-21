@@ -1305,5 +1305,12 @@
     },
     "vertexHint": "Drag to move; double tap to remove",
     "midpointHint": "Add a point here"
+  },
+  "errorPage": {
+    "title": "We dropped the basket",
+    "body": "Something failed on our side while loading this screen. Your order and your account are fine.",
+    "retry": "Try again",
+    "home": "Go home",
+    "code": "Support code: {digest}"
   }
 }

@@ -9,7 +9,38 @@
 | `feature/<número>-<tema>` | Una historia o tarea (por ejemplo `feature/34-carrito`), sale de `develop` y vuelve por PR. | — |
 | `hotfix/<tema>` | Corrección urgente, sale de `main` y vuelve a `main` y `develop`. | — |
 
-Recomendado en GitHub: proteger `main` y `develop` (sin push directo, PR con al menos una aprobación y CI en verde).
+### Protección de `main` y `develop` (H05.3)
+
+Las dos ramas solo cambian por PR con el CI en verde. La regla está versionada en [`.github/rulesets/proteger-main-y-develop.json`](../.github/rulesets/proteger-main-y-develop.json) y se aplica una vez, a mano, porque GitHub no la toma del repositorio:
+
+1. En GitHub: **Settings → Rules → Rulesets → New ruleset → Import a ruleset**.
+2. Elegir el archivo `.github/rulesets/proteger-main-y-develop.json` y guardar (queda **Active**).
+
+Qué exige:
+
+| Regla | Efecto |
+| --- | --- |
+| Pull request obligatorio | Nadie hace push directo a `main` ni a `develop`, tampoco el administrador |
+| Conversaciones resueltas | No se integra un PR con comentarios de revisión abiertos |
+| Check `CI` en verde | El trabajo "CI" de [`ci.yml`](../.github/workflows/ci.yml) resume API, web, app e imagen Docker. Es el único check requerido: los trabajos de carpetas que el PR no toca no corren y cuentan como aprobados |
+| Sin force push ni borrado | El historial de las ramas no se reescribe |
+
+Aprobaciones requeridas: **0** mientras haya un solo responsable (GitHub no deja aprobar el PR propio). Cuando entre una segunda persona, subir `required_approving_review_count` a 1 en el archivo y volver a importarlo (o editar la regla en GitHub).
+
+Si una emergencia exige saltarse la regla, se pasa a **Disabled** en Settings → Rules y se reactiva al terminar; el cambio queda en el registro de auditoría de GitHub.
+
+### CI (H05.1)
+
+[`ci.yml`](../.github/workflows/ci.yml) corre en cada PR y en cada push a `develop` y `main`:
+
+| Trabajo | Corre si cambia | Pasos |
+| --- | --- | --- |
+| API | `api/` | `npm ci`, `npm audit` (altas), `prisma generate`, lint, pruebas unitarias, migraciones + semilla y pruebas contra PostgreSQL/PostGIS, build |
+| Web | `web/` | `npm ci`, `npm audit` (altas), lint, typecheck, build |
+| App | `app/` | `flutter analyze`, `flutter test` |
+| Imagen Docker | `Dockerfile`, `start.sh`, `.dockerignore` o los `package*.json` | Construye la imagen del contenedor único sin publicarla |
+
+Las dependencias, la caché de Next.js, Flutter y las capas de Docker se guardan en caché entre ejecuciones. `npm audit` revisa solo dependencias de producción y falla con vulnerabilidades altas o críticas; Dependabot ([`dependabot.yml`](../.github/dependabot.yml)) abre cada lunes PR hacia `develop` con las actualizaciones de npm, pub, Docker y Actions (H05.2).
 
 ## Commits
 

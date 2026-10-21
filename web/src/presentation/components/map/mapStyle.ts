@@ -1,4 +1,5 @@
-import maplibregl, { type LayerSpecification, type MapOptions, type StyleSpecification } from "maplibre-gl";
+import { maplibregl } from "./maplibre";
+import { type LayerSpecification, type MapOptions, type StyleSpecification } from "maplibre-gl";
 
 /**
  * Mapa base: OpenFreeMap "liberty" (gratis, sin clave; datos de OpenStreetMap) repintado con la paleta

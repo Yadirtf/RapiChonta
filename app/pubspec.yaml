@@ -29,6 +29,7 @@ dependencies:
   flutter_secure_storage: ^11.2.0
   # Abrir los documentos legales publicados en la web
   url_launcher: ^6.3.3
+  sentry_flutter: ^10.1.0
 
 dev_dependencies:
   flutter_test:

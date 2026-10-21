@@ -23,8 +23,13 @@ COPY web/ ./
 # La web llama a la API en su mismo dominio; NEXT_PUBLIC_API_URL solo se cambia para apuntar a otra API.
 ARG NEXT_PUBLIC_API_URL=/api/v1
 ARG NEXT_PUBLIC_MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
+# Sentry de la web (opcional): el DSN y el entorno quedan dentro del build.
+ARG NEXT_PUBLIC_SENTRY_DSN=
+ARG NEXT_PUBLIC_SENTRY_ENVIRONMENT=pruebas
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_MAP_STYLE_URL=$NEXT_PUBLIC_MAP_STYLE_URL \
+    NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN \
+    NEXT_PUBLIC_SENTRY_ENVIRONMENT=$NEXT_PUBLIC_SENTRY_ENVIRONMENT \
     API_INTERNAL_URL=http://127.0.0.1:4000 \
     NEXT_TELEMETRY_DISABLED=1
 RUN npm run build

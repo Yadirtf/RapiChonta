@@ -53,6 +53,8 @@ SnapDeploy permite **un contenedor por repositorio y rama**. Si ya existe un con
    | `SEED_DEMO_DATA` | `true` | Carga los establecimientos de ejemplo con su menú (`api/prisma/catalog/demo`) sin duplicar (exige el administrador inicial). Se puede borrar después |
    | `FILE_STORAGE` | `database` (o no definirla) | Fotos de productos y logos en la base de datos (Neon). Con `s3` van a Cloudflare R2; ver "Fotos en R2" abajo |
    | `FILES_SIGNING_SECRET` | Otra cadena aleatoria (`openssl rand -hex 32`) | Secreto. Opcional; firma las URLs de las fotos. Si falta se deriva de `JWT_SECRET` |
+   | `SENTRY_DSN`, `SENTRY_ENVIRONMENT` | DSN del proyecto `rapichonta-api` en Sentry y `pruebas` | Opcional. Ver "Errores en Sentry y logs" abajo |
+   | `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_ENVIRONMENT` | DSN del proyecto `rapichonta-web` y `pruebas` | Opcional. Se leen al **compilar** la imagen (argumentos de build del `Dockerfile`) |
 
    La cookie de la sesión web va con `Secure` porque el `Dockerfile` usa `NODE_ENV=production`; solo para probar la imagen en local por `http://` se define `COOKIE_SECURE=false`.
 
@@ -95,6 +97,23 @@ Se trabaja en una rama `feature/*` y se abre un PR hacia `develop`. Al unirlo, S
 
 - Cambiar una variable normal (como `DATABASE_URL`) no requiere redespliegue: se guarda en **Settings → Environment Variables** y SnapDeploy reinicia el contenedor sin cortar el servicio.
 - Si un push llega mientras SnapDeploy está construyendo, lo rechaza; usar el botón *Deploy* del contenedor cuando termine.
+
+## Errores en Sentry y logs (H05.4)
+
+Sin DSN no se envía nada a ningún lado; todo funciona igual. Para activarlo:
+
+1. En [sentry.io](https://sentry.io) (el plan gratuito alcanza para el piloto) crear tres proyectos: `rapichonta-api` (Node.js), `rapichonta-web` (Next.js) y `rapichonta-app` (Flutter).
+2. API: `SENTRY_DSN` y `SENTRY_ENVIRONMENT=pruebas` en las variables del contenedor.
+3. Web: `NEXT_PUBLIC_SENTRY_DSN` y `NEXT_PUBLIC_SENTRY_ENVIRONMENT=pruebas`. Como Next.js las fija al compilar, SnapDeploy tiene que pasarlas también como argumentos de build; si no lo permite, quedan solo los errores de la API.
+4. App: variable del repositorio `SENTRY_DSN_APP` (GitHub → Settings → Secrets and variables → Actions → Variables). El flujo "App Android" la inyecta en el APK.
+
+Qué se envía y qué no:
+
+- Solo errores inesperados: en la API, respuestas 5xx (los errores de negocio, como "fuera de cobertura", no se reportan); en la web y la app, pantallas que fallaron.
+- Cada evento lleva el entorno y la versión (`rapichonta-api@0.1.0`, `rapichonta-web@0.1.0`, la de la app con su número de compilación) y, en la API, el `request_id` de la petición.
+- Nunca datos personales: sin usuario, IP, cookies, cuerpos ni la consulta de la URL (lleva la ubicación). Teléfonos, correos y números largos se tapan en los mensajes antes de enviarlos.
+
+Logs de la API: con `NODE_ENV=production` cada línea es un JSON con `level`, `context`, `message` y `requestId`, más una línea por petición (`GET /api/v1/... 200 34 ms`, sin la consulta). La respuesta trae el mismo id en `X-Request-Id`, así un reporte de un cliente se encuentra en el log y en Sentry. `LOG_FORMAT=pretty` vuelve al formato legible.
 
 ## App Flutter
 

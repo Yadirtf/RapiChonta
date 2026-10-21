@@ -4,6 +4,7 @@
 #   "app-develop", que se descarga directo desde el teléfono sin iniciar sesión en GitHub.
 # La URL de la API se inyecta al compilar (--dart-define=API_URL); se puede cambiar con la
 # variable del repositorio API_URL o con el campo "api_url" al lanzarlo a mano.
+# Con la variable SENTRY_DSN_APP la app reporta sus errores a Sentry (entorno "pruebas").
 name: App Android
 
 on:
@@ -92,7 +93,9 @@ jobs:
         run: |
           flutter build apk --release \
             --build-number=${{ github.run_number }} \
-            --dart-define=API_URL=${{ steps.api.outputs.url }}
+            --dart-define=API_URL=${{ steps.api.outputs.url }} \
+            --dart-define=SENTRY_DSN=${{ vars.SENTRY_DSN_APP }} \
+            --dart-define=SENTRY_ENVIRONMENT=pruebas
           mkdir -p ../dist
           cp build/app/outputs/flutter-apk/app-release.apk ../dist/rapichonta-${{ github.run_number }}.apk
 
