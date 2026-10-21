@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -9,12 +9,16 @@ import '../features/auth/presentation/pages/sign_in_page.dart';
 import '../features/auth/presentation/providers/auth_providers.dart';
 import '../features/establishments/presentation/pages/establishment_page.dart';
 import '../features/establishments/presentation/pages/home_page.dart';
+import '../features/notifications/presentation/pages/notifications_page.dart';
 import '../features/orders/presentation/pages/checkout_page.dart';
 import '../features/orders/presentation/pages/my_orders_page.dart';
 import '../features/orders/presentation/pages/order_detail_page.dart';
 
 /// Rutas que exigen sesión. El mapa es público: el ingreso se pide solo al confirmar el pedido (H01.1).
-bool _protected(String path) => path == '/cuenta' || path == '/pedido' || path == '/pedidos' || path.startsWith('/pedidos/');
+bool _protected(String path) => path == '/cuenta' || path == '/pedido' || path == '/pedidos' || path.startsWith('/pedidos/') || path == '/avisos';
+
+/// Navegador raíz: los avisos push abren rutas y muestran su aviso encima de cualquier pantalla.
+final rootNavigatorKey = GlobalKey<NavigatorState>();
 
 /// Puente entre la sesión (Riverpod) y las redirecciones del enrutador.
 class _SessionListenable extends ChangeNotifier {
@@ -28,6 +32,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.onDispose(refresh.dispose);
 
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     refreshListenable: refresh,
     redirect: (context, state) {
       final session = ref.read(sessionProvider);
@@ -50,6 +55,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/consentimientos', builder: (context, state) => const ConsentsPage()),
       GoRoute(path: '/pedido', builder: (context, state) => const CheckoutPage()),
       GoRoute(path: '/pedidos', builder: (context, state) => const MyOrdersPage()),
+      GoRoute(path: '/avisos', builder: (context, state) => const NotificationsPage()),
       GoRoute(
         path: '/pedidos/:code',
         builder: (context, state) => OrderDetailPage(code: state.pathParameters['code']!, placed: state.uri.queryParameters['nuevo'] == '1'),

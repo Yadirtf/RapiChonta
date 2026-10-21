@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../features/auth/domain/entities/account.dart';
 import '../features/auth/presentation/providers/auth_providers.dart';
+import '../features/notifications/presentation/push_controller.dart';
 import '../l10n/app_localizations.dart';
 import 'router.dart';
 import 'theme.dart';
@@ -11,6 +13,13 @@ class RapiChontaApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Push (E06): el token del teléfono va con la sesión; al salir se suelta en SessionController.signOut.
+    ref.listen<AsyncValue<Account?>>(sessionProvider, (previous, next) {
+      final before = previous?.value?.userId;
+      final now = next.value?.userId;
+      if (now != null && now != before) ref.read(pushControllerProvider).start(now);
+      if (now == null && before != null) ref.read(pushControllerProvider).stop();
+    });
     return MaterialApp.router(
       title: 'RapiChonta',
       debugShowCheckedModeBanner: false,

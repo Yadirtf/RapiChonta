@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_client.dart';
+import '../../../notifications/presentation/push_controller.dart';
 import '../../data/datasources/identity_remote_datasource.dart';
 import '../../data/repositories/identity_repository_impl.dart';
 import '../../data/storage/session_storage.dart';
@@ -69,6 +70,8 @@ class SessionController extends AsyncNotifier<Account?> {
   void replace(Account account) => state = AsyncData(account);
 
   Future<void> signOut() async {
+    // Primero el token push (necesita la sesión): el teléfono deja de recibir avisos de esta cuenta.
+    await ref.read(pushControllerProvider).release();
     await ref.read(authRepositoryProvider).signOut();
     state = const AsyncData(null);
   }

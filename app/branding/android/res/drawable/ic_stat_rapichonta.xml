@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generado por Docs/marca/generar_icono_aviso.py: no editar a mano. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="M12,6.6 C15.8,6.6 17.6,10.2 17.6,13.9 C17.6,18.1 15.2,21.6 12,21.8 C8.8,21.6 6.4,18.1 6.4,13.9 C6.4,10.2 8.2,6.6 12,6.6 Z M9.3,12.8 C9.4,11.2 10.2,9.9 11.4,9.3 C10.8,10.4 10.4,11.6 10.3,13 C10.25,13.6 9.25,13.5 9.3,12.8 Z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M11.6,7.6 C10.9,5.9 9.4,4.9 7.6,5 C8.9,5.7 9.9,6.7 10.5,7.9 Z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M12.4,7.6 C13.1,5.9 14.6,4.9 16.4,5 C15.1,5.7 14.1,6.7 13.5,7.9 Z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M11.25,7.4 L12,2.8 L12.75,7.4 Z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M2.000000000000001,11.2 H4.6 A0.8000000000000007,0.8000000000000007 0 0 1 4.6,12.8 H2.000000000000001 A0.8000000000000007,0.8000000000000007 0 0 1 2.000000000000001,11.2 Z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M3.000000000000001,15.0 H4.3999999999999995 A0.8000000000000007,0.8000000000000007 0 0 1 4.3999999999999995,16.6 H3.000000000000001 A0.8000000000000007,0.8000000000000007 0 0 1 3.000000000000001,15.0 Z"/>
+</vector>

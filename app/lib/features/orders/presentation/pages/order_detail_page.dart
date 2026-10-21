@@ -11,6 +11,7 @@ import '../../../business/presentation/business_widgets.dart';
 import '../../../establishments/presentation/format/money.dart';
 import '../../../establishments/presentation/providers/establishments_providers.dart';
 import '../../../establishments/presentation/widgets/storefront.dart';
+import '../../../notifications/presentation/push_controller.dart';
 import '../../domain/entities/order.dart';
 import '../providers/orders_providers.dart';
 import '../widgets/delivery_pin_map.dart';
@@ -44,7 +45,16 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
     final loaded = order.value;
     if (loaded != null && widget.placed && !_celebrated) {
       _celebrated = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) => ref.read(cartProvider.notifier).placedAt(loaded.establishmentId));
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(cartProvider.notifier).placedAt(loaded.establishmentId);
+        // Recién pedido es cuando más sentido tiene: "¿te avisamos por el camino?" (H06.2).
+        final push = ref.read(pushControllerProvider);
+        if (push.ready) {
+          Future<void>.delayed(const Duration(milliseconds: 1200), () {
+            if (context.mounted) push.maybeAskPermission(context);
+          });
+        }
+      });
     }
 
     return Scaffold(

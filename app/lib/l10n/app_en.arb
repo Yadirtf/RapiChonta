@@ -429,5 +429,37 @@
   "checkoutOutsideDistance": "Coverage starts {distance} from this point.",
   "coverageWeReachYou": "We deliver to you · delivery {fee}",
   "coverageAway": "You're {distance} from our coverage in {municipality}",
-  "coverageNoneYet": "We don't have open coverage yet"
+  "coverageNoneYet": "We don't have open coverage yet",
+  "noticesTitle": "Notifications",
+  "noticesMarkAll": "Mark read",
+  "noticesEmptyTitle": "No notifications yet",
+  "noticesEmptyBody": "As your order moves along we'll tell you here and on your phone, even with the app closed.",
+  "noticesLoadError": "We couldn't load your notifications",
+  "noticesMore": "See older notifications",
+  "noticesToday": "Today",
+  "noticesYesterday": "Yesterday",
+  "noticesUnread": "{count, plural, =1{1 unread notification} other{{count} unread notifications}}",
+  "noticesUnreadLabel": "Unread",
+  "noticeOrderOffered": "New order for you",
+  "noticeOfferWithdrawn": "The order is no longer available",
+  "noticePreparationReached": "The order should be ready",
+  "noticeAdjustmentRequested": "Your courier needs a decision",
+  "noticeAdjustmentResolved": "The customer replied",
+  "noticeIncidentOpened": "We opened a case for your order",
+  "noticeIncidentResolved": "Case resolved",
+  "noticeProofPending": "Delivery photo missing",
+  "noticeGeneric": "Update on your order",
+  "pushAskTitle": "Shall we keep you posted?",
+  "pushAskBody": "We'll tell you when a courier takes your order, when it leaves the store and when it's arriving, even with your phone locked. Only your orders, never ads.",
+  "pushAskCourierTitle": "Don't miss a single order",
+  "pushAskCourierBody": "Order offers reach you as notifications even with your phone locked. Without them you'd only see offers with the app open.",
+  "pushAskYes": "Yes, notify me",
+  "pushAskLater": "Not now",
+  "@noticesUnread": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

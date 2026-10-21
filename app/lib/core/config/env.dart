@@ -21,4 +21,16 @@ class Env {
     if (url == null || url.isEmpty) return null;
     return url.startsWith('/') ? Uri.parse(apiUrl).resolve(url).toString() : url;
   }
+
+  /// Push con FCM (E06): opciones de Firebase por --dart-define, sin google-services.json. Sin ellas, la app
+  /// no intenta FCM (los avisos siguen en la bandeja de la app).
+  static const firebaseApiKey = String.fromEnvironment('FIREBASE_API_KEY');
+  static const firebaseProjectId = String.fromEnvironment('FIREBASE_PROJECT_ID');
+  static const firebaseSenderId = String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID');
+  static const firebaseAndroidAppId = String.fromEnvironment('FIREBASE_ANDROID_APP_ID');
+  static const firebaseIosAppId = String.fromEnvironment('FIREBASE_IOS_APP_ID');
+  static bool get firebaseConfigured => firebaseApiKey.isNotEmpty && firebaseProjectId.isNotEmpty && firebaseSenderId.isNotEmpty;
+
+  /// Push con Huawei Push Kit: el App ID va en agconnect-services.json (lo escribe el workflow del APK).
+  static const hmsEnabled = bool.fromEnvironment('HMS_PUSH_ENABLED');
 }
