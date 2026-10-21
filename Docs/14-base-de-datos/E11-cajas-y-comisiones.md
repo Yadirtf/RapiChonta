@@ -2,6 +2,8 @@
 
 Historias: H11.1 a H11.4 y el cobro de H10.2. Módulo de la API: `cash`.
 
+> Ya existen desde E08 (migración `20261025000000_courier_e08`): `cash_movement_types`, `cash_boxes` y `cash_movements`, con lo justo para la compra en el local (`PURCHASE`). La caja del día se abre sola con la primera compra del domiciliario, en el día del municipio. E11 agrega el resto de tipos, el cierre y los informes sobre esas mismas tablas.
+
 ## Idea central: un libro, nada más
 
 Todo peso que **se mueve de verdad** (la base que entrega RapiChonta, lo que el domiciliario paga en el local, lo que le paga el cliente, lo que devuelve al final del día y las correcciones) es una fila inmutable en `cash_movements`, y **solo ahí**. La tarifa del domicilio y la comisión no son dinero que se mueve: se calculan del pedido ([E04](E04-pedido-del-cliente.md#vistas-de-cálculo)). El saldo de una caja y lo que el domiciliario debe entregar se calculan en vistas; no se guardan.

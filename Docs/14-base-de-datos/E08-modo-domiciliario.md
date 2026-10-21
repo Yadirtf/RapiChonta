@@ -1,6 +1,6 @@
 # E08 · Modo domiciliario y geocercas
 
-Historias: H08.1 a H08.8. Módulos de la API: `dispatch` (disponibilidad y ubicación) y `orders` (compra y preparación).
+Historias: H08.1 a H08.8. Módulos de la API: `dispatch` (disponibilidad, ubicación y ofertas) y `fulfillment` (pedido en curso: geocercas, compra, preparación y cola sin señal; ahí entran también E09 y E10). En la app, `features/courier`.
 
 El esquema provisional guardaba en `CourierProfile` tres datos que cambian a cada rato (`isAvailable`, `lastLocation`, `lastSeenAt`). Aquí cada uno sale de su propia tabla de hechos, y el perfil queda solo con lo que describe al domiciliario.
 
@@ -126,15 +126,24 @@ Quién y cuándo registró la compra **no** se repiten aquí: quién es `cash_mo
 
 - **Hora estimada de listo** = `occurred_at` de la fila `→ PREPARING` + `max(prep_minutes)` de las líneas efectivas del pedido. Se calcula en `v_order_preparation`; no se guarda.
 - **"Ya está listo"** es el cambio de estado `PREPARING → ON_THE_WAY`; no necesita otra tabla.
-- **"Sigue en preparación"** es una fila en `order_preparation_delays` (`order_id`, `reported_by_user_id`, `reported_at`). "Retrasado" = existe al menos una fila; el siguiente aviso se programa desde la última (`preparation.recheck_seconds`, [E03](E03-zonas-horario-configuracion.md#parámetros-del-negocio-h033-rf-16)).
+- **"Sigue en preparación"** es una fila en `order_preparation_delays` (`order_id`, `reported_by_user_id`, `reported_at`, `client_event_id` único para la cola sin señal). "Retrasado" = existe al menos una fila; el siguiente aviso se programa desde la última (`preparation.recheck_seconds`, [E03](E03-zonas-horario-configuracion.md#parámetros-del-negocio-h033-rf-16)). Un disparador exige que el pedido esté en `PREPARING`, que quien reporta sea su domiciliario vigente y que `reported_at` no sea anterior al inicio de la preparación; la tabla no admite cambios ni borrados.
+- **Aviso "¿ya está listo?"** (`PREPARATION_TIME_REACHED`): un reloj de la API mira `v_order_preparation.next_check_at` y encola el aviso al domiciliario en la bandeja de E06 (una vez por vencimiento, con candado consultivo para que dos instancias no lo dupliquen).
 
 `v_order_preparation`: `order_id`, `started_at`, `estimated_ready_at`, `delay_count`, `is_delayed`, `next_check_at`. Alimenta la cuenta regresiva del cliente (H09.1) y la alerta "preparación retrasada" del panel.
 
 ## Modo cliente (H08.7)
 
-No crea tablas: es `sessions.active_role_id = CUSTOMER` ([E01](E01-identidad-y-acceso.md#roles-y-permisos)). Al cambiar a modo cliente se cierra el periodo de disponibilidad abierto (`TOGGLED_OFF`).
+No crea tablas: es `sessions.active_role_id = CUSTOMER` ([E01](E01-identidad-y-acceso.md#roles-y-permisos)). El disparador `fn_sessions_leave_courier_mode` (después de cambiar `active_role_id` o `ended_at` en `sessions`):
+
+- rechaza el cambio a modo cliente con `COURIER_HAS_ACTIVE_ORDER` si el domiciliario lleva un pedido (cerrar sesión sí se permite);
+- si no, cierra el periodo de disponibilidad abierto con `TOGGLED_OFF`, salvo que otra sesión suya siga en modo domiciliario.
+
+Además, un periodo sin lecturas por 15 minutos se cierra solo con `INACTIVITY_TIMEOUT` (termina en la última lectura).
 
 ## Trabajar sin señal (H08.8, RF-46)
 
 - Cada cambio de estado hecho sin señal llega con `client_event_id` (UUID generado en la app) y `occurred_at` (hora del teléfono) y se guarda con fuente `OFFLINE_SYNC`. Reenviar el mismo evento choca con el `UNIQUE` y se responde como ya recibido.
+- La hora del teléfono solo se acepta si el paso viene de la cola (`queued`), no es anterior al último cambio de estado del pedido, no está más de 2 minutos en el futuro ni tiene más de 12 horas; si no, se usa la hora del servidor.
+- La compra sin señal guarda en el teléfono la foto y el monto; al volver la señal sube la factura (una sola vez: el id del archivo queda en la cola) y luego registra la compra.
 - Las ubicaciones guardadas sin señal llegan con su `recorded_at` real; las geocercas solo evalúan lecturas recientes, así que una lectura vieja no dispara llegadas.
+- Antes de guardar lecturas la API descarta las de apps de ubicación simulada (`mocked`), las del futuro y los saltos imposibles (más de 50 m/s entre lecturas, con 150 m de margen por el ruido del GPS).
