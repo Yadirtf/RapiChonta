@@ -7,6 +7,7 @@ import '../../../../app/theme.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../business/domain/business.dart';
 import '../../../business/presentation/business_providers.dart';
+import '../../../notifications/presentation/widgets/notification_bell.dart';
 import '../../domain/entities/establishment.dart';
 import '../format/money.dart';
 import '../providers/establishments_providers.dart';
@@ -54,6 +55,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           : AppBar(
               title: const BrandLogo(size: 34, onDark: false),
               backgroundColor: AppColors.surface,
+              actions: const [NotificationBell(), SizedBox(width: 4)],
             ),
       body: Row(
         children: [

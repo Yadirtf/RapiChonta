@@ -592,5 +592,37 @@
         "type": "String"
       }
     }
+  },
+  "noticesTitle": "Avisos",
+  "noticesMarkAll": "Leídos",
+  "noticesEmptyTitle": "Todavía no hay avisos",
+  "noticesEmptyBody": "Cuando tu pedido avance te contamos aquí y en tu teléfono, aunque tengas la app cerrada.",
+  "noticesLoadError": "No pudimos traer tus avisos",
+  "noticesMore": "Ver avisos anteriores",
+  "noticesToday": "Hoy",
+  "noticesYesterday": "Ayer",
+  "noticesUnread": "{count, plural, =1{1 aviso sin leer} other{{count} avisos sin leer}}",
+  "noticesUnreadLabel": "Sin leer",
+  "noticeOrderOffered": "Pedido nuevo para ti",
+  "noticeOfferWithdrawn": "El pedido ya no está disponible",
+  "noticePreparationReached": "El pedido ya debería estar listo",
+  "noticeAdjustmentRequested": "Tu domiciliario necesita que decidas",
+  "noticeAdjustmentResolved": "El cliente ya respondió",
+  "noticeIncidentOpened": "Abrimos un caso por tu pedido",
+  "noticeIncidentResolved": "Caso resuelto",
+  "noticeProofPending": "Falta la foto de entrega",
+  "noticeGeneric": "Novedad en tu pedido",
+  "pushAskTitle": "¿Te avisamos por el camino?",
+  "pushAskBody": "Te contamos cuando un domiciliario tome tu pedido, cuando salga del local y cuando esté llegando, aunque tengas el teléfono bloqueado. Solo avisos de tus pedidos, nada de publicidad.",
+  "pushAskCourierTitle": "Que no se te pase ningún pedido",
+  "pushAskCourierBody": "Las ofertas de pedidos te llegan como aviso aunque tengas el teléfono bloqueado. Sin avisos, solo las verías con la app abierta.",
+  "pushAskYes": "Sí, avísame",
+  "pushAskLater": "Ahora no",
+  "@noticesUnread": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

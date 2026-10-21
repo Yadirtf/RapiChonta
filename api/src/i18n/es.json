@@ -1,0 +1,21 @@
+{
+  "push": {
+    "ORDER_STATUS_CHANGED": {
+      "ACCEPTED": { "title": "Tu pedido ya tiene domiciliario", "body": "Va rumbo a {store} por tu pedido {code}." },
+      "AT_ESTABLISHMENT": { "title": "Tu domiciliario llegó a {store}", "body": "Ya está comprando lo de tu pedido {code}." },
+      "ON_THE_WAY": { "title": "¡Tu pedido va en camino!", "body": "Salió de {store} hacia donde estás. Ten listo el pago." },
+      "ARRIVING": { "title": "Tu domiciliario está llegando", "body": "Está a pocos metros: sal a recibir tu pedido {code}." },
+      "DELIVERED": { "title": "Pedido {code} entregado", "body": "Gracias por pedir con RapiChonta. ¡Buen provecho!" },
+      "CANCELLED": { "title": "Tu pedido {code} se canceló", "body": "Toca para ver los detalles." },
+      "_": { "title": "Tu pedido {code} cambió", "body": "Toca para ver en qué va." }
+    },
+    "ORDER_OFFERED": { "title": "Pedido nuevo para ti", "body": "{store} · tócalo para verlo y tomarlo." },
+    "OFFER_WITHDRAWN": { "title": "El pedido {code} ya no está disponible", "body": "Lo tomó otro domiciliario o se canceló." },
+    "PREPARATION_TIME_REACHED": { "title": "Ya debería estar listo", "body": "Pasó el tiempo de preparación del pedido {code} en {store}." },
+    "ADJUSTMENT_REQUESTED": { "title": "Tu domiciliario necesita que decidas", "body": "Algo de tu pedido {code} no está o cambió de precio. Responde pronto." },
+    "ADJUSTMENT_RESOLVED": { "title": "El cliente ya respondió", "body": "Revisa la decisión para el pedido {code}." },
+    "INCIDENT_OPENED": { "title": "Novedad en el pedido {code}", "body": "Abrimos un caso y te contamos en cuanto se resuelva." },
+    "INCIDENT_RESOLVED": { "title": "Novedad resuelta", "body": "Ya cerramos el caso del pedido {code}." },
+    "DELIVERY_PROOF_PENDING": { "title": "Falta la prueba de entrega", "body": "Toma la foto de la entrega del pedido {code}." }
+  }
+}

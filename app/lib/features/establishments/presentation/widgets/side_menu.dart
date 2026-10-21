@@ -6,6 +6,7 @@ import '../../../../app/brand_logo.dart';
 import '../../../../app/theme.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../business/presentation/business_widgets.dart';
+import '../../../notifications/presentation/push_controller.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../providers/establishments_providers.dart';
 import 'category_icon.dart';
@@ -21,6 +22,7 @@ class SideMenu extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final language = Localizations.localeOf(context).languageCode;
     final account = ref.watch(sessionProvider).value;
+    final unread = account == null ? 0 : ref.watch(unreadNotificationsProvider).value ?? 0;
 
     return SizedBox(
       width: 280,
@@ -64,6 +66,16 @@ class SideMenu extends ConsumerWidget {
                   context.push('/pedidos');
                 },
               ),
+              if (account != null)
+                _MenuItem(
+                  icon: unread > 0 ? Icons.notifications_active_rounded : Icons.notifications_none_rounded,
+                  label: l10n.noticesTitle,
+                  count: unread,
+                  onTap: () {
+                    Scaffold.maybeOf(context)?.closeDrawer();
+                    context.push('/avisos');
+                  },
+                ),
               _MenuItem(
                 icon: Icons.person_rounded,
                 label: account?.givenNames ?? l10n.menuMyAccount,
@@ -137,12 +149,15 @@ class _GlassBackdrop extends StatelessWidget {
 }
 
 class _MenuItem extends StatelessWidget {
-  const _MenuItem({required this.icon, required this.label, required this.onTap, this.active = false});
+  const _MenuItem({required this.icon, required this.label, required this.onTap, this.active = false, this.count = 0});
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
   final bool active;
+
+  /// Contador en un sello de chontaduro (avisos sin leer).
+  final int count;
 
   @override
   Widget build(BuildContext context) {
@@ -159,6 +174,13 @@ class _MenuItem extends StatelessWidget {
           onTap: onTap,
           leading: Icon(icon, color: active ? AppColors.brand : Colors.white.withValues(alpha: 0.8)),
           title: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+          trailing: count > 0
+              ? Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(color: AppColors.chonta, borderRadius: BorderRadius.circular(99)),
+                  child: Text(count > 99 ? '99+' : '$count', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12)),
+                )
+              : null,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),

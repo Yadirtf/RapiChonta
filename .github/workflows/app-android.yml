@@ -5,6 +5,9 @@
 # La URL de la API se inyecta al compilar (--dart-define=API_URL); se puede cambiar con la
 # variable del repositorio API_URL o con el campo "api_url" al lanzarlo a mano.
 # Con la variable SENTRY_DSN_APP la app reporta sus errores a Sentry (entorno "pruebas").
+# Notificaciones push (E06): las variables FIREBASE_* activan FCM y AGCONNECT_SERVICES_JSON (el
+# agconnect-services.json de AppGallery Connect) activa Huawei Push Kit. Sin ellas la app compila igual
+# y simplemente no registra token (ver Docs/11-despliegue-snapdeploy.md).
 name: App Android
 
 on:
@@ -65,25 +68,56 @@ jobs:
           echo "API_URL=$url" >> "$GITHUB_STEP_SUMMARY"
 
       # android/ no se versiona todavía (ver app/README.md): se genera en cada build.
+      # sentry_flutter exige Android 8.0 (API 26) o superior; la plantilla trae el mínimo de Flutter (24).
       - name: Generar plataforma Android
-        run: flutter create . --org com.rapichonta --project-name rapichonta --platforms=android
+        run: |
+          flutter create . --org com.rapichonta --project-name rapichonta --platforms=android
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 26/' android/app/build.gradle.kts
+          grep -q 'minSdk = 26' android/app/build.gradle.kts
 
       # Ícono del lanzador y nombre visible: los recursos versionados en app/branding/android/res
       # (generados por Docs/marca/generar_marca.py) reemplazan los de la plantilla de flutter create.
       - name: Ícono y nombre de la app
         run: |
           cp -R branding/android/res/. android/app/src/main/res/
+          cp branding/android/proguard-rules.pro android/app/proguard-rules.pro
           sed -i 's|android:label="rapichonta"|android:label="RapiChonta"|' android/app/src/main/AndroidManifest.xml
 
-      # El manifiesto principal no trae INTERNET (solo el de debug); la ubicación la usa geolocator.
+      # El manifiesto principal no trae INTERNET (solo el de debug); la ubicación la usa geolocator y
+      # POST_NOTIFICATIONS es el permiso de avisos de Android 13+.
       - name: Permisos de Android
         run: |
           manifest=android/app/src/main/AndroidManifest.xml
-          for p in INTERNET ACCESS_FINE_LOCATION ACCESS_COARSE_LOCATION; do
+          for p in INTERNET ACCESS_FINE_LOCATION ACCESS_COARSE_LOCATION POST_NOTIFICATIONS; do
             grep -q "android.permission.$p\"" "$manifest" || \
               sed -i "s|<application|<uses-permission android:name=\"android.permission.$p\"/>\n    <application|" "$manifest"
           done
           cat "$manifest"
+
+      # Huawei Push Kit: el SDK lee agconnect-services.json desde los assets y sus artefactos viven en el
+      # repositorio Maven de Huawei, que la plantilla de flutter create no incluye.
+      - name: Huawei Push Kit
+        id: hms
+        env:
+          AGCONNECT_SERVICES_JSON: ${{ vars.AGCONNECT_SERVICES_JSON }}
+        run: |
+          cat >> android/build.gradle.kts <<'GRADLE'
+
+          allprojects {
+              repositories {
+                  maven { url = uri("https://developer.huawei.com/repo/") }
+              }
+          }
+          GRADLE
+          enabled=false
+          if [ -n "$AGCONNECT_SERVICES_JSON" ]; then
+            mkdir -p android/app/src/main/assets
+            printf '%s' "$AGCONNECT_SERVICES_JSON" > android/app/src/main/assets/agconnect-services.json
+            cp android/app/src/main/assets/agconnect-services.json android/app/agconnect-services.json
+            enabled=true
+          fi
+          echo "enabled=$enabled" >> "$GITHUB_OUTPUT"
+          echo "HMS_PUSH_ENABLED=$enabled" >> "$GITHUB_STEP_SUMMARY"
 
       - run: flutter pub get
 
@@ -95,7 +129,12 @@ jobs:
             --build-number=${{ github.run_number }} \
             --dart-define=API_URL=${{ steps.api.outputs.url }} \
             --dart-define=SENTRY_DSN=${{ vars.SENTRY_DSN_APP }} \
-            --dart-define=SENTRY_ENVIRONMENT=pruebas
+            --dart-define=SENTRY_ENVIRONMENT=pruebas \
+            --dart-define=FIREBASE_API_KEY=${{ vars.FIREBASE_API_KEY }} \
+            --dart-define=FIREBASE_PROJECT_ID=${{ vars.FIREBASE_PROJECT_ID }} \
+            --dart-define=FIREBASE_MESSAGING_SENDER_ID=${{ vars.FIREBASE_MESSAGING_SENDER_ID }} \
+            --dart-define=FIREBASE_ANDROID_APP_ID=${{ vars.FIREBASE_ANDROID_APP_ID }} \
+            --dart-define=HMS_PUSH_ENABLED=${{ steps.hms.outputs.enabled }}
           mkdir -p ../dist
           cp build/app/outputs/flutter-apk/app-release.apk ../dist/rapichonta-${{ github.run_number }}.apk
 
