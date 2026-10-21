@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CatalogIds } from '../../../../shared/infrastructure/prisma/catalog-ids';
 import { PrismaService } from '../../../../shared/infrastructure/prisma/prisma.service';
 import { RoleCode, SessionEndReasonCode } from '../../domain/identity.codes';
+import { IdentityErrors } from '../../domain/identity.errors';
 import { ActiveSession, NewSession, SessionRepository, StoredRefreshToken } from '../../domain/ports/session.repository';
 import { AccountWriter } from './account-writer';
 
@@ -98,8 +99,18 @@ export class PrismaSessionRepository extends SessionRepository {
     };
   }
 
+  /**
+   * Dejar el modo domiciliario cierra su turno Disponible en la base (fn_sessions_leave_courier_mode, E08); con un
+   * pedido en curso la base lo impide para no dejarlo sin ubicación a mitad de camino.
+   */
   async setActiveRole(sessionId: string, role: RoleCode): Promise<void> {
-    await this.prisma.session.update({ where: { id: sessionId }, data: { activeRoleId: await this.ids.of('roles', role) } });
+    const roleId = await this.ids.of('roles', role);
+    try {
+      await this.prisma.$executeRaw`UPDATE sessions SET active_role_id = ${roleId} WHERE id = ${sessionId}::uuid`;
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('COURIER_HAS_ACTIVE_ORDER')) throw IdentityErrors.courierHasActiveOrder();
+      throw error;
+    }
   }
 
   async end(sessionId: string, reason: SessionEndReasonCode): Promise<void> {

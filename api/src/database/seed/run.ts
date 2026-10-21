@@ -10,6 +10,7 @@ import {
   INITIAL_LEGAL_VERSION,
   LEGAL_REQUIREMENTS,
   ORDER_TRANSITIONS,
+  CASH_MOVEMENT_TYPES,
   ROLE_PERMISSIONS,
   SETTINGS,
   TRANSITIONS,
@@ -65,6 +66,19 @@ async function seedCatalogs() {
       SELECT f.id, t.id, r.id FROM order_statuses f, order_statuses t, roles r
       WHERE f.code = ${from} AND t.code = ${to} AND r.code IN (${Prisma.join(roles)})
       ON CONFLICT DO NOTHING
+    `;
+  }
+
+  for (const [index, t] of CASH_MOVEMENT_TYPES.entries()) {
+    await prisma.$executeRaw`
+      INSERT INTO cash_movement_types (code, sort_order, direction, requires_order, requires_payment_method, is_manual,
+                                       uses_courier_collection_account, only_for_funding_mode_id)
+      VALUES (${t.code}, ${index + 1}, ${t.direction}, ${t.requiresOrder}, ${t.requiresPaymentMethod}, ${t.isManual},
+              ${t.usesCollectionAccount}, (SELECT id FROM funding_modes WHERE code = ${t.onlyForFundingMode}))
+      ON CONFLICT (code) DO UPDATE SET sort_order = EXCLUDED.sort_order, direction = EXCLUDED.direction,
+        requires_order = EXCLUDED.requires_order, requires_payment_method = EXCLUDED.requires_payment_method,
+        is_manual = EXCLUDED.is_manual, uses_courier_collection_account = EXCLUDED.uses_courier_collection_account,
+        only_for_funding_mode_id = EXCLUDED.only_for_funding_mode_id
     `;
   }
 

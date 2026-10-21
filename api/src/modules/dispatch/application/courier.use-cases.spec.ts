@@ -1,20 +1,25 @@
+import { GeoPoint } from '../../catalog/domain/value-objects/geo-point';
+import { GeofenceUseCase } from '../../fulfillment/application/courier-trip.use-cases';
 import { Notifier } from '../../notifications/application/notifier';
 import { DomainError } from '../../../shared/domain/domain.error';
 import { courierPrincipal, MemoryCourierDesk } from '../../../../test/dispatch/fakes';
 import { CourierAvailabilityUseCase, CourierOffersUseCase } from './courier.use-cases';
+
+const geofence = (arrival: { orderCode: string; status: string } | null = null) =>
+  ({ evaluate: jest.fn().mockResolvedValue(arrival) }) as unknown as GeofenceUseCase & { evaluate: jest.Mock };
 
 const codeOf = async (work: Promise<unknown>) => ((await work.then(() => null, (e: DomainError) => e)) as DomainError | null)?.code;
 
 describe('CourierAvailabilityUseCase', () => {
   it('se activa verificado y con la autorización de ubicación aceptada', async () => {
     const desk = new MemoryCourierDesk();
-    const status = await new CourierAvailabilityUseCase(desk).setAvailable(courierPrincipal, true);
+    const status = await new CourierAvailabilityUseCase(desk, geofence()).setAvailable(courierPrincipal, true);
     expect(status.availableSince).not.toBeNull();
   });
 
   it('sin verificar o sin autorización no se activa; desactivarse siempre se puede', async () => {
     const desk = new MemoryCourierDesk();
-    const useCase = new CourierAvailabilityUseCase(desk);
+    const useCase = new CourierAvailabilityUseCase(desk, geofence());
     desk.current = { ...desk.current!, locationConsentPending: true };
     expect(await codeOf(useCase.setAvailable(courierPrincipal, true))).toBe('LOCATION_CONSENT_REQUIRED');
     desk.current = { ...desk.current!, verified: false };
@@ -25,7 +30,7 @@ describe('CourierAvailabilityUseCase', () => {
 
   it('guarda ubicaciones solo con Disponible o pedido en curso, y descarta horas del futuro', async () => {
     const desk = new MemoryCourierDesk();
-    const useCase = new CourierAvailabilityUseCase(desk);
+    const useCase = new CourierAvailabilityUseCase(desk, geofence());
     const now = new Date('2026-10-21T12:00:00Z');
     const result = await useCase.reportLocations(
       courierPrincipal,
@@ -39,6 +44,42 @@ describe('CourierAvailabilityUseCase', () => {
     expect(desk.recorded[0].accuracyM).toBe(8);
     desk.expecting = false;
     expect(await codeOf(useCase.reportLocations(courierPrincipal, [{ latitude: 1, longitude: -76, recordedAt: now }], now))).toBe('LOCATION_NOT_EXPECTED');
+  });
+
+  it('descarta lecturas simuladas y saltos imposibles; con lecturas válidas revisa las geocercas', async () => {
+    const desk = new MemoryCourierDesk();
+    const probe = geofence({ orderCode: 'RC-7K3M', status: 'AT_ESTABLISHMENT' });
+    const useCase = new CourierAvailabilityUseCase(desk, probe);
+    const now = new Date('2026-10-21T12:00:00Z');
+    desk.last = { location: GeoPoint.create(1.0306, -76.6158), accuracyM: 6, recordedAt: new Date('2026-10-21T11:59:50Z') };
+    const result = await useCase.reportLocations(
+      courierPrincipal,
+      [
+        // 20 m en 5 s: normal en moto.
+        { latitude: 1.0308, longitude: -76.6158, accuracyM: 6, recordedAt: new Date('2026-10-21T11:59:55Z') },
+        // Bogotá 5 s después: GPS simulado.
+        { latitude: 4.711, longitude: -74.0721, accuracyM: 5, recordedAt: new Date('2026-10-21T11:59:58Z') },
+        // Marcada por Android como simulada.
+        { latitude: 1.0309, longitude: -76.6158, accuracyM: 5, recordedAt: new Date('2026-10-21T11:59:59Z'), mocked: true },
+      ],
+      now,
+    );
+    expect(result).toEqual({ accepted: 1, arrival: { orderCode: 'RC-7K3M', status: 'AT_ESTABLISHMENT' } });
+    expect(desk.recorded).toHaveLength(1);
+    expect(probe.evaluate).toHaveBeenCalledWith(courierPrincipal.userId);
+  });
+
+  it('sin lecturas válidas no guarda nada ni revisa geocercas', async () => {
+    const desk = new MemoryCourierDesk();
+    const probe = geofence();
+    const now = new Date('2026-10-21T12:00:00Z');
+    const result = await new CourierAvailabilityUseCase(desk, probe).reportLocations(
+      courierPrincipal,
+      [{ latitude: 1.03, longitude: -76.61, recordedAt: now, mocked: true }],
+      now,
+    );
+    expect(result).toEqual({ accepted: 0, arrival: null });
+    expect(probe.evaluate).not.toHaveBeenCalled();
   });
 });
 

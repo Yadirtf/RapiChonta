@@ -11,7 +11,7 @@
     },
     "ORDER_OFFERED": { "title": "Pedido nuevo para ti", "body": "{store} · tócalo para verlo y tomarlo." },
     "OFFER_WITHDRAWN": { "title": "El pedido {code} ya no está disponible", "body": "Lo tomó otro domiciliario o se canceló." },
-    "PREPARATION_TIME_REACHED": { "title": "Ya debería estar listo", "body": "Pasó el tiempo de preparación del pedido {code} en {store}." },
+    "PREPARATION_TIME_REACHED": { "title": "¿Ya está listo el pedido {code}?", "body": "Se cumplió el tiempo de preparación en {store}. Toca para responder." },
     "ADJUSTMENT_REQUESTED": { "title": "Tu domiciliario necesita que decidas", "body": "Algo de tu pedido {code} no está o cambió de precio. Responde pronto." },
     "ADJUSTMENT_RESOLVED": { "title": "El cliente ya respondió", "body": "Revisa la decisión para el pedido {code}." },
     "INCIDENT_OPENED": { "title": "Novedad en el pedido {code}", "body": "Abrimos un caso y te contamos en cuanto se resuelva." },

@@ -66,7 +66,7 @@ export class MemoryDispatchBoard extends DispatchBoard {
 }
 
 export class MemoryCourierDesk extends CourierDesk {
-  current: CourierStatus | null = { verified: true, locationConsentPending: false, availableSince: null, activeOrderCode: null };
+  current: CourierStatus | null = { verified: true, locationConsentPending: false, availableSince: null, activeOrder: null };
   expecting = true;
   recorded: LocationReading[] = [];
   closedWith: string | null = null;
@@ -91,6 +91,12 @@ export class MemoryCourierDesk extends CourierDesk {
 
   async recordLocations(_courier: string, readings: LocationReading[]) {
     this.recorded.push(...readings);
+  }
+
+  last: LocationReading | null = null;
+
+  async lastReading() {
+    return this.last;
   }
 
   async pendingOffers(): Promise<CourierOffer[]> {

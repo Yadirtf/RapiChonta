@@ -158,7 +158,13 @@
     "COURIER_BUSY": "That courier is already carrying an order.",
     "COURIER_NOT_VERIFIED": "The courier isn't verified yet.",
     "LOCATION_CONSENT_REQUIRED": "Location sharing permission is missing.",
-    "LOCATION_NOT_EXPECTED": "Location is only sent while you're available."
+    "LOCATION_NOT_EXPECTED": "Location is only sent while you're available.",
+    "TRIP_NOT_FOUND": "This order is no longer with the courier.",
+    "TRIP_STEP_NOT_ALLOWED": "The order changed status. Check where it is now.",
+    "PURCHASE_AMOUNT_INVALID": "Check the total paid.",
+    "RECEIPT_INVALID": "The receipt photo can't be used. Take another one.",
+    "CLIENT_EVENT_CONFLICT": "That step was already recorded on another order.",
+    "COURIER_HAS_ACTIVE_ORDER": "Finish your current order before switching to customer mode."
   },
   "auth": {
     "signInTitle": "Sign in with your phone",
@@ -1257,7 +1263,17 @@
     "toOrders": "See my orders",
     "updated": "Updates automatically",
     "signInBody": "Sign in with your phone to follow each order.",
-    "detailTitle": "Your order"
+    "detailTitle": "Your order",
+    "highDemandTitle": "{store} is busy right now",
+    "highDemandBody": "Your order is taking a bit longer than usual. Your courier is waiting for it at the store.",
+    "readyAround": "Ready around {time}",
+    "purchaseTitle": "Store purchase",
+    "purchaseBody": "Your courier paid {amount} at the store.",
+    "seeReceipt": "View receipt",
+    "receiptTitle": "Receipt for order {code}",
+    "receiptAlt": "Photo of the receipt for order {code}",
+    "receiptOpen": "Open full size",
+    "close": "Close"
   },
   "coverage": {
     "title": "Coverage",
@@ -1390,7 +1406,9 @@
     "sentAll": "{count, plural, one {We called # courier} other {We called # couriers}}. They have {seconds} s to answer.",
     "sentOne": "Sent to {name}. They have {seconds} s to answer.",
     "roadTitle": "{count, plural, one {# order on the way} other {# orders on the way}}",
-    "withCourier": "With {name} for {time}"
+    "withCourier": "With {name} for {time}",
+    "prepDelayed": "Prep running late",
+    "paid": "Paid {amount} at the store"
   },
   "audit": {
     "eyebrow": "Logbook",

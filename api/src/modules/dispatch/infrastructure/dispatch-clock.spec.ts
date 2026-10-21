@@ -11,6 +11,11 @@ class FakeMaintenance extends DispatchMaintenance {
   async nextExpiry() {
     return this.next;
   }
+  idleClosed: number[] = [];
+  async closeIdleAvailability(minutes: number) {
+    this.idleClosed.push(minutes);
+    return 0;
+  }
   async purgeLocations() {
     return 0;
   }
@@ -27,6 +32,7 @@ describe('DispatchClock', () => {
     maintenance.next = new Date('2026-10-21T12:00:30Z');
     await clock.run(() => now);
     expect(maintenance.expired).toBe(1);
+    expect(maintenance.idleClosed).toEqual([15]);
     jest.advanceTimersByTime(30_000);
     expect(maintenance.expired).toBe(1);
     maintenance.next = null;

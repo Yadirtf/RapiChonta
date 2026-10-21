@@ -153,6 +153,10 @@ export class PrismaOrdersRepository extends OrdersRepository {
         recipient_phone: string | null;
         payment_method: string;
         customer_notes: string | null;
+        estimated_ready_at: Date | null;
+        is_delayed: boolean | null;
+        purchase_amount: string | null;
+        receipt_file_id: string | null;
       })[]
     >`
       SELECT s.*, a.items_total::text AS items_total, a.delivery_fee::text AS delivery_fee,
@@ -160,7 +164,8 @@ export class PrismaOrdersRepository extends OrdersRepository {
              ad.label AS address_label, ad.line AS address_line, ad.reference AS address_reference,
              ST_Y(ad.location::geometry) AS latitude, ST_X(ad.location::geometry) AS longitude,
              r.full_name AS recipient_name, r.phone_e164 AS recipient_phone,
-             pm.code AS payment_method, o.customer_notes
+             pm.code AS payment_method, o.customer_notes,
+             pr.estimated_ready_at, pr.is_delayed, mv.amount::text AS purchase_amount, op.receipt_file_id
       FROM (${SUMMARY_SELECT} WHERE o.customer_user_id = ${customerUserId}::uuid AND o.code = ${code}) s
       JOIN orders o ON o.id = s.id
       JOIN v_order_amounts a ON a.order_id = o.id
@@ -169,7 +174,10 @@ export class PrismaOrdersRepository extends OrdersRepository {
       JOIN zone_kinds zk ON zk.id = z.zone_kind_id
       JOIN addresses ad ON ad.id = o.delivery_address_id
       LEFT JOIN customer_recipients r ON r.id = o.recipient_id
-      JOIN payment_methods pm ON pm.id = o.payment_method_id`;
+      JOIN payment_methods pm ON pm.id = o.payment_method_id
+      LEFT JOIN v_order_preparation pr ON pr.order_id = o.id
+      LEFT JOIN order_purchases op ON op.order_id = o.id
+      LEFT JOIN cash_movements mv ON mv.id = op.cash_movement_id`;
     if (!row) return null;
 
     const [lines, timeline, journey] = await Promise.all([
@@ -202,6 +210,8 @@ export class PrismaOrdersRepository extends OrdersRepository {
       // Si volvió a "Buscando domiciliario" (nadie aceptó la oferta), se ve una vez, desde la primera hora.
       timeline: collapse(timeline),
       journey,
+      preparation: row.estimated_ready_at ? { estimatedReadyAt: row.estimated_ready_at, delayed: row.is_delayed === true } : null,
+      purchase: row.purchase_amount && row.receipt_file_id ? { amount: row.purchase_amount, receiptFileId: row.receipt_file_id } : null,
     };
   }
 

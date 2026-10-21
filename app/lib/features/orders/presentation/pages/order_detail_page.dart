@@ -90,6 +90,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                     children: [
                       if (widget.placed) _PlacedBanner(code: order.code),
                       _StatusTicket(order: order),
+                      if (order.active && (order.preparation?.delayed ?? false)) ...[const SizedBox(height: 12), _HighDemand(order: order)],
                       const SizedBox(height: 16),
                       _Card(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -110,6 +111,7 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                       ),
                       const SizedBox(height: 16),
                       _Receipt(order: order),
+                      if (order.purchase != null) ...[const SizedBox(height: 16), _PurchaseCard(purchase: order.purchase!)],
                       const SizedBox(height: 16),
                       _DeliveryCard(order: order),
                     ],
@@ -234,7 +236,15 @@ class _StatusTicket extends StatelessWidget {
               ] else
                 Text(l10n.ordersItems(order.itemCount), style: const TextStyle(color: Colors.white54, fontSize: 12)),
               const Spacer(),
-              if (order.active && order.prepMinutes > 0)
+              if (order.active && order.preparation != null)
+                Flexible(
+                  child: Text(
+                    l10n.ordersReadyAround(orderTime(order.preparation!.estimatedReadyAt, language)),
+                    textAlign: TextAlign.end,
+                    style: const TextStyle(color: AppColors.brand, fontSize: 12, fontWeight: FontWeight.w800),
+                  ),
+                )
+              else if (order.active && order.prepMinutes > 0)
                 Flexible(
                   child: Text(l10n.ordersPrep(order.prepMinutes), textAlign: TextAlign.end, maxLines: 2, style: const TextStyle(color: Colors.white54, fontSize: 12)),
                 ),
@@ -295,6 +305,101 @@ class _Receipt extends StatelessWidget {
       ),
     );
   }
+}
+
+/// H08.5: el domiciliario avisó que el local sigue preparando. Se cuenta como alta demanda, sin culpas.
+class _HighDemand extends StatelessWidget {
+  const _HighDemand({required this.order});
+
+  final OrderDetail order;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: AppColors.chontaSoft, borderRadius: BorderRadius.circular(20), border: Border.all(color: AppColors.chonta.withValues(alpha: 0.35))),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(color: AppColors.chonta, borderRadius: BorderRadius.circular(12)),
+            child: const Icon(Icons.local_fire_department_rounded, color: Colors.white, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(l10n.ordersHighDemandTitle(order.establishmentName), style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.chontaStrong)),
+              const SizedBox(height: 2),
+              Text(l10n.ordersHighDemandBody, style: TextStyle(fontSize: 13, color: AppColors.ink.withValues(alpha: 0.7))),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// H08.4: lo que pagó el domiciliario en el local, con la factura. El cliente paga lo del recibo de arriba.
+class _PurchaseCard extends StatelessWidget {
+  const _PurchaseCard({required this.purchase});
+
+  final ({int amountCents, String? receiptUrl}) purchase;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final language = Localizations.localeOf(context).languageCode;
+    final url = purchase.receiptUrl;
+    return _Card(
+      child: Row(children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(color: AppColors.cream, borderRadius: BorderRadius.circular(13)),
+          child: const Icon(Icons.receipt_long_rounded, color: AppColors.chonta),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(l10n.ordersPurchaseTitle, style: const TextStyle(fontWeight: FontWeight.w900)),
+            Text(l10n.ordersPurchaseBody(formatPesos(purchase.amountCents, language)), style: TextStyle(fontSize: 13, color: AppColors.ink.withValues(alpha: 0.65))),
+          ]),
+        ),
+        if (url != null)
+          TextButton(onPressed: () => _showReceipt(context, url), child: Text(l10n.ordersSeeReceipt)),
+      ]),
+    );
+  }
+}
+
+/// La factura a pantalla completa, con zoom para leer el total.
+void _showReceipt(BuildContext context, String url) {
+  final l10n = AppLocalizations.of(context);
+  showDialog<void>(
+    context: context,
+    barrierColor: AppColors.ink.withValues(alpha: 0.9),
+    builder: (context) => Stack(children: [
+      Positioned.fill(
+        child: InteractiveViewer(
+          maxScale: 5,
+          child: Center(child: Image.network(url, fit: BoxFit.contain, semanticLabel: l10n.ordersPurchaseTitle)),
+        ),
+      ),
+      Positioned(
+        top: MediaQuery.paddingOf(context).top + 8,
+        right: 8,
+        child: IconButton.filled(
+          tooltip: l10n.close,
+          style: IconButton.styleFrom(backgroundColor: Colors.white, foregroundColor: AppColors.ink),
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.close_rounded),
+        ),
+      ),
+    ]),
+  );
 }
 
 class _Row extends StatelessWidget {

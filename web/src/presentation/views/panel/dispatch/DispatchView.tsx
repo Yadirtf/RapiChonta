@@ -1,17 +1,19 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Bell, BellOff, ClipboardList, Hourglass, Inbox, Loader2, Navigation } from "lucide-react";
+import { Bell, BellOff, ClipboardList, Flame, Hourglass, Inbox, Loader2, Navigation } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { can, fullName, PERMISSIONS } from "@/core/domain/entities/account";
 import { alertKey, DISPATCH_POLL_MS, elapsed, needsAttention, type DispatchCourier, type DispatchOrder } from "@/core/domain/entities/dispatch";
 import { container } from "@/infrastructure/di/container";
 import { useAuth } from "../../../auth/AuthProvider";
+import { ReceiptButton } from "../../../components/orders/PurchaseReceipt";
 import { StatusBadge } from "../../../components/orders/StatusBadge";
 import { Alert } from "../../../components/ui/Alert";
 import { useDispatchBell } from "../../../hooks/useDispatchBell";
 import { useErrorMessage } from "../../../hooks/useErrorMessage";
+import { useCatalogFormat } from "../../../hooks/useCatalogFormat";
 import { usePolling, useServerClock } from "../../../hooks/usePolling";
 import { usePanelMunicipality } from "../PanelMunicipality";
 import { CourierRail } from "./CourierRail";
@@ -210,19 +212,22 @@ export function DispatchView() {
           </h2>
           <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {onTheWay.map((o) => (
-              <li key={o.code} className="ticket flex min-w-0 items-center gap-4 rounded-2xl px-5 py-4 text-white">
-                <div className="min-w-0 flex-1">
-                  <p className="font-display text-lg font-extrabold text-brand">{o.code}</p>
-                  <p className="truncate text-sm text-white/75">
-                    {o.establishment.name} → {o.delivery.zoneName}
-                  </p>
-                  {o.courier && (
-                    <p className="mt-1 truncate text-xs text-white/70">
-                      {t("withCourier", { name: fullName(o.courier), time: elapsed((now - new Date(o.courier.assignedAt).getTime()) / 1000) })}
+              <li key={o.code} className={`ticket flex min-w-0 flex-col gap-3 rounded-2xl px-5 py-4 text-white ${o.preparation?.delayed ? "ring-2 ring-chonta" : ""}`}>
+                <div className="flex min-w-0 items-center gap-4">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-display text-lg font-extrabold text-brand">{o.code}</p>
+                    <p className="truncate text-sm text-white/75">
+                      {o.establishment.name} → {o.delivery.zoneName}
                     </p>
-                  )}
+                    {o.courier && (
+                      <p className="mt-1 truncate text-xs text-white/70">
+                        {t("withCourier", { name: fullName(o.courier), time: elapsed((now - new Date(o.courier.assignedAt).getTime()) / 1000) })}
+                      </p>
+                    )}
+                  </div>
+                  <StatusBadge status={o.status} />
                 </div>
-                <StatusBadge status={o.status} />
+                <RoadDetails order={o} />
               </li>
             ))}
           </ul>
@@ -242,6 +247,33 @@ export function DispatchView() {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+/** E08 en la comanda en curso: la alerta de preparación retrasada y lo pagado en el local con su factura. */
+function RoadDetails({ order }: { order: DispatchOrder }) {
+  const t = useTranslations("dispatch");
+  const { price } = useCatalogFormat();
+  if (!order.purchase && !order.preparation?.delayed) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-t-2 border-dashed border-white/15 pt-3">
+      {order.preparation?.delayed && (
+        <span className="flex items-center gap-2" role="status">
+          <Flame className="size-4 text-chonta" aria-hidden />
+          <span className="stamp text-brand">{t("prepDelayed")}</span>
+        </span>
+      )}
+      {order.purchase && (
+        <>
+          <span className="text-xs text-white/70">{t("paid", { amount: price(order.purchase.amount) })}</span>
+          {order.purchase.receiptUrl && (
+            <span className="ml-auto">
+              <ReceiptButton url={order.purchase.receiptUrl} code={order.code} variant="dark" />
+            </span>
+          )}
+        </>
+      )}
     </div>
   );
 }

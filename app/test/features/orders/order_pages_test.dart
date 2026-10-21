@@ -39,12 +39,37 @@ final _delivered = OrderDetail(
   journey: _journey,
 );
 
+/// Preparándose con retraso (E08): el domiciliario ya pagó y avisó que el local sigue preparando.
+final _delayed = OrderDetail(
+  code: 'RC-7K3M',
+  establishmentId: 'e1',
+  establishmentName: 'Burger Demo',
+  createdAt: _at,
+  status: 'PREPARING',
+  statusAt: _at,
+  active: true,
+  itemCount: 1,
+  totalCents: 1700000,
+  lines: const [OrderLine(productId: 'p1', name: 'Hamburguesa sencilla', unitCents: 1400000, quantity: 1)],
+  itemsCents: 1400000,
+  feeCents: 300000,
+  prepMinutes: 15,
+  zoneName: 'Centro',
+  address: const SavedAddress(id: '', label: 'Casa', location: GeoPoint(1.03, -76.61)),
+  paymentMethod: 'CASH',
+  timeline: [TimelineEntry('PENDING_ASSIGNMENT', _at), TimelineEntry('PREPARING', _at)],
+  journey: _journey,
+  preparation: (estimatedReadyAt: DateTime.utc(2026, 10, 21, 20, 45), delayed: true),
+  purchase: (amountCents: 1450000, receiptUrl: 'https://archivos.example/factura.jpg'),
+);
+
 class _Orders implements OrderRepository {
-  _Orders({this.missing = false});
+  _Orders({this.missing = false, this.detail});
   final bool missing;
+  final OrderDetail? detail;
 
   @override
-  Future<OrderDetail> find(String code, {required String language}) async => missing ? throw const Failure('', code: 'ORDER_NOT_FOUND') : _delivered;
+  Future<OrderDetail> find(String code, {required String language}) async => missing ? throw const Failure('', code: 'ORDER_NOT_FOUND') : detail ?? _delivered;
 
   @override
   Future<OrderHistory> mine({String? before}) async => OrderHistory(active: const [], past: [_delivered], journey: _journey);
@@ -123,6 +148,18 @@ void main() {
 
     expect(find.text('¡Recibimos tu pedido!'), findsOneWidget);
     expect(store.saved, isNull);
+  });
+
+  testWidgets('con retraso en el local avisa alta demanda y muestra lo que pagó el domiciliario (H08.4, H08.5)', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 2600));
+    await tester.pumpWidget(_app(const OrderDetailPage(code: 'RC-7K3M'), orders: _Orders(detail: _delayed)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Hay alta demanda en Burger Demo'), findsOneWidget);
+    expect(find.text('Listo hacia las 3:45 p. m.'), findsOneWidget);
+    expect(find.text(r'Tu domiciliario pagó $ 14.500 en el local.'), findsOneWidget);
+    expect(find.text('Ver factura'), findsOneWidget);
   });
 
   testWidgets('un código que no es del cliente muestra cómo volver a sus pedidos', (tester) async {

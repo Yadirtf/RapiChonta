@@ -51,6 +51,22 @@ String errorText(AppLocalizations l10n, Object error) {
     'NO_COVERAGE' => l10n.errNoCoverage,
     'OUTSIDE_OPERATING_HOURS' => l10n.errOutsideOperatingHours,
     'TEXT_REQUIRED' => l10n.errTextRequired(failure.details['field']?.toString() ?? 'other'),
+    'TRIP_NOT_FOUND' => l10n.errTripNotFound,
+    'TRIP_STEP_NOT_ALLOWED' => l10n.errTripStepNotAllowed,
+    'PURCHASE_AMOUNT_INVALID' => l10n.errPurchaseAmountInvalid,
+    'RECEIPT_INVALID' => l10n.errReceiptInvalid,
+    'CLIENT_EVENT_CONFLICT' => l10n.errClientEventConflict,
+    'COURIER_HAS_ACTIVE_ORDER' => l10n.errCourierHasActiveOrder,
+    'ORDER_ALREADY_TAKEN' => l10n.errOrderAlreadyTaken,
+    'OFFER_EXPIRED' => l10n.errOfferExpired,
+    'OFFER_CLOSED' || 'OFFER_NOT_FOUND' => l10n.errOfferClosed,
+    'COURIER_BUSY' => l10n.errCourierBusy,
+    'COURIER_NOT_AVAILABLE' => l10n.errCourierNotAvailable,
+    'COURIER_NOT_VERIFIED' => l10n.errCourierNotVerified,
+    'LOCATION_CONSENT_REQUIRED' => l10n.errLocationConsentRequired,
+    'LOCATION_NOT_EXPECTED' => l10n.errLocationNotExpected,
+    'FILE_CONTENT_MISMATCH' || 'FILE_INVALID_CHECKSUM' || 'FILE_NOT_UPLOADED' || 'FILE_TOO_LARGE' || 'FILE_TYPE_NOT_ALLOWED' || 'UPLOAD_EXPIRED' || 'UPLOAD_INVALID' =>
+      l10n.errFileUpload,
     _ => l10n.errUnknown,
   };
 }

@@ -489,6 +489,27 @@ const ADMIN_PERMISSIONS = [
   'municipalities.manage',
 ];
 
+/**
+ * Tipos de movimiento de la caja del domiciliario (Docs/14-base-de-datos/E11). direction: +1 aumenta lo que el
+ * domiciliario debe entregar a RapiChonta. E08 usa PURCHASE (lo pagado en el local); los demás llegan con E10 y E11.
+ */
+export const CASH_MOVEMENT_TYPES: {
+  code: string;
+  direction: 1 | -1;
+  requiresOrder: boolean;
+  requiresPaymentMethod: boolean;
+  isManual: boolean;
+  usesCollectionAccount: boolean;
+  onlyForFundingMode: string | null;
+}[] = [
+  { code: 'OPENING', direction: 1, requiresOrder: false, requiresPaymentMethod: true, isManual: true, usesCollectionAccount: true, onlyForFundingMode: 'CASH_BOX' },
+  { code: 'PURCHASE', direction: -1, requiresOrder: true, requiresPaymentMethod: false, isManual: false, usesCollectionAccount: false, onlyForFundingMode: null },
+  { code: 'COLLECTION', direction: 1, requiresOrder: true, requiresPaymentMethod: true, isManual: false, usesCollectionAccount: true, onlyForFundingMode: null },
+  { code: 'RETURN', direction: -1, requiresOrder: false, requiresPaymentMethod: true, isManual: true, usesCollectionAccount: false, onlyForFundingMode: null },
+  { code: 'ADJUSTMENT_IN', direction: 1, requiresOrder: false, requiresPaymentMethod: false, isManual: true, usesCollectionAccount: false, onlyForFundingMode: null },
+  { code: 'ADJUSTMENT_OUT', direction: -1, requiresOrder: false, requiresPaymentMethod: false, isManual: true, usesCollectionAccount: false, onlyForFundingMode: null },
+];
+
 /** Permisos por rol (Docs/14-base-de-datos/E01-identidad-y-acceso.md). */
 export const ROLE_PERMISSIONS: Record<string, string[]> = {
   CUSTOMER: ['account.manage_own', ...CUSTOMER_PERMISSIONS],

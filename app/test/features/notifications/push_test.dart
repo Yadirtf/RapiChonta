@@ -61,6 +61,15 @@ void main() {
       expect(hms.notificationId, 'n-1');
     });
 
+    test('los avisos del domiciliario abren su turno o su pedido en curso (E08)', () {
+      expect(PushTap.fromData({'type': 'ORDER_OFFERED', 'orderCode': 'RC-7K3M'})!.route, '/turno');
+      expect(PushTap.fromData({'type': 'OFFER_WITHDRAWN', 'orderCode': 'RC-7K3M'})!.route, '/turno');
+      final prep = PushTap.fromData({'rc_type': 'PREPARATION_TIME_REACHED', 'rc_orderCode': 'RC-7K3M'})!;
+      expect(prep.route, '/turno/pedido/RC-7K3M');
+      expect(prep.forCourier, isTrue);
+      expect(PushTap.fromData({'type': 'ORDER_STATUS_CHANGED', 'orderCode': 'RC-7K3M'})!.forCourier, isFalse);
+    });
+
     test('sin pedido abre la bandeja de avisos; sin tipo no es un aviso nuestro', () {
       expect(PushTap.fromData({'type': 'INCIDENT_RESOLVED'})!.route, '/avisos');
       expect(PushTap.fromData({'orderCode': 'RC-7K3M'}), isNull);

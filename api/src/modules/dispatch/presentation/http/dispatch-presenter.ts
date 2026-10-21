@@ -8,7 +8,8 @@ const person = (n: PersonName) => ({ givenNames: n.givenNames, familyNames: n.fa
 
 /** Forma pública del despacho: montos en texto decimal (RNF-05), fechas ISO y códigos que la web traduce. */
 export const DispatchPresenter = {
-  order: (o: BoardOrder) => ({
+  /** `receiptUrl` firma la URL de la factura (FileUrls): se calcula en cada respuesta, nunca se guarda. */
+  order: (o: BoardOrder, receiptUrl: (fileId: string) => string | null) => ({
     code: o.code,
     createdAt: o.createdAt.toISOString(),
     status: o.status,
@@ -32,6 +33,8 @@ export const DispatchPresenter = {
       recipients: offer.recipients.map((r) => ({ courierUserId: r.courierUserId, ...person(r.name), status: r.status, respondedAt: r.respondedAt?.toISOString() ?? null })),
     })),
     courier: o.courier ? { userId: o.courier.userId, ...person(o.courier.name), assignedAt: o.courier.assignedAt.toISOString() } : null,
+    purchase: o.purchase ? { amount: o.purchase.amount, receiptUrl: receiptUrl(o.purchase.receiptFileId) } : null,
+    preparation: o.preparation ? { estimatedReadyAt: o.preparation.estimatedReadyAt.toISOString(), delayed: o.preparation.delayed } : null,
   }),
 
   courier: (c: AvailableCourier) => ({
@@ -53,7 +56,7 @@ export const DispatchPresenter = {
     locationConsentPending: s.locationConsentPending,
     available: s.availableSince !== null,
     availableSince: s.availableSince?.toISOString() ?? null,
-    activeOrderCode: s.activeOrderCode,
+    activeOrder: s.activeOrder,
   }),
 
   courierOffer: (o: CourierOffer) => ({
@@ -63,6 +66,7 @@ export const DispatchPresenter = {
     establishment: { name: o.establishment.name, addressLine: o.establishment.addressLine, ...geo(o.establishment.location) },
     zone: o.zone,
     itemCount: o.itemCount,
+    lines: o.lines,
     itemsTotal: o.itemsTotal,
     deliveryFee: o.deliveryFee,
     paymentMethod: o.paymentMethod,

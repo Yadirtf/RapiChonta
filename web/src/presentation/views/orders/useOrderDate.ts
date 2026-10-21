@@ -21,3 +21,12 @@ export function useOrderDate() {
     [locale],
   );
 }
+
+/** "3:40 p. m." en la hora del municipio. */
+export function useOrderTime() {
+  const locale = useLocale();
+  return useCallback(
+    (iso: string) => new Intl.DateTimeFormat(locale === "en" ? "en-US" : "es-CO", { hour: "numeric", minute: "2-digit", timeZone: ORDER_TIME_ZONE }).format(new Date(iso)),
+    [locale],
+  );
+}

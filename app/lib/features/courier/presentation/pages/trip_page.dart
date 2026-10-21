@@ -1,0 +1,876 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../app/theme.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../../../auth/presentation/widgets/error_text.dart';
+import '../../../auth/presentation/widgets/phone_field.dart' show formatPhone;
+import '../../../establishments/presentation/format/money.dart';
+import '../../../establishments/presentation/widgets/storefront.dart';
+import '../../../orders/presentation/widgets/order_route.dart' show TicketClipper;
+import '../../../orders/presentation/widgets/order_visuals.dart';
+import '../../../orders/presentation/widgets/store_page.dart';
+import '../../domain/courier.dart';
+import '../../domain/pending_steps.dart';
+import '../courier_providers.dart';
+import '../widgets/duty_widgets.dart';
+import '../widgets/pending_ribbon.dart';
+import '../widgets/receipt_capture.dart';
+import '../widgets/trip_actions.dart';
+import '../widgets/trip_map.dart';
+
+/// El pedido en curso (H08.3 a H08.6, H08.8), etapa por etapa. Las llegadas (al local y donde el cliente) las
+/// marca el servidor con la ubicación; aquí solo se marcan la compra y "ya está listo". Lo marcado sin señal
+/// se ve como hecho y sale solo al volver la conexión.
+class TripPage extends ConsumerWidget {
+  const TripPage({super.key, required this.code});
+
+  final String code;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final language = Localizations.localeOf(context).languageCode;
+    final trip = ref.watch(courierTripProvider(language));
+    final pending = ref.watch(pendingStepsProvider).of(code).toList();
+
+    return Scaffold(
+      body: trip.when(
+        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.chonta)),
+        error: (error, _) => ListView(children: [
+          StoreHeader(title: code, backTo: '/turno', backLabel: l10n.tripBackToShift),
+          DoorCard(
+            icon: Icons.cloud_off_rounded,
+            title: l10n.courierLoadError,
+            body: errorText(l10n, error),
+            action: OutlinedButton(onPressed: () => ref.invalidate(courierTripProvider), child: Text(l10n.ordersRetry)),
+          ),
+        ]),
+        data: (trip) {
+          if (trip == null || trip.code != code) {
+            return ListView(children: [
+              StoreHeader(title: code, backTo: '/turno', backLabel: l10n.tripBackToShift),
+              DoorCard(
+                icon: Icons.verified_rounded,
+                title: l10n.tripDoneTitle,
+                body: l10n.tripDoneBody,
+                action: FilledButton(onPressed: () => context.go('/turno'), child: Text(l10n.tripBackToShift)),
+              ),
+            ]);
+          }
+          final status = PendingRules.effectiveStatus(trip.status, pending);
+          return _TripView(trip: trip, status: status, queued: pending.isNotEmpty);
+        },
+      ),
+    );
+  }
+}
+
+/// Etapas del recorrido en el riel de arriba (las de la ruta del cliente, contadas desde la moto).
+const _rail = ['ACCEPTED', 'AT_ESTABLISHMENT', 'PREPARING', 'ON_THE_WAY', 'ARRIVING'];
+
+int _railIndex(String status) => switch (status) {
+      'AWAITING_CUSTOMER' => 1,
+      'PENDING_REVIEW' || 'DISPUTED' => 4,
+      _ => _rail.indexOf(status),
+    };
+
+bool _onMap(String status) => const {'ACCEPTED', 'ON_THE_WAY', 'ARRIVING'}.contains(status);
+
+class _TripView extends ConsumerWidget {
+  const _TripView({required this.trip, required this.status, required this.queued});
+
+  final Trip trip;
+  final String status;
+  final bool queued;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final towardsCustomer = status != 'ACCEPTED';
+    final top = MediaQuery.paddingOf(context).top;
+
+    final Widget header = _onMap(status)
+        ? SizedBox(
+            height: 300 + top,
+            child: Stack(children: [
+              Positioned.fill(
+                child: TripMap(
+                  store: trip.storeLocation,
+                  area: trip.storeArea,
+                  destination: trip.destination?.location,
+                  me: ref.watch(locationTrackerProvider).position,
+                  towardsCustomer: towardsCustomer,
+                ),
+              ),
+              const Positioned(left: 0, right: 0, top: 0, child: IgnorePointer(child: Awning(height: 14, stripe: 14))),
+              Positioned(left: 12, top: top + 20, child: _BackButton(label: l10n.tripBackToShift)),
+              Positioned(right: 12, top: top + 22, child: _CodeTag(code: trip.code)),
+            ]),
+          )
+        : Stack(children: [
+            const Awning(height: 64),
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 30, 12, 8),
+                child: Row(children: [_BackButton(label: l10n.tripBackToShift), const Spacer(), _CodeTag(code: trip.code)]),
+              ),
+            ),
+          ]);
+
+    return RefreshIndicator(
+      color: AppColors.chonta,
+      onRefresh: () async {
+        await ref.read(pendingStepsProvider.notifier).flush();
+        ref.invalidate(courierTripProvider);
+      },
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          header,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 36),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 640),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  _StageRail(current: _railIndex(status)),
+                  const SizedBox(height: 16),
+                  PendingStepsRibbon(orderCode: trip.code),
+                  ...switch (status) {
+                    'ACCEPTED' => [_ToStoreStage(trip: trip)],
+                    'AT_ESTABLISHMENT' => [_BuyStage(trip: trip)],
+                    'PREPARING' => [_PrepStage(trip: trip, purchaseQueued: trip.status != 'PREPARING')],
+                    'ON_THE_WAY' || 'ARRIVING' => [_DeliverStage(trip: trip, arriving: status == 'ARRIVING')],
+                    _ => [_OtherStage(status: status)],
+                  },
+                ]),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BackButton extends StatelessWidget {
+  const _BackButton({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: Colors.white,
+        shape: const CircleBorder(),
+        elevation: 4,
+        shadowColor: AppColors.ink.withValues(alpha: 0.3),
+        child: IconButton(
+          tooltip: label,
+          onPressed: () => context.canPop() ? context.pop() : context.go('/turno'),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.ink),
+        ),
+      );
+}
+
+class _CodeTag extends StatelessWidget {
+  const _CodeTag({required this.code});
+
+  final String code;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.ink,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [BoxShadow(color: AppColors.ink.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))],
+        ),
+        child: Text(code, style: const TextStyle(color: AppColors.brand, fontFamily: 'monospace', fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+      );
+}
+
+/// Riel de cinco sellos: los hechos en hoja, el actual en chontaduro inclinado, los que faltan en blanco.
+class _StageRail extends StatelessWidget {
+  const _StageRail({required this.current});
+
+  final int current;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final labels = [l10n.railStore, l10n.railBuy, l10n.railPrep, l10n.railRoad, l10n.railDoor];
+    final icons = [Icons.storefront_rounded, Icons.receipt_long_rounded, Icons.soup_kitchen_rounded, Icons.two_wheeler_rounded, Icons.where_to_vote_rounded];
+    return Semantics(
+      label: current >= 0 ? l10n.tripStageOf(current + 1, labels.length, labels[current]) : null,
+      child: ExcludeSemantics(
+        child: Row(children: [
+          for (var i = 0; i < labels.length; i++) ...[
+            Expanded(
+              child: Column(children: [
+                Transform.rotate(
+                  angle: i == current ? -0.1 : 0,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    width: i == current ? 42 : 34,
+                    height: i == current ? 42 : 34,
+                    decoration: BoxDecoration(
+                      color: i < current ? AppColors.leaf : (i == current ? AppColors.chonta : Colors.white),
+                      borderRadius: BorderRadius.circular(12),
+                      border: i > current ? Border.all(color: AppColors.ink.withValues(alpha: 0.12), width: 2) : null,
+                    ),
+                    child: Icon(i < current ? Icons.check_rounded : icons[i], size: i == current ? 22 : 17, color: i > current ? AppColors.ink.withValues(alpha: 0.35) : Colors.white),
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  labels[i],
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: i == current ? FontWeight.w900 : FontWeight.w600,
+                    color: i == current ? AppColors.chontaStrong : AppColors.ink.withValues(alpha: i < current ? 0.7 : 0.45),
+                  ),
+                ),
+              ]),
+            ),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+/// Lo que hay que comprar, como la comanda del cliente (con sus notas).
+class _ShoppingList extends StatelessWidget {
+  const _ShoppingList({required this.trip, this.checked, this.onToggle});
+
+  final Trip trip;
+  final Set<int>? checked;
+  final ValueChanged<int>? onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final muted = AppColors.ink.withValues(alpha: 0.6);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      for (var i = 0; i < trip.lines.length; i++)
+        _Line(line: trip.lines[i], checked: checked?.contains(i), onTap: onToggle == null ? null : () => onToggle!(i)),
+      if (trip.notes != null) ...[
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: AppColors.cream, borderRadius: BorderRadius.circular(14)),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Icon(Icons.sticky_note_2_rounded, size: 18, color: AppColors.chonta),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(l10n.ordersNotes.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1, color: muted)),
+                Text(trip.notes!, style: const TextStyle(fontWeight: FontWeight.w600)),
+              ]),
+            ),
+          ]),
+        ),
+      ],
+    ]);
+  }
+}
+
+class _Line extends StatelessWidget {
+  const _Line({required this.line, this.checked, this.onTap});
+
+  final TripLine line;
+  final bool? checked;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final done = checked ?? false;
+    final row = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        if (checked != null) ...[
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: done ? AppColors.leaf : Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: done ? AppColors.leaf : AppColors.ink.withValues(alpha: 0.25), width: 2),
+            ),
+            child: done ? const Icon(Icons.check_rounded, size: 16, color: Colors.white) : null,
+          ),
+          const SizedBox(width: 10),
+        ],
+        SizedBox(width: 32, child: Text('${line.quantity}×', style: const TextStyle(color: AppColors.chonta, fontWeight: FontWeight.w900, fontSize: 16))),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(
+              line.name,
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                decoration: done ? TextDecoration.lineThrough : null,
+                color: done ? AppColors.ink.withValues(alpha: 0.45) : AppColors.ink,
+              ),
+            ),
+            if (line.notes != null) Text(line.notes!, style: TextStyle(fontSize: 13, fontStyle: FontStyle.italic, color: AppColors.ink.withValues(alpha: 0.6))),
+          ]),
+        ),
+      ]),
+    );
+    if (onTap == null) return row;
+    return Semantics(checked: done, child: InkWell(borderRadius: BorderRadius.circular(10), onTap: onTap, child: row));
+  }
+}
+
+/// Nota de geocerca: lo que va a pasar solo, sin tocar nada.
+class _AutoNote extends StatelessWidget {
+  const _AutoNote({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: AppColors.brand.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(16)),
+        child: Row(children: [
+          const Icon(Icons.radar_rounded, color: AppColors.chontaStrong),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
+        ]),
+      );
+}
+
+// ── ACCEPTED: rumbo al local ──
+
+class _ToStoreStage extends StatelessWidget {
+  const _ToStoreStage({required this.trip});
+
+  final Trip trip;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final language = Localizations.localeOf(context).languageCode;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      DutyCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Eyebrow(l10n.tripGoToStore),
+          const SizedBox(height: 4),
+          Text(trip.storeName, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.6)),
+          Text(trip.storeAddress, style: TextStyle(color: AppColors.ink.withValues(alpha: 0.6))),
+          const SizedBox(height: 14),
+          Row(children: [
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: () => openDirections(trip.storeLocation, trip.storeName),
+                icon: const Icon(Icons.directions_rounded),
+                label: Text(l10n.tripDirections),
+              ),
+            ),
+            if (trip.storePhone != null) ...[
+              const SizedBox(width: 10),
+              _RoundAction(icon: Icons.call_rounded, label: l10n.tripCallStore, onTap: () => callPhone(trip.storePhone!)),
+            ],
+          ]),
+          const SizedBox(height: 12),
+          _AutoNote(text: l10n.tripAutoArrival),
+        ]),
+      ),
+      const SizedBox(height: 16),
+      DutyCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            Expanded(child: Eyebrow(l10n.tripShoppingList)),
+            Text(formatPesos(trip.itemsCents, language), style: const TextStyle(fontWeight: FontWeight.w900)),
+          ]),
+          const SizedBox(height: 6),
+          _ShoppingList(trip: trip),
+        ]),
+      ),
+    ]);
+  }
+}
+
+class _RoundAction extends StatelessWidget {
+  const _RoundAction({required this.icon, required this.label, required this.onTap});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+        message: label,
+        child: Material(
+          color: AppColors.ink,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: onTap,
+            child: SizedBox(width: 52, height: 52, child: Icon(icon, color: AppColors.brand, semanticLabel: label)),
+          ),
+        ),
+      );
+}
+
+// ── AT_ESTABLISHMENT: comprar, pagar y la foto de la factura (H08.4) ──
+
+class _BuyStage extends ConsumerStatefulWidget {
+  const _BuyStage({required this.trip});
+
+  final Trip trip;
+
+  @override
+  ConsumerState<_BuyStage> createState() => _BuyStageState();
+}
+
+class _BuyStageState extends ConsumerState<_BuyStage> {
+  final _amount = TextEditingController();
+  final _checked = <int>{};
+  ReceiptPhoto? _photo;
+  bool _busy = false;
+  bool _tried = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    super.dispose();
+  }
+
+  int? get _pesos {
+    final digits = _amount.text.replaceAll(RegExp(r'\D'), '');
+    final value = int.tryParse(digits);
+    return value == null || value <= 0 ? null : value;
+  }
+
+  Future<void> _capture() async {
+    final photo = await captureReceipt();
+    if (photo != null && mounted) setState(() => _photo = photo);
+  }
+
+  Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context);
+    setState(() => _tried = true);
+    final pesos = _pesos;
+    if (pesos == null || _photo == null) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final sent = await ref.read(pendingStepsProvider.notifier).submit(orderCode: widget.trip.code, kind: StepKind.purchase, amount: '$pesos', receipt: _photo);
+      if (!sent && mounted) _queuedNotice(context);
+    } catch (error) {
+      if (mounted) setState(() => _error = errorText(l10n, error));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final language = Localizations.localeOf(context).languageCode;
+    final trip = widget.trip;
+    final pesos = _pesos;
+    final diff = pesos == null ? 0 : pesos * 100 - trip.itemsCents;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      StepCard(
+        number: 1,
+        title: l10n.tripShoppingList,
+        done: _checked.length == trip.lines.length,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text(l10n.tripChecked(_checked.length, trip.lines.length), style: TextStyle(fontSize: 12, color: AppColors.ink.withValues(alpha: 0.55))),
+          _ShoppingList(
+            trip: trip,
+            checked: _checked,
+            onToggle: (i) => setState(() => _checked.contains(i) ? _checked.remove(i) : _checked.add(i)),
+          ),
+        ]),
+      ),
+      StepCard(
+        number: 2,
+        title: l10n.tripPaidTotal,
+        done: pesos != null,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          TextField(
+            controller: _amount,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10), _PesosFormatter(language)],
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.6),
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              // Siempre a la vista (prefixText solo aparece al escribir): es un monto en pesos.
+              prefixIcon: const Padding(
+                padding: EdgeInsets.only(left: 16, right: 6),
+                child: Text('\$', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.chonta)),
+              ),
+              prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+              hintText: l10n.tripAmountHint,
+              hintStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.ink.withValues(alpha: 0.35)),
+              errorText: _tried && pesos == null ? l10n.tripAmountMissing : null,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            pesos != null && diff != 0
+                ? l10n.tripAmountVsQuote(formatPesos(trip.itemsCents, language), formatPesos(diff.abs(), language), diff > 0 ? 'more' : 'less')
+                : l10n.tripAmountQuote(formatPesos(trip.itemsCents, language)),
+            style: TextStyle(fontSize: 12, color: AppColors.ink.withValues(alpha: 0.6)),
+          ),
+        ]),
+      ),
+      StepCard(
+        number: 3,
+        title: l10n.tripReceipt,
+        done: _photo != null,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          ReceiptTile(photo: _photo, onCapture: _capture, missing: _tried && _photo == null),
+          if (_tried && _photo == null)
+            Padding(padding: const EdgeInsets.only(top: 6), child: Text(l10n.tripReceiptMissing, style: const TextStyle(color: AppColors.chontaStrong, fontWeight: FontWeight.w700))),
+        ]),
+      ),
+      if (_error != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_error!, style: const TextStyle(color: AppColors.chontaStrong, fontWeight: FontWeight.w700))),
+      FilledButton.icon(
+        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(58), backgroundColor: AppColors.ink, foregroundColor: AppColors.brand),
+        onPressed: _busy ? null : _submit,
+        icon: _busy ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.brand)) : const Icon(Icons.task_alt_rounded),
+        label: Text(l10n.tripConfirmPurchase),
+      ),
+      const SizedBox(height: 8),
+      Text(l10n.tripPurchaseHint, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: AppColors.ink.withValues(alpha: 0.55))),
+    ]);
+  }
+}
+
+/// "38.500" mientras escribe (solo dígitos; el punto o la coma de miles según el idioma).
+class _PesosFormatter extends TextInputFormatter {
+  _PesosFormatter(this.language);
+
+  final String language;
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '').replaceFirst(RegExp(r'^0+(?=\d)'), '');
+    if (digits.isEmpty) return const TextEditingValue();
+    final grouped = digits.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => language == 'en' ? ',' : '.');
+    return TextEditingValue(text: grouped, selection: TextSelection.collapsed(offset: grouped.length));
+  }
+}
+
+void _queuedNotice(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(behavior: SnackBarBehavior.floating, backgroundColor: AppColors.ink, content: Text(l10n.tripQueued)));
+}
+
+// ── PREPARING: la cuenta de preparación y "¿ya está listo?" (H08.5) ──
+
+class _PrepStage extends ConsumerStatefulWidget {
+  const _PrepStage({required this.trip, required this.purchaseQueued});
+
+  final Trip trip;
+
+  /// La compra está en la cola sin señal: todavía no hay cuenta del servidor.
+  final bool purchaseQueued;
+
+  @override
+  ConsumerState<_PrepStage> createState() => _PrepStageState();
+}
+
+class _PrepStageState extends ConsumerState<_PrepStage> {
+  Timer? _tick;
+  StepKind? _busy;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _mark(StepKind kind) async {
+    final l10n = AppLocalizations.of(context);
+    setState(() {
+      _busy = kind;
+      _error = null;
+    });
+    try {
+      final sent = await ref.read(pendingStepsProvider.notifier).submit(orderCode: widget.trip.code, kind: kind);
+      if (!sent && mounted) _queuedNotice(context);
+      if (sent && kind == StepKind.delay && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(behavior: SnackBarBehavior.floating, content: Text(l10n.tripDelayHint)));
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = errorText(l10n, error));
+    } finally {
+      if (mounted) setState(() => _busy = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final language = Localizations.localeOf(context).languageCode;
+    final prep = widget.trip.preparation;
+    final now = DateTime.now();
+    final left = prep?.estimatedReadyAt.difference(now);
+    final window = prep?.estimatedReadyAt.difference(prep.startedAt);
+    final due = prep != null && !prep.estimatedReadyAt.isAfter(now);
+    final fraction = left == null || window == null || window.inSeconds <= 0 ? 1.0 : left.inSeconds / window.inSeconds;
+    final minutes = left == null ? 0 : (left.inSeconds / 60).ceil();
+    final purchase = widget.trip.purchase;
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      DutyCard(
+        padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+        child: Column(children: [
+          Eyebrow(widget.trip.storeName),
+          const SizedBox(height: 4),
+          Text(due ? l10n.tripReadyNowTitle : l10n.tripPreparingTitle, textAlign: TextAlign.center, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+          const SizedBox(height: 16),
+          Semantics(
+            liveRegion: due,
+            label: prep == null ? l10n.tripQueued : (due ? l10n.tripReadyNow : l10n.tripReadyIn(minutes)),
+            child: CountdownRing(
+              size: 176,
+              stroke: 12,
+              fraction: prep == null ? 1 : (due ? 1 : fraction),
+              urgent: due,
+              child: ExcludeSemantics(
+                child: prep == null
+                    ? const Icon(Icons.cloud_upload_rounded, size: 44, color: AppColors.chonta)
+                    : Column(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(due ? Icons.notifications_active_rounded : Icons.soup_kitchen_rounded, color: due ? AppColors.chonta : AppColors.leaf, size: 30),
+                        Text(
+                          due ? l10n.tripReadyNowShort : '$minutes',
+                          style: TextStyle(fontSize: due ? 18 : 48, fontWeight: FontWeight.w900, height: 1.05, letterSpacing: -1, color: due ? AppColors.chontaStrong : AppColors.ink),
+                        ),
+                        if (!due) Text(l10n.tripMinutes, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.ink.withValues(alpha: 0.55))),
+                      ]),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          if (prep != null && prep.delayCount > 0)
+            Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(color: AppColors.chontaSoft, borderRadius: BorderRadius.circular(99)),
+              child: Text(l10n.tripDelayed(prep.delayCount), style: const TextStyle(color: AppColors.chontaStrong, fontWeight: FontWeight.w800, fontSize: 12)),
+            ),
+          Text(
+            widget.purchaseQueued ? l10n.tripQueued : (due ? l10n.tripReadyQuestion : l10n.tripPreparingBody),
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.ink.withValues(alpha: 0.65)),
+          ),
+          if (_error != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.chontaStrong, fontWeight: FontWeight.w700))),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(58), backgroundColor: AppColors.leaf, foregroundColor: Colors.white),
+            onPressed: _busy != null ? null : () => _mark(StepKind.ready),
+            icon: _busy == StepKind.ready
+                ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                : const Icon(Icons.shopping_bag_rounded),
+            label: Text(l10n.tripReady),
+          ),
+          // "Sigue en preparación" tiene sentido cuando ya se cumplió el tiempo (es la respuesta al aviso).
+          if (due) ...[
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+              onPressed: _busy != null || widget.purchaseQueued ? null : () => _mark(StepKind.delay),
+              icon: _busy == StepKind.delay ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2.5)) : const Icon(Icons.hourglass_top_rounded),
+              label: Text(l10n.tripStillPreparing),
+            ),
+          ],
+        ]),
+      ),
+      if (purchase != null) ...[
+        const SizedBox(height: 16),
+        _PaidCard(amountCents: purchase.amountCents, receiptUrl: purchase.receiptUrl, language: language),
+      ],
+    ]);
+  }
+}
+
+/// Lo que pagó en el local, con la factura (el cliente ve lo mismo).
+class _PaidCard extends StatelessWidget {
+  const _PaidCard({required this.amountCents, required this.receiptUrl, required this.language});
+
+  final int amountCents;
+  final String? receiptUrl;
+  final String language;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return ClipPath(
+      clipper: const ReceiptClipper(),
+      child: Container(
+        color: Colors.white,
+        padding: const EdgeInsets.fromLTRB(18, 22, 18, 16),
+        child: Row(children: [
+          if (receiptUrl != null)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(receiptUrl!, width: 56, height: 72, fit: BoxFit.cover, errorBuilder: (_, _, _) => const SizedBox(width: 56, height: 72)),
+            ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Eyebrow(l10n.tripPaidLabel),
+              Text(formatPesos(amountCents, language), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.6)),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+// ── ON_THE_WAY / ARRIVING: el destino, quién recibe y cuánto cobrar (H08.6) ──
+
+class _DeliverStage extends StatelessWidget {
+  const _DeliverStage({required this.trip, required this.arriving});
+
+  final Trip trip;
+  final bool arriving;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final language = Localizations.localeOf(context).languageCode;
+    final destination = trip.destination;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (arriving) ...[
+        Semantics(
+          liveRegion: true,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: AppColors.chonta, borderRadius: BorderRadius.circular(22)),
+            child: Row(children: [
+              const Icon(Icons.where_to_vote_rounded, color: Colors.white, size: 30),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(l10n.tripArrivingTitle, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900)),
+                  Text(l10n.tripArrivingBody, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                ]),
+              ),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+      DutyCard(
+        child: destination == null
+            ? Row(children: [
+                const Icon(Icons.cloud_off_rounded, color: AppColors.chonta),
+                const SizedBox(width: 10),
+                Expanded(child: Text(l10n.tripDestinationOffline, style: const TextStyle(fontWeight: FontWeight.w700))),
+              ])
+            : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Eyebrow(l10n.tripTakeTo),
+                const SizedBox(height: 4),
+                Text(
+                  destination.label ?? destination.reference ?? destination.line ?? '',
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                ),
+                for (final extra in [if (destination.label != null) destination.reference, destination.line].whereType<String>())
+                  Text(extra, style: TextStyle(color: AppColors.ink.withValues(alpha: 0.65))),
+                const SizedBox(height: 14),
+                Row(children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(color: AppColors.cream, borderRadius: BorderRadius.circular(13)),
+                    child: const Icon(Icons.person_rounded, color: AppColors.chonta),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(l10n.tripRecipient.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1, color: AppColors.ink.withValues(alpha: 0.45))),
+                      Text(destination.recipientName, style: const TextStyle(fontWeight: FontWeight.w800)),
+                      if (destination.recipientPhone != null) Text(formatPhone(destination.recipientPhone), style: TextStyle(fontSize: 12, color: AppColors.ink.withValues(alpha: 0.6))),
+                    ]),
+                  ),
+                  if (destination.recipientPhone != null) _RoundAction(icon: Icons.call_rounded, label: l10n.tripCall, onTap: () => callPhone(destination.recipientPhone!)),
+                ]),
+                const SizedBox(height: 14),
+                FilledButton.icon(
+                  onPressed: () => openDirections(destination.location, destination.label ?? trip.code),
+                  icon: const Icon(Icons.directions_rounded),
+                  label: Text(l10n.tripDirections),
+                ),
+                if (!arriving) ...[const SizedBox(height: 12), _AutoNote(text: l10n.tripAutoArriving)],
+              ]),
+      ),
+      const SizedBox(height: 16),
+      // Lo que se cobra, en tiquete de tinta: es lo último que no se puede olvidar.
+      ClipPath(
+        clipper: const TicketClipper(notchAt: 0.62),
+        child: Container(
+          color: AppColors.ink,
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Eyebrow(l10n.tripCollect, color: AppColors.brand),
+            const SizedBox(height: 4),
+            Text(formatPesos(trip.customerTotalCents, language), style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w900, letterSpacing: -1)),
+            const SizedBox(height: 18),
+            Row(children: [
+              Icon(paymentIcon(trip.paymentMethod), color: AppColors.brand, size: 18),
+              const SizedBox(width: 8),
+              Expanded(child: Text(paymentLabel(l10n, trip.paymentMethod), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800))),
+            ]),
+            const SizedBox(height: 4),
+            Text(l10n.tripCollectBreakdown(formatPesos(trip.itemsCents, language), formatPesos(trip.feeCents, language)), style: const TextStyle(color: Colors.white54, fontSize: 12)),
+          ]),
+        ),
+      ),
+      if (trip.purchase != null) ...[
+        const SizedBox(height: 16),
+        _PaidCard(amountCents: trip.purchase!.amountCents, receiptUrl: trip.purchase!.receiptUrl, language: language),
+      ],
+    ]);
+  }
+}
+
+/// Estados que llegan en E09–E10 (decisión del cliente, revisión, novedad): su texto de la ruta del cliente.
+class _OtherStage extends StatelessWidget {
+  const _OtherStage({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final body = statusBody(l10n, status);
+    return DutyCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        StatusBadge(status: status, large: true),
+        if (body != null) ...[const SizedBox(height: 10), Text(body)],
+      ]),
+    );
+  }
+}

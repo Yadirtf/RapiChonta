@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../shared/infrastructure/prisma/prisma.service';
 import { BusinessConfigModule } from '../business-config/business-config.module';
+import { FilesModule } from '../files/files.module';
+import { FulfillmentModule } from '../fulfillment/fulfillment.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { CourierAvailabilityUseCase, CourierOffersUseCase } from './application/courier.use-cases';
 import { DispatchBoardUseCase, SendOfferUseCase } from './application/dispatch-board.use-cases';
@@ -50,7 +52,7 @@ const seconds = (config: ConfigService, key: string, fallback: number) => {
  * del operador, las respuestas del domiciliario, el vencimiento de ofertas y el registro del personal.
  */
 @Module({
-  imports: [BusinessConfigModule, NotificationsModule],
+  imports: [BusinessConfigModule, NotificationsModule, FulfillmentModule, FilesModule],
   controllers: [DispatchController, CourierController, AuditController],
   providers: [
     { provide: DispatchBoard, useClass: PrismaDispatchBoard },

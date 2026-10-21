@@ -624,5 +624,271 @@
         "type": "int"
       }
     }
-  }
+  },
+  "close": "Cerrar",
+  "courierModeLabel": "Modo domiciliario",
+  "courierShiftTitle": "Tu turno",
+  "courierHello": "Hola, {name}",
+  "@courierHello": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "courierLoadError": "No pudimos traer tu turno",
+  "courierOnDuty": "Disponible",
+  "courierOffDuty": "Descansando",
+  "courierOnDutyHint": "Te llegan pedidos de locales cercanos.",
+  "courierOffDutyHint": "Activa Disponible cuando quieras recibir pedidos.",
+  "courierSince": "En turno desde las {time}",
+  "@courierSince": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "courierToggleLabel": "Disponible para recibir pedidos",
+  "courierTrackingTitle": "RapiChonta · en turno",
+  "courierTrackingBody": "Usando tu ubicación para ofrecerte pedidos y marcar tus llegadas.",
+  "courierWhyTitle": "Tu ubicación, solo en turno",
+  "courierWhyBody": "Mientras estés disponible o lleves un pedido, RapiChonta usa la ubicación de tu teléfono.",
+  "courierWhyOffers": "Te ofrecemos los pedidos más cerca de ti",
+  "courierWhyArrival": "Tu llegada al local y donde el cliente se marca sola",
+  "courierWhyPrivacy": "El cliente nunca ve dónde estás, solo en qué va su pedido",
+  "courierWhyOff": "Al terminar el turno se apaga",
+  "courierWhyAccept": "Permitir ubicación",
+  "courierLocationOff": "Enciende la ubicación del teléfono para recibir pedidos.",
+  "courierLocationDenied": "Sin permiso de ubicación no te llegan pedidos cercanos.",
+  "courierLocationAllow": "Permitir",
+  "courierLocationSettings": "Abrir ajustes",
+  "courierNotVerifiedTitle": "Tu cuenta está en revisión",
+  "courierNotVerifiedBody": "El equipo de RapiChonta verifica tus datos antes de enviarte pedidos. Te avisamos cuando estés listo.",
+  "courierSearching": "Buscando pedidos cerca",
+  "courierSearchingBody": "Las ofertas duran poco: ten los avisos encendidos aunque bloquees el teléfono.",
+  "courierRestingTitle": "Estás descansando",
+  "courierRestingBody": "Cuando actives Disponible, aquí te llegan los pedidos de los locales cercanos.",
+  "courierOfferTitle": "Pedido para ti",
+  "courierOfferSeconds": "{seconds} segundos para decidir",
+  "@courierOfferSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "courierOfferAway": "{distance} al local",
+  "@courierOfferAway": {
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "courierOfferBuy": "{count, plural, =1{Comprar 1 producto} other{Comprar {count} productos}}",
+  "@courierOfferBuy": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "courierOfferMore": "{count, plural, =1{y 1 producto más} other{y {count} productos más}}",
+  "@courierOfferMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "courierOfferItemsTotal": "Compras por",
+  "courierOfferFee": "Ganas",
+  "courierOfferTake": "Tomar pedido",
+  "courierOfferSkip": "No puedo",
+  "courierOfferGone": "Se venció",
+  "courierActiveTitle": "Pedido en curso",
+  "courierActiveBody": "Sigue cada paso desde aquí.",
+  "courierContinue": "Continuar",
+  "courierToCustomerBlocked": "Termina el pedido en curso para pasar a modo cliente.",
+  "courierPending": "{count, plural, =1{1 paso sin enviar} other{{count} pasos sin enviar}}",
+  "@courierPending": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "courierPendingBody": "Están guardados en tu teléfono y salen solos al volver la señal, con la hora en que los marcaste.",
+  "courierRejected": "No se registró un paso del pedido {code}: {reason}",
+  "@courierRejected": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "railStore": "Al local",
+  "railBuy": "Compra",
+  "railPrep": "Preparación",
+  "railRoad": "En camino",
+  "railDoor": "Entrega",
+  "tripStageOf": "Paso {step} de {total}: {name}",
+  "@tripStageOf": {
+    "placeholders": {
+      "step": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "tripBackToShift": "Volver al turno",
+  "tripDoneTitle": "Pedido terminado",
+  "tripDoneBody": "Este pedido ya no está a tu cargo. ¡Buen trabajo!",
+  "tripGoToStore": "Ve al local",
+  "tripDirections": "Cómo llegar",
+  "tripCallStore": "Llamar al local",
+  "tripAutoArrival": "Al entrar en la zona amarilla del mapa se marca tu llegada sola. No tienes que tocar nada.",
+  "tripShoppingList": "Lista de compra",
+  "tripChecked": "{done} de {total} en la canasta",
+  "@tripChecked": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "tripPaidTotal": "Total pagado en el local",
+  "tripAmountHint": "Lo que dice la factura",
+  "tripAmountMissing": "Escribe el total que pagaste",
+  "tripAmountQuote": "El pedido calculaba {quote} en productos.",
+  "@tripAmountQuote": {
+    "placeholders": {
+      "quote": {
+        "type": "String"
+      }
+    }
+  },
+  "tripAmountVsQuote": "El pedido calculaba {quote}: {diff} {direction, select, more{más} other{menos}}.",
+  "@tripAmountVsQuote": {
+    "placeholders": {
+      "quote": {
+        "type": "String"
+      },
+      "diff": {
+        "type": "String"
+      },
+      "direction": {
+        "type": "String"
+      }
+    }
+  },
+  "tripReceipt": "Foto de la factura",
+  "tripReceiptTake": "Tomar foto de la factura",
+  "tripReceiptHint": "Que se lea el total. Solo la ven el cliente y el equipo.",
+  "tripReceiptRetake": "Repetir",
+  "tripReceiptMissing": "Falta la foto de la factura",
+  "tripConfirmPurchase": "Pagué y tengo la factura",
+  "tripPurchaseHint": "Empieza la cuenta de preparación y el cliente ve que su pedido se está preparando.",
+  "tripQueued": "Guardado sin señal: se envía solo al volver la conexión.",
+  "tripPreparingTitle": "Están preparando el pedido",
+  "tripPreparingBody": "Espera en el local. Si te lo entregan antes, marca que ya está listo.",
+  "tripReadyIn": "Listo en unos {minutes} minutos",
+  "@tripReadyIn": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "tripMinutes": "min",
+  "tripReadyNow": "Ya debería estar listo",
+  "tripReadyNowShort": "¿Listo?",
+  "tripReadyNowTitle": "¿Ya está listo?",
+  "tripReadyQuestion": "Se cumplió el tiempo de preparación. Cuéntanos cómo va.",
+  "tripReady": "Ya está listo, salgo",
+  "tripStillPreparing": "Sigue en preparación",
+  "tripDelayed": "{count, plural, =1{Avisaste 1 retraso} other{Avisaste {count} retrasos}}",
+  "@tripDelayed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tripDelayHint": "Le contamos al cliente que hay alta demanda. Te volvemos a preguntar en unos minutos.",
+  "tripPaidLabel": "Pagaste en el local",
+  "tripArrivingTitle": "Le avisamos al cliente que llegaste",
+  "tripArrivingBody": "Entrega y cobra. El cliente confirma desde su app que lo recibió.",
+  "tripDestinationOffline": "El destino aparece cuando vuelva la señal.",
+  "tripTakeTo": "Lleva el pedido a",
+  "tripRecipient": "Recibe",
+  "tripCall": "Llamar",
+  "tripAutoArriving": "Cuando estés cerca le avisamos al cliente para que salga a recibir.",
+  "tripCollect": "Cobra al entregar",
+  "tripCollectBreakdown": "{items} + {fee} domicilio",
+  "@tripCollectBreakdown": {
+    "placeholders": {
+      "items": {
+        "type": "String"
+      },
+      "fee": {
+        "type": "String"
+      }
+    }
+  },
+  "switchToCourierMenu": "Modo domiciliario",
+  "ordersHighDemandTitle": "Hay alta demanda en {store}",
+  "@ordersHighDemandTitle": {
+    "placeholders": {
+      "store": {
+        "type": "String"
+      }
+    }
+  },
+  "ordersHighDemandBody": "Tu pedido tarda un poco más de lo normal. Tu domiciliario está esperándolo en el local.",
+  "ordersReadyAround": "Listo hacia las {time}",
+  "@ordersReadyAround": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "ordersPurchaseTitle": "Compra en el local",
+  "ordersPurchaseBody": "Tu domiciliario pagó {amount} en el local.",
+  "@ordersPurchaseBody": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "ordersSeeReceipt": "Ver factura",
+  "errTripNotFound": "Este pedido ya no está a tu cargo.",
+  "errTripStepNotAllowed": "El pedido cambió de estado. Revisa en qué va.",
+  "errPurchaseAmountInvalid": "Revisa el total pagado.",
+  "errReceiptInvalid": "La foto de la factura no sirve. Toma otra.",
+  "errClientEventConflict": "Ese paso ya se registró en otro pedido.",
+  "errCourierHasActiveOrder": "Termina el pedido en curso antes de cambiar a modo cliente.",
+  "errOrderAlreadyTaken": "Otro domiciliario lo tomó primero.",
+  "errOfferExpired": "La oferta se venció.",
+  "errOfferClosed": "Esta oferta ya no está disponible.",
+  "errCourierBusy": "Ya llevas un pedido.",
+  "errCourierNotAvailable": "Activa Disponible para tomar pedidos.",
+  "errCourierNotVerified": "Tu cuenta aún no está verificada para recibir pedidos.",
+  "errLocationConsentRequired": "Acepta la autorización de ubicación para recibir pedidos.",
+  "errLocationNotExpected": "Activa Disponible para compartir tu ubicación.",
+  "errFileUpload": "No pudimos subir la foto. Inténtalo de nuevo."
 }
