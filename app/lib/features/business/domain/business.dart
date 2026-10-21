@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import '../../establishments/domain/entities/establishment.dart' show GeoPoint, parsePriceCents;
+
 /// Estado de atención de RapiChonta en el municipio (H03.2). Las horas llegan en UTC.
 class BusinessStatus extends Equatable {
   const BusinessStatus({required this.open, required this.timeZone, this.closesAt, this.nextOpeningAt});
@@ -44,6 +46,67 @@ class ExchangeRate extends Equatable {
 }
 
 const displayCurrencies = ['USD', 'EUR'];
+
+/// Hasta dónde llegan los domiciliarios en un municipio abierto (H03.5): polígonos con sus anillos
+/// (el primero es el borde, los demás huecos). Llega como MultiPolygon GeoJSON, en [lng, lat].
+class CoverageArea extends Equatable {
+  const CoverageArea({required this.municipalityName, required this.center, required this.polygons});
+
+  final String municipalityName;
+  final GeoPoint center;
+  final List<List<List<GeoPoint>>> polygons;
+
+  factory CoverageArea.fromJson(Map<String, dynamic> json) {
+    final municipality = json['municipality'] as Map<String, dynamic>;
+    final center = municipality['center'] as Map<String, dynamic>;
+    return CoverageArea(
+      municipalityName: municipality['name'] as String,
+      center: GeoPoint((center['lat'] as num).toDouble(), (center['lng'] as num).toDouble()),
+      polygons: [
+        for (final polygon in json['polygons'] as List)
+          [
+            for (final ring in polygon as List)
+              [for (final p in ring as List) GeoPoint(((p as List)[1] as num).toDouble(), (p[0] as num).toDouble())],
+          ],
+      ],
+    );
+  }
+
+  @override
+  List<Object?> get props => [municipalityName, center, polygons];
+}
+
+/// Si un punto (GPS o pin) queda dentro de la cobertura, con la tarifa que pagaría; si no, a cuánto queda la más cercana.
+sealed class CoverageCheck {
+  const CoverageCheck();
+
+  factory CoverageCheck.fromJson(Map<String, dynamic> json) {
+    if (json['covered'] == true) {
+      return CoverageInside(
+        municipalityName: (json['municipality'] as Map<String, dynamic>)['name'] as String,
+        feeCents: parsePriceCents('${json['fee']}') ?? 0,
+      );
+    }
+    final nearest = json['nearest'] as Map<String, dynamic>?;
+    return CoverageOutside(
+      municipalityName: nearest?['municipalityName'] as String?,
+      distanceMeters: (nearest?['distanceMeters'] as num?)?.round(),
+    );
+  }
+}
+
+class CoverageInside extends CoverageCheck {
+  const CoverageInside({required this.municipalityName, required this.feeCents});
+  final String municipalityName;
+  final int feeCents;
+}
+
+/// `municipalityName` y `distanceMeters` son null si todavía no hay ningún municipio abierto.
+class CoverageOutside extends CoverageCheck {
+  const CoverageOutside({this.municipalityName, this.distanceMeters});
+  final String? municipalityName;
+  final int? distanceMeters;
+}
 
 DateTime? _date(Object? value) => value is String ? DateTime.parse(value) : null;
 

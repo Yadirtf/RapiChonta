@@ -360,7 +360,7 @@
   "checkoutLocationDenied": "No pudimos ver tu ubicación. Mueve el mapa hasta el punto de entrega.",
   "checkoutZoneFee": "Domicilio a {zone}: {fee}",
   "checkoutCheckingZone": "Calculando el domicilio…",
-  "checkoutOutsideZone": "Aquí todavía no llegamos. Mueve el pin a un barrio o vereda con cobertura.",
+  "checkoutOutsideZone": "Aquí todavía no llegamos. Mueve el pin dentro del área iluminada del mapa.",
   "checkoutReference": "Referencia para encontrarte",
   "checkoutReferencePlaceholder": "Casa azul de dos pisos, frente al parque",
   "checkoutReferenceHint": "Lo que vería el domiciliario al llegar: color, portón, un negocio cerca.",
@@ -561,6 +561,34 @@
         "type": "String"
       },
       "available": {
+        "type": "String"
+      }
+    }
+  },
+  "checkoutOutsideDistance": "La cobertura empieza a {distance} de este punto.",
+  "coverageWeReachYou": "Llegamos a tu ubicación · domicilio {fee}",
+  "coverageAway": "Estás a {distance} de nuestra cobertura en {municipality}",
+  "coverageNoneYet": "Todavía no tenemos cobertura abierta",
+  "@checkoutOutsideDistance": {
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "@coverageWeReachYou": {
+    "placeholders": {
+      "fee": {
+        "type": "String"
+      }
+    }
+  },
+  "@coverageAway": {
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "municipality": {
         "type": "String"
       }
     }

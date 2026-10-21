@@ -6,16 +6,21 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../../app/theme.dart';
 import '../../../../core/config/env.dart';
+import '../../../business/domain/business.dart';
+import '../../../business/presentation/coverage_layers.dart';
 import '../../domain/entities/establishment.dart';
 import 'category_icon.dart';
 
 class NearbyMap extends StatelessWidget {
-  const NearbyMap({super.key, required this.center, required this.establishments, required this.onSelect, this.selectedId});
+  const NearbyMap({super.key, required this.center, required this.establishments, required this.onSelect, this.selectedId, this.coverage = const []});
 
   final GeoPoint center;
   final List<Establishment> establishments;
   final ValueChanged<Establishment> onSelect;
   final String? selectedId;
+
+  /// Hasta dónde llegamos (H03.5): lo de afuera se ve apagado.
+  final List<CoverageArea> coverage;
 
   @override
   Widget build(BuildContext context) {
@@ -28,6 +33,7 @@ class NearbyMap extends StatelessWidget {
           // Mismas calles de OSM, con colores más cálidos y vivos (en línea con la paleta de la web).
           tileBuilder: (context, tile, _) => ColorFiltered(colorFilter: brandTint, child: tile),
         ),
+        ...coverageLayers(coverage),
         MarkerLayer(
           markers: [
             Marker(

@@ -5,6 +5,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../../../core/network/api_client.dart';
+import '../../../business/domain/business.dart';
+import '../../../business/presentation/business_providers.dart';
 import '../../data/datasources/establishment_remote_datasource.dart';
 import '../../data/repositories/establishment_repository_impl.dart';
 import '../../domain/entities/cart.dart';
@@ -12,10 +14,10 @@ import '../../domain/entities/establishment.dart';
 import '../../domain/repositories/establishment_repository.dart';
 import '../../domain/usecases/get_nearby_establishments.dart';
 
-/// Centro de Villagarzón (Putumayo), ciudad de lanzamiento del MVP. Se usa sin permiso de ubicación.
+/// Centro de Villagarzón (Putumayo), ciudad de lanzamiento del MVP. Se usa si aún no hay cobertura publicada.
 const defaultCenter = GeoPoint(1.0294, -76.6165);
 
-/// Más lejos que esto del centro no hay locales que mostrar: el mapa se abre en Villagarzón.
+/// Más lejos que esto de todo municipio abierto no hay locales que mostrar: el mapa se abre en el más cercano.
 const serviceRadiusMeters = 15000.0;
 
 // Inyección de dependencias: aquí se conectan los adaptadores con los casos de uso.
@@ -42,17 +44,40 @@ class SelectedCategories extends Notifier<Set<String>> {
 
 final selectedCategoriesProvider = NotifierProvider<SelectedCategories, Set<String>>(SelectedCategories.new);
 
-final userLocationProvider = FutureProvider<GeoPoint>((ref) async {
-  if (!await Geolocator.isLocationServiceEnabled()) return defaultCenter;
+/// Lo que reporta el GPS, aunque esté lejos; null sin permiso o con la ubicación apagada.
+final deviceLocationProvider = FutureProvider<GeoPoint?>((ref) async {
+  if (!await Geolocator.isLocationServiceEnabled()) return null;
   var permission = await Geolocator.checkPermission();
   if (permission == LocationPermission.denied) permission = await Geolocator.requestPermission();
-  if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-    return defaultCenter;
-  }
+  if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) return null;
   final position = await Geolocator.getCurrentPosition();
-  final distance = Geolocator.distanceBetween(position.latitude, position.longitude, defaultCenter.lat, defaultCenter.lng);
-  if (distance > serviceRadiusMeters) return defaultCenter;
   return GeoPoint(position.latitude, position.longitude);
+});
+
+double _meters(GeoPoint a, GeoPoint b) => Geolocator.distanceBetween(a.lat, a.lng, b.lat, b.lng);
+
+/// Dónde arranca el mapa. Con varios municipios abiertos (H03.5) se compara con todos: si el cliente está
+/// cerca de alguno, en su ubicación; si no (o sin permiso), en el centro del municipio abierto más cercano.
+final userLocationProvider = FutureProvider<GeoPoint>((ref) async {
+  final device = await ref.watch(deviceLocationProvider.future);
+  final areas = await ref.watch(coverageProvider.future);
+  final from = device ?? defaultCenter;
+  var home = areas.isEmpty ? defaultCenter : areas.first.center;
+  for (final area in areas) {
+    if (_meters(from, area.center) < _meters(from, home)) home = area.center;
+  }
+  return device != null && _meters(device, home) <= serviceRadiusMeters ? device : home;
+});
+
+/// Si llegamos a la ubicación del cliente y con qué tarifa, o a cuánto está de la cobertura. Null sin GPS.
+final deviceCoverageProvider = FutureProvider<CoverageCheck?>((ref) async {
+  final device = await ref.watch(deviceLocationProvider.future);
+  if (device == null) return null;
+  try {
+    return await ref.watch(businessDataSourceProvider).checkCoverage(device);
+  } catch (_) {
+    return null;
+  }
 });
 
 final nearbyEstablishmentsProvider = FutureProvider<List<Establishment>>((ref) async {

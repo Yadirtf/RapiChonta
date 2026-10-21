@@ -27,6 +27,16 @@ final businessStatusProvider = FutureProvider<BusinessStatus>((ref) async {
 /// Tasas del día (o las últimas que hubo). Si fallan, simplemente no se muestra el aproximado.
 final exchangeRatesProvider = FutureProvider<List<ExchangeRate>>((ref) => ref.watch(businessDataSourceProvider).exchangeRates());
 
+/// Cobertura de los municipios abiertos (H03.5). Cambia pocas veces: una petición por sesión de la app.
+/// Si la API no responde queda vacía y los mapas simplemente no la dibujan.
+final coverageProvider = FutureProvider<List<CoverageArea>>((ref) async {
+  try {
+    return await ref.watch(businessDataSourceProvider).coverage();
+  } catch (_) {
+    return const [];
+  }
+});
+
 /// Moneda del precio aproximado: null = solo pesos. Se guarda en el teléfono y, con sesión, en la cuenta.
 class DisplayCurrencyController extends Notifier<String?> {
   static const _key = 'rc.displayCurrency';

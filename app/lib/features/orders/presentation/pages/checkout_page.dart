@@ -181,7 +181,7 @@ class _CheckoutState extends ConsumerState<_Checkout> {
         if (!mounted || key != _quoteKey) return;
         if (error is Failure && error.code == 'NO_COVERAGE') {
           setState(() {
-            _zone = const ZoneOutside();
+            _zone = ZoneOutside((error.details['distanceMeters'] as num?)?.round());
             _quoteError = null;
           });
         } else if (!_correct(error)) {
@@ -297,6 +297,7 @@ class _CheckoutState extends ConsumerState<_Checkout> {
     final status = ref.watch(businessStatusProvider).value;
     final store = ref.watch(establishmentDetailProvider((cart.establishmentId, language))).value;
     final location = ref.watch(userLocationProvider);
+    final device = ref.watch(deviceLocationProvider).value;
 
     final opening = status == null ? null : openingText(l10n, status, language);
     final storeClosed = store?.acceptsOrders == false;
@@ -354,7 +355,8 @@ class _CheckoutState extends ConsumerState<_Checkout> {
                     zone: _zone,
                     mapCenter: location.value ?? defaultCenter,
                     mapController: _map,
-                    onLocateMe: location.value == null || location.value == defaultCenter ? null : () => _moveMap(location.value!),
+                    onLocateMe: device == null ? null : () => _moveMap(device),
+                    coverage: ref.watch(coverageProvider).value ?? const [],
                     referenceController: _reference,
                     lineController: _line,
                     customLabelController: _customLabel,

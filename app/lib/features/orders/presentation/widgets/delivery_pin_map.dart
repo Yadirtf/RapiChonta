@@ -4,6 +4,8 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../../app/theme.dart';
 import '../../../../core/config/env.dart';
+import '../../../business/domain/business.dart';
+import '../../../business/presentation/coverage_layers.dart';
 import '../../../establishments/domain/entities/establishment.dart';
 import '../../../establishments/presentation/widgets/nearby_map.dart' show PlacePin, brandTint;
 
@@ -11,7 +13,7 @@ import '../../../establishments/presentation/widgets/nearby_map.dart' show Place
 /// El pin se levanta mientras el mapa se mueve y cae al soltar; solo entonces se cotiza la zona.
 /// Con [interactive] en false es la vista quieta del detalle del pedido.
 class DeliveryPinMap extends StatefulWidget {
-  const DeliveryPinMap({super.key, required this.center, this.onPick, this.label, this.store, this.controller, this.interactive = true});
+  const DeliveryPinMap({super.key, required this.center, this.onPick, this.label, this.store, this.controller, this.interactive = true, this.coverage = const []});
 
   final GeoPoint center;
   final ValueChanged<GeoPoint>? onPick;
@@ -21,6 +23,9 @@ class DeliveryPinMap extends StatefulWidget {
   final GeoPoint? store;
   final MapController? controller;
   final bool interactive;
+
+  /// Hasta dónde llegamos: el cliente ve el área iluminada donde puede soltar el pin (H03.5).
+  final List<CoverageArea> coverage;
 
   @override
   State<DeliveryPinMap> createState() => _DeliveryPinMapState();
@@ -55,6 +60,7 @@ class _DeliveryPinMapState extends State<DeliveryPinMap> {
               userAgentPackageName: 'com.rapichonta.app',
               tileBuilder: (context, tile, _) => ColorFiltered(colorFilter: brandTint, child: tile),
             ),
+            ...coverageLayers(widget.coverage, dim: 0.22),
             if (widget.store != null)
               MarkerLayer(markers: [
                 Marker(

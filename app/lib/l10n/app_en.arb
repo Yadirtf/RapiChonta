@@ -193,7 +193,7 @@
   "checkoutLocationDenied": "We couldn't see your location. Move the map to the delivery spot.",
   "checkoutZoneFee": "Delivery to {zone}: {fee}",
   "checkoutCheckingZone": "Working out the delivery fee…",
-  "checkoutOutsideZone": "We don't reach this spot yet. Move the pin to a covered neighborhood or village.",
+  "checkoutOutsideZone": "We don't deliver here yet. Move the pin inside the lit area of the map.",
   "checkoutReference": "Landmark to find you",
   "checkoutReferencePlaceholder": "Blue two-story house across from the park",
   "checkoutReferenceHint": "What the courier would see on arrival: color, gate, a shop nearby.",
@@ -425,5 +425,9 @@
         "type": "String"
       }
     }
-  }
+  },
+  "checkoutOutsideDistance": "Coverage starts {distance} from this point.",
+  "coverageWeReachYou": "We deliver to you · delivery {fee}",
+  "coverageAway": "You're {distance} from our coverage in {municipality}",
+  "coverageNoneYet": "We don't have open coverage yet"
 }

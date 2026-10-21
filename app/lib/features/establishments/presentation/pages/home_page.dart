@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/brand_logo.dart';
 import '../../../../app/theme.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../business/domain/business.dart';
+import '../../../business/presentation/business_providers.dart';
 import '../../domain/entities/establishment.dart';
 import '../format/money.dart';
 import '../providers/establishments_providers.dart';
@@ -41,6 +43,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         establishments: nearby.value ?? const [],
         selectedId: _selectedId,
         onSelect: _showDetail,
+        coverage: ref.watch(coverageProvider).value ?? const [],
       ),
     );
 
@@ -59,6 +62,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             child: Stack(
               children: [
                 map,
+                const Positioned(top: 12, left: 16, right: 16, child: Center(child: _CoverageChip())),
                 if (nearby.hasError)
                   Positioned(
                     top: 16,
@@ -84,6 +88,50 @@ class _HomePageState extends ConsumerState<HomePage> {
       builder: (context) => _StoreSheet(establishment: e),
     );
     if (mounted) setState(() => _selectedId = null);
+  }
+}
+
+/// Si llegamos a la ubicación del cliente (con la tarifa) o a cuánto queda la cobertura más cercana (H03.5).
+/// Sin GPS no dice nada: el mapa ya muestra el área iluminada.
+class _CoverageChip extends ConsumerWidget {
+  const _CoverageChip();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final check = ref.watch(deviceCoverageProvider).value;
+    if (check == null) return const SizedBox.shrink();
+    final l10n = AppLocalizations.of(context);
+    final language = Localizations.localeOf(context).languageCode;
+    final (inside, text) = switch (check) {
+      CoverageInside(:final feeCents) => (true, l10n.coverageWeReachYou(formatPesos(feeCents, language))),
+      CoverageOutside(:final distanceMeters?, :final municipalityName?) => (false, l10n.coverageAway(formatDistance(distanceMeters, language), municipalityName)),
+      CoverageOutside() => (false, l10n.coverageNoneYet),
+    };
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: inside ? AppColors.ink : AppColors.chontaStrong,
+          borderRadius: BorderRadius.circular(99),
+          boxShadow: [BoxShadow(color: AppColors.ink.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(color: inside ? AppColors.brand : Colors.white, shape: BoxShape.circle),
+            child: Icon(inside ? Icons.delivery_dining_rounded : Icons.wrong_location_rounded, size: 14, color: inside ? AppColors.ink : AppColors.chontaStrong),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(text,
+                maxLines: 2,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: inside ? AppColors.brand : Colors.white, fontWeight: FontWeight.w800, fontSize: 12)),
+          ),
+        ]),
+      ),
+    );
   }
 }
 
