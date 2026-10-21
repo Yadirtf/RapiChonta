@@ -80,6 +80,7 @@ jobs:
       - name: Ícono y nombre de la app
         run: |
           cp -R branding/android/res/. android/app/src/main/res/
+          cp branding/android/proguard-rules.pro android/app/proguard-rules.pro
           sed -i 's|android:label="rapichonta"|android:label="RapiChonta"|' android/app/src/main/AndroidManifest.xml
 
       # El manifiesto principal no trae INTERNET (solo el de debug); la ubicación la usa geolocator y
