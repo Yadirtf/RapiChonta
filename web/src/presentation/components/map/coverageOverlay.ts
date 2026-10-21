@@ -1,3 +1,4 @@
+import type * as GeoJSON from "geojson";
 import type { GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
 import type { CoverageArea } from "@/core/domain/entities/business";
 import { outsideMask } from "@/core/domain/entities/zone-geometry";
