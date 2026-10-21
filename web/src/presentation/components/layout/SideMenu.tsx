@@ -73,10 +73,10 @@ export function SideMenu({ categories, active, onToggle, onClear }: Props) {
             <span className="hidden md:inline">{t("menu.panel")}</span>
           </Link>
         )}
-        <button className={itemClass} title={t("menu.myOrders")}>
+        <Link href="/pedidos" className={itemClass} title={t("menu.myOrders")}>
           <Bike className="size-5 shrink-0 text-white/80" />
           <span className="hidden md:inline">{t("menu.myOrders")}</span>
-        </button>
+        </Link>
         <Link href="/cuenta" className={itemClass} title={t("menu.myAccount")}>
           {account ? (
             <span className="grid size-6 shrink-0 place-items-center rounded-full bg-brand text-[11px] font-extrabold text-ink">

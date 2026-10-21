@@ -150,11 +150,8 @@ body {
   inset-inline: 0;
   bottom: 100%;
   height: 10px;
-  background:
-    linear-gradient(45deg, transparent 33.33%, var(--receipt, white) 33.33% 66.66%, transparent 66.66%),
-    linear-gradient(-45deg, transparent 33.33%, var(--receipt, white) 33.33% 66.66%, transparent 66.66%);
-  background-size: 20px 40px;
-  background-position: 0 -20px;
+  /* Un diente por cada 20 px: cuña de 90° que sube desde el borde del papel. */
+  background: conic-gradient(from -45deg at 50% 100%, var(--receipt, white) 90deg, transparent 0) 0 0 / 20px 10px repeat-x;
 }
 
 /* Aviso de puerta "Abierto / Cerrado" colgado de un cordón. */
@@ -376,5 +373,96 @@ body {
 @media (width < 64rem) {
   .sidebar-glass--bar {
     background: rgb(20 18 31 / 0.74);
+  }
+}
+
+/* ───────────── Pedido del cliente (E04) ───────────── */
+
+/*
+ * Pin fijo en el centro del mapa de entrega: el cliente mueve el mapa, no el pin (más preciso con el dedo).
+ * Es la misma gota chontaduro de los locales, en tinta y amarillo para distinguir "mi casa" de "un local".
+ */
+.drop-pin {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 9999px 9999px 9999px 6px;
+  transform: rotate(-45deg);
+  background: var(--color-ink);
+  color: var(--color-brand);
+  border: 3px solid var(--color-brand);
+  box-shadow: 0 10px 20px rgb(20 18 31 / 0.35);
+  transition: transform 160ms ease;
+}
+
+.drop-pin > * {
+  transform: rotate(45deg);
+}
+
+.drop-pin.is-lifted {
+  transform: rotate(-45deg) translate(6px, -6px);
+}
+
+/* Sombra en el suelo: crece cuando el pin "se levanta" mientras se arrastra el mapa. */
+.drop-pin-shadow {
+  width: 14px;
+  height: 5px;
+  border-radius: 9999px;
+  background: rgb(20 18 31 / 0.35);
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
+.drop-pin-shadow.is-lifted {
+  transform: scale(1.7);
+  opacity: 0.5;
+}
+
+/* Tiquete del pedido: muescas a los lados, como el desprendible de una comanda. */
+.ticket {
+  --notch: 11px;
+  --ticket-bg: var(--color-ink);
+  position: relative;
+  background: var(--ticket-bg);
+  -webkit-mask:
+    radial-gradient(circle var(--notch) at 0 var(--notch-y, 58%), transparent 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--notch) at 100% var(--notch-y, 58%), transparent 98%, #000) right / 51% 100% no-repeat;
+  mask:
+    radial-gradient(circle var(--notch) at 0 var(--notch-y, 58%), transparent 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--notch) at 100% var(--notch-y, 58%), transparent 98%, #000) right / 51% 100% no-repeat;
+}
+
+/* Ruta del pedido: una carretera punteada con paradas, la moto va en la parada actual. */
+.route-road {
+  background-image: linear-gradient(to bottom, var(--road, rgb(20 18 31 / 0.18)) 55%, transparent 0);
+  background-size: 3px 10px;
+  background-repeat: repeat-y;
+}
+
+.route-road.is-done {
+  --road: var(--color-chonta);
+  background-image: linear-gradient(var(--color-chonta), var(--color-chonta));
+  background-size: 3px 100%;
+}
+
+@keyframes route-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(255 197 49 / 0.6);
+  }
+  100% {
+    box-shadow: 0 0 0 14px rgb(255 197 49 / 0);
+  }
+}
+
+.route-current {
+  animation: route-pulse 1.8s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-current,
+  .drop-pin,
+  .drop-pin-shadow {
+    animation: none;
+    transition: none;
   }
 }

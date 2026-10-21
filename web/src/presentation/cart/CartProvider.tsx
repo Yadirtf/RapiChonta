@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
-import { addToCart, parseStoredCart, setQuantity, type Cart, type CartLine } from "@/core/domain/entities/cart";
+import { addToCart, parseStoredCart, setNotes, setQuantity, type Cart, type CartLine } from "@/core/domain/entities/cart";
 
 const STORAGE_KEY = "rc_cart_v1";
 
@@ -60,6 +60,7 @@ interface CartContextValue {
   cart: Cart | null;
   add(establishment: { id: string; name: string }, line: Omit<CartLine, "quantity">): void;
   setQuantity(productId: string, quantity: number): void;
+  setNotes(productId: string, notes: string): void;
   replace(cart: Cart | null): void;
   clear(): void;
 }
@@ -73,9 +74,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const current = store.get();
     if (current) store.set(setQuantity(current, productId, quantity));
   }, []);
+  const changeNotes = useCallback((productId: string, notes: string) => {
+    const current = store.get();
+    if (current) store.set(setNotes(current, productId, notes));
+  }, []);
   const replace = useCallback((next: Cart | null) => store.set(next), []);
   const clear = useCallback(() => store.set(null), []);
-  const value = useMemo(() => ({ cart, add, setQuantity: changeQuantity, replace, clear }), [cart, add, changeQuantity, replace, clear]);
+  const value = useMemo(() => ({ cart, add, setQuantity: changeQuantity, setNotes: changeNotes, replace, clear }), [cart, add, changeQuantity, changeNotes, replace, clear]);
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 

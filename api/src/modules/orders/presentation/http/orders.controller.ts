@@ -11,7 +11,7 @@ import { CreateOrderDto, DeliveryDto, MyOrdersQueryDto, OrderQueryDto, QuoteOrde
 import { OrdersPresenter } from './orders-presenter';
 
 const delivery = (d: DeliveryDto): DeliveryTarget =>
-  d.addressId ? { addressId: d.addressId } : { latitude: d.latitude!, longitude: d.longitude!, reference: d.reference!, line: d.line, label: d.label };
+  d.addressId ? { addressId: d.addressId } : { latitude: d.latitude!, longitude: d.longitude!, reference: d.reference, line: d.line, label: d.label };
 
 const recipient = (r?: RecipientDto | null): CreateOrderInput['recipient'] =>
   !r ? null : r.recipientId ? { recipientId: r.recipientId } : { fullName: r.fullName!, phone: r.phone! };
@@ -69,7 +69,7 @@ export class OrdersController {
   @RequirePermissions(ORDER_PERMISSIONS.READ_OWN)
   async mine(@CurrentPrincipal() principal: Principal, @Query() query: MyOrdersQueryDto) {
     const page = await this.listMine.execute(principal, { before: query.before ? new Date(query.before) : undefined, limit: query.limit });
-    return { active: page.active.map((o) => this.presenter.summary(o)), past: page.past.map((o) => this.presenter.summary(o)), nextBefore: page.nextBefore };
+    return { active: page.active.map((o) => this.presenter.summary(o)), past: page.past.map((o) => this.presenter.summary(o)), nextBefore: page.nextBefore, journey: page.journey };
   }
 
   /** GET /api/v1/orders/RC-7K3M — detalle y línea de tiempo (RF-50). */

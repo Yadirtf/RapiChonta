@@ -1,0 +1,47 @@
+import type { MyOrdersPage, OrderDetail, OrderQuote, PaymentMethodCode, SavedAddress, SavedRecipient } from "@/core/domain/entities/order";
+import type { OrderRepository, PlaceOrderInput } from "@/core/domain/repositories/order-repository";
+import { apiGet, apiRequest } from "../http/api-client";
+
+const id = (value: string) => encodeURIComponent(value);
+
+export class HttpOrderRepository implements OrderRepository {
+  async paymentMethods() {
+    return (await apiGet<{ code: PaymentMethodCode }[]>("/orders/payment-methods")).map((m) => m.code);
+  }
+
+  quote(input: Parameters<OrderRepository["quote"]>[0], language: string) {
+    return apiRequest<OrderQuote>("POST", "/orders/quote", { body: { ...input, lang: language } });
+  }
+
+  place(input: PlaceOrderInput, language: string) {
+    return apiRequest<OrderDetail>("POST", "/orders", { body: { ...input, lang: language } });
+  }
+
+  mine(before?: string) {
+    return apiRequest<MyOrdersPage>("GET", "/orders", { query: { before } });
+  }
+
+  find(code: string, language: string) {
+    return apiRequest<OrderDetail>("GET", `/orders/${id(code)}`, { query: { lang: language } });
+  }
+
+  addresses() {
+    return apiRequest<SavedAddress[]>("GET", "/me/addresses");
+  }
+
+  archiveAddress(addressId: string) {
+    return apiRequest<void>("DELETE", `/me/addresses/${id(addressId)}`);
+  }
+
+  makeDefaultAddress(addressId: string) {
+    return apiRequest<void>("PUT", `/me/addresses/${id(addressId)}/default`);
+  }
+
+  recipients() {
+    return apiRequest<SavedRecipient[]>("GET", "/me/recipients");
+  }
+
+  archiveRecipient(recipientId: string) {
+    return apiRequest<void>("DELETE", `/me/recipients/${id(recipientId)}`);
+  }
+}

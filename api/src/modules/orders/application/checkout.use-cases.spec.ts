@@ -151,9 +151,9 @@ describe('CreateOrder (H04.3)', () => {
 });
 
 describe('QuoteOrder (H04.1)', () => {
-  it('devuelve el total con la tarifa y lo que le queda al cliente nuevo, aunque esté cerrado', async () => {
+  it('devuelve el total con la tarifa y lo que le queda al cliente nuevo, sin exigir aún la referencia', async () => {
     const { quote } = await setup();
-    const result = await quote.execute(customer, input());
+    const result = await quote.execute(customer, input({ delivery: { latitude: VILLAGARZON.latitude, longitude: VILLAGARZON.longitude } }));
     expect(result.checkout.itemsCents).toBe(4_050_000);
     expect(result.checkout.totalCents).toBe(4_350_000);
     expect(result.delivery.zone.name).toBe('Centro');

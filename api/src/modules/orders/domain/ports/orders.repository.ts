@@ -66,4 +66,6 @@ export abstract class OrdersRepository {
   /** Activos (no terminales) o pasados, del más reciente al más viejo; `before` pagina por created_at. */
   abstract listMine(customerUserId: string, query: { active: boolean; before?: Date; limit: number }): Promise<OrderSummary[]>;
   abstract findMine(customerUserId: string, code: string, language: ContentLanguage): Promise<OrderDetail | null>;
+  /** Hitos del recorrido normal, en orden (order_statuses.is_milestone): la barra de avance del cliente. */
+  abstract journey(): Promise<string[]>;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock3, ShoppingBasket, Store } from "lucide-react";
+import { ArrowRight, Clock3, ShoppingBasket, Store } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { cartCount, cartSubtotalCents } from "@/core/domain/entities/cart";
@@ -17,7 +17,7 @@ import { QuantityStepper } from "./QuantityStepper";
 
 /**
  * La canasta como un recibo de tienda: líneas, subtotal, domicilio estimado a la ubicación actual (E03) y
- * el botón de pedir, que fuera de horario muestra la próxima apertura. La confirmación llega con E04.
+ * el botón de pedir (lleva a /pedido), que fuera de horario muestra la próxima apertura.
  */
 export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useTranslations("cart");
@@ -91,12 +91,13 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 <Clock3 className="size-5 text-brand" aria-hidden /> {opening?.detail}
               </Button>
             ) : (
-              <>
-                <Button size="lg" block disabled>
-                  {t("checkout")}
-                </Button>
-                <p className="text-center text-xs text-ink/50">{t("checkoutSoon")}</p>
-              </>
+              <Link
+                href="/pedido"
+                onClick={onClose}
+                className="inline-flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-brand px-5 text-base font-bold text-ink outline-none transition hover:bg-[#ffcf55] focus-visible:ring-4 focus-visible:ring-brand/50 active:scale-[0.98]"
+              >
+                {t("checkout")} <ArrowRight className="size-5" aria-hidden />
+              </Link>
             )}
             <Button variant="ghost" block onClick={clear}>
               {t("clear")}

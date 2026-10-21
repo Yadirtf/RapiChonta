@@ -49,10 +49,11 @@ export class DeliveryDto {
   @IsLongitude()
   longitude?: number;
 
-  @ValidateIf((d: DeliveryDto) => !d.addressId)
+  /** Obligatoria al confirmar (lo valida el caso de uso); para cotizar basta el punto. */
+  @IsOptional()
   @IsString()
   @MaxLength(200)
-  reference?: string;
+  reference?: string | null;
 
   @IsOptional()
   @IsString()

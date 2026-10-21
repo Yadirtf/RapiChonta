@@ -14,7 +14,8 @@ import { ClientRequestReplayed, NewOrder, OrderCodeTaken, OrdersRepository } fro
 import { OrderCode } from '../domain/value-objects/order-code';
 
 /** Dónde se entrega: una dirección guardada o un punto (ubicación actual o elegido en el mapa) con referencia. */
-export type DeliveryTarget = { addressId: string } | { latitude: number; longitude: number; reference: string; line?: string | null; label?: string | null };
+/** La referencia es obligatoria al confirmar; para cotizar basta el punto (el cliente ve la tarifa mientras mueve el pin). */
+export type DeliveryTarget = { addressId: string } | { latitude: number; longitude: number; reference?: string | null; line?: string | null; label?: string | null };
 
 export interface QuoteInput {
   establishmentId: string;
@@ -52,12 +53,12 @@ export class CheckoutBuilder {
     private readonly deliveryQuote: QuoteDeliveryUseCase,
   ) {}
 
-  async build(principal: Principal, input: QuoteInput): Promise<Quote & { target: { id: string } | NewAddress }> {
+  async build(principal: Principal, input: QuoteInput, options: { requireReference: boolean }): Promise<Quote & { target: { id: string } | NewAddress }> {
     const establishment = await this.reader.establishment(input.establishmentId);
     if (!establishment) throw OrderErrors.establishmentNotFound();
     if (!establishment.acceptsOrders) throw OrderErrors.establishmentNotAccepting();
 
-    const { target, location } = await this.target(principal.userId, input.delivery);
+    const { target, location } = await this.target(principal.userId, input.delivery, options.requireReference);
     const ids = [...new Set((input.items ?? []).map((i) => i.productVersionId))];
     const [delivery, menu, exposure, newCustomerLimit] = await Promise.all([
       this.deliveryQuote.execute({ establishmentId: establishment.id, latitude: location.latitude, longitude: location.longitude }),
@@ -69,16 +70,16 @@ export class CheckoutBuilder {
     return { establishment, checkout, delivery, target };
   }
 
-  private async target(ownerUserId: string, delivery: DeliveryTarget): Promise<{ target: { id: string } | NewAddress; location: GeoPoint }> {
+  private async target(ownerUserId: string, delivery: DeliveryTarget, requireReference: boolean): Promise<{ target: { id: string } | NewAddress; location: GeoPoint }> {
     if ('addressId' in delivery) {
       const saved = await this.addresses.find(ownerUserId, delivery.addressId);
       if (!saved) throw OrderErrors.addressNotFound();
       return { target: { id: saved.id }, location: saved.location };
     }
     const reference = clean(delivery.reference, 200);
-    if (!reference || reference.length < 3) throw OrderErrors.referenceRequired();
+    if (requireReference && (!reference || reference.length < 3)) throw OrderErrors.referenceRequired();
     const location = GeoPoint.create(delivery.latitude, delivery.longitude);
-    return { target: { label: clean(delivery.label, 40), line: clean(delivery.line, 200), reference, location }, location };
+    return { target: { label: clean(delivery.label, 40), line: clean(delivery.line, 200), reference: reference ?? '', location }, location };
   }
 }
 
@@ -88,7 +89,7 @@ export class QuoteOrderUseCase {
   constructor(private readonly builder: CheckoutBuilder) {}
 
   async execute(principal: Principal, input: QuoteInput): Promise<Quote> {
-    const { target: _target, ...quote } = await this.builder.build(principal, input);
+    const { target: _target, ...quote } = await this.builder.build(principal, input, { requireReference: false });
     return quote;
   }
 }
@@ -113,7 +114,7 @@ export class CreateOrderUseCase {
     const previous = await this.orders.findByClientRequest(input.clientRequestId);
     if (previous) return this.replay(principal, previous);
 
-    const { establishment, checkout, delivery, target } = await this.builder.build(principal, input);
+    const { establishment, checkout, delivery, target } = await this.builder.build(principal, input, { requireReference: true });
     await this.ensureOpen.execute(establishment.municipalityId, now);
     checkout.assertWithinNewCustomerLimit();
 

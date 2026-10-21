@@ -186,8 +186,7 @@ export class PrismaOrdersRepository extends OrdersRepository {
         SELECT s.code, h.occurred_at AS at FROM order_status_history h
         JOIN order_statuses s ON s.id = h.to_status_id AND s.is_visible_to_customer
         WHERE h.order_id = ${row.id}::uuid ORDER BY h.recorded_at`,
-      this.prisma.$queryRaw<{ code: string }[]>`
-        SELECT code FROM order_statuses WHERE is_milestone AND deactivated_at IS NULL ORDER BY sort_order`,
+      this.journey(),
     ]);
 
     return {
@@ -202,8 +201,14 @@ export class PrismaOrdersRepository extends OrdersRepository {
       customerNotes: row.customer_notes,
       // Si volvió a "Buscando domiciliario" (nadie aceptó la oferta), se ve una vez, desde la primera hora.
       timeline: collapse(timeline),
-      journey: journey.map((j) => j.code),
+      journey,
     };
+  }
+
+  async journey(): Promise<string[]> {
+    const rows = await this.prisma.$queryRaw<{ code: string }[]>`
+      SELECT code FROM order_statuses WHERE is_milestone AND deactivated_at IS NULL ORDER BY sort_order`;
+    return rows.map((r) => r.code);
   }
 }
 

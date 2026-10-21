@@ -130,6 +130,9 @@ export class MemoryOrders extends OrdersRepository {
     const o = this.details.get(code);
     return o && o.customer === customerUserId ? o : null;
   }
+  async journey() {
+    return ['PENDING_ASSIGNMENT', 'ACCEPTED', 'AT_ESTABLISHMENT', 'PREPARING', 'ON_THE_WAY', 'ARRIVING', 'DELIVERED'];
+  }
 }
 
 export const VILLAGARZON = GeoPoint.create(1.0294, -76.6165);

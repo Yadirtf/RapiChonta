@@ -15,15 +15,19 @@ const PAGE = { default: 20, max: 50 } as const;
 export class ListMyOrdersUseCase {
   constructor(private readonly orders: OrdersRepository) {}
 
-  async execute(principal: Principal, query: { before?: Date; limit?: number } = {}): Promise<{ active: OrderSummary[]; past: OrderSummary[]; nextBefore: string | null }> {
+  async execute(
+    principal: Principal,
+    query: { before?: Date; limit?: number } = {},
+  ): Promise<{ active: OrderSummary[]; past: OrderSummary[]; nextBefore: string | null; journey: string[] }> {
     const limit = Math.min(PAGE.max, Math.max(1, Math.trunc(query.limit ?? PAGE.default)));
-    const [active, past] = await Promise.all([
+    const [active, past, journey] = await Promise.all([
       // El historial pide la segunda página sin repetir los activos.
       query.before ? Promise.resolve([]) : this.orders.listMine(principal.userId, { active: true, limit: PAGE.max }),
       this.orders.listMine(principal.userId, { active: false, before: query.before, limit: limit + 1 }),
+      this.orders.journey(),
     ]);
     const page = past.slice(0, limit);
-    return { active, past: page, nextBefore: past.length > limit ? page[page.length - 1].createdAt.toISOString() : null };
+    return { active, past: page, nextBefore: past.length > limit ? page[page.length - 1].createdAt.toISOString() : null, journey };
   }
 }
 
