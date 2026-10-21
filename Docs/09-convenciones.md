@@ -40,7 +40,7 @@ Si una emergencia exige saltarse la regla, se pasa a **Disabled** en Settings �
 | App | `app/` | `flutter analyze`, `flutter test` |
 | Imagen Docker | `Dockerfile`, `start.sh`, `.dockerignore` o los `package*.json` | Construye la imagen del contenedor único sin publicarla |
 
-Las dependencias, la caché de Next.js, Flutter y las capas de Docker se guardan en caché entre ejecuciones. `npm audit` revisa solo dependencias de producción y falla con vulnerabilidades altas o críticas; Dependabot ([`dependabot.yml`](../.github/dependabot.yml)) abre cada lunes PR hacia `develop` con las actualizaciones de npm, pub, Docker y Actions (H05.2).
+Las dependencias, la caché de Next.js, Flutter y las capas de Docker se guardan en caché entre ejecuciones. `npm audit` revisa solo dependencias de producción y falla con vulnerabilidades altas o críticas; Dependabot ([`dependabot.yml`](../.github/dependabot.yml)) abre cada lunes PR hacia `develop` con las actualizaciones de npm, pub, Docker y Actions (H05.2). Las versiones mayores que dependen unas de otras llegan en un solo PR (NestJS con TypeScript, Next con ESLint, Jest con ts-jest), y Node con `@types/node` se suben a mano, juntos y solo a versiones LTS, cambiando a la vez `Dockerfile`, `ci.yml` y `package.json`. Antes de fusionar un PR de Dependabot, su check **CI** debe estar en verde: si `npm ci` falla por dependencias pares (`ERESOLVE`), el PR se cierra y la actualización se planea junto con sus pares.
 
 ## Commits
 
