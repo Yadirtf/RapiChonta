@@ -16,7 +16,7 @@
 | Entrega | La confirma el cliente con una pantalla que no se cierra hasta responder. "No lo recibí" abre una incidencia que decide RapiChonta. | [05](05-flujos-y-ux.md#entrega-y-confirmación) |
 | Producto faltante | Chat con opciones cerradas y tiempo límite. | [05](05-flujos-y-ux.md#producto-no-disponible-o-con-otro-precio-chat-estratégico) |
 | Catálogo | Solo establecimientos registrados; no se puede pedir en otros lugares. | [01](01-vision-y-alcance.md) |
-| Dominios | Aún no hay dominio; se usan las URLs de Render. | [08](08-despliegue-render.md) |
+| Dominios | Aún no hay dominio; se usan las URLs de SnapDeploy y Render. | [08](08-despliegue-render.md) |
 | Envío del pedido | El operador ve quién está cerca y decide: a un domiciliario específico o a todos (el primero que acepte lo toma). | [05](05-flujos-y-ux.md#asignación-el-operador-decide-el-domiciliario-acepta) |
 | Comisión | El domiciliario paga a RapiChonta un porcentaje **fijo** de cada domicilio completado, configurable en el panel. | [04](04-modelo-de-datos.md#decisiones) |
 | Cuenta del QR | La cuenta personal del domiciliario (MVP). | [06](06-seguridad.md) |
