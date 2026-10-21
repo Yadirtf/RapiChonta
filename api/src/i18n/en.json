@@ -1,0 +1,21 @@
+{
+  "push": {
+    "ORDER_STATUS_CHANGED": {
+      "ACCEPTED": { "title": "A courier took your order", "body": "Heading to {store} for your order {code}." },
+      "AT_ESTABLISHMENT": { "title": "Your courier is at {store}", "body": "They're buying everything for order {code}." },
+      "ON_THE_WAY": { "title": "Your order is on its way!", "body": "It left {store} and is heading to you. Have your payment ready." },
+      "ARRIVING": { "title": "Your courier is almost there", "body": "Just a few meters away: step out to get order {code}." },
+      "DELIVERED": { "title": "Order {code} delivered", "body": "Thanks for ordering with RapiChonta. Enjoy!" },
+      "CANCELLED": { "title": "Your order {code} was cancelled", "body": "Tap to see the details." },
+      "_": { "title": "Your order {code} changed", "body": "Tap to see how it's going." }
+    },
+    "ORDER_OFFERED": { "title": "New order for you", "body": "{store} · tap to see it and take it." },
+    "OFFER_WITHDRAWN": { "title": "Order {code} is no longer available", "body": "Another courier took it or it was cancelled." },
+    "PREPARATION_TIME_REACHED": { "title": "It should be ready", "body": "Preparation time for order {code} at {store} is up." },
+    "ADJUSTMENT_REQUESTED": { "title": "Your courier needs a decision", "body": "Something in order {code} is missing or changed price. Reply soon." },
+    "ADJUSTMENT_RESOLVED": { "title": "The customer replied", "body": "Check the decision for order {code}." },
+    "INCIDENT_OPENED": { "title": "Update on order {code}", "body": "We opened a case and will let you know once it's solved." },
+    "INCIDENT_RESOLVED": { "title": "Issue resolved", "body": "We closed the case for order {code}." },
+    "DELIVERY_PROOF_PENDING": { "title": "Delivery photo missing", "body": "Take the delivery photo for order {code}." }
+  }
+}

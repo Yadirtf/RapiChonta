@@ -266,24 +266,30 @@ export const CATALOGS: CatalogSeed[] = [
     rows: ordered(
       (
         [
-          // code, visible al cliente, paso del recorrido, revela datos de entrega, cuenta como entregado
-          ['PENDING_ASSIGNMENT', true, true, false, false],
-          ['OFFERED', false, false, false, false],
-          ['ACCEPTED', true, true, false, false],
-          ['AT_ESTABLISHMENT', true, true, false, false],
-          ['AWAITING_CUSTOMER', true, false, false, false],
-          ['PREPARING', true, true, false, false],
-          ['ON_THE_WAY', true, true, true, false],
-          ['ARRIVING', true, true, true, false],
-          ['PENDING_REVIEW', true, false, true, false],
-          ['DISPUTED', true, false, true, false],
-          ['DELIVERED', true, true, false, true],
-          ['CANCELLED', true, false, false, false],
+          // code, visible al cliente, paso del recorrido, revela datos de entrega, cuenta como entregado, avisa por push (H06.2)
+          ['PENDING_ASSIGNMENT', true, true, false, false, false],
+          ['OFFERED', false, false, false, false, false],
+          ['ACCEPTED', true, true, false, false, true],
+          ['AT_ESTABLISHMENT', true, true, false, false, true],
+          ['AWAITING_CUSTOMER', true, false, false, false, false],
+          ['PREPARING', true, true, false, false, false],
+          ['ON_THE_WAY', true, true, true, false, true],
+          ['ARRIVING', true, true, true, false, true],
+          ['PENDING_REVIEW', true, false, true, false, false],
+          ['DISPUTED', true, false, true, false, false],
+          ['DELIVERED', true, true, false, true, true],
+          ['CANCELLED', true, false, false, false, true],
         ] as const
-      ).map(([code, visible, milestone, reveals, delivered]) =>
+      ).map(([code, visible, milestone, reveals, delivered, notifies]) =>
         STATUS(
           code,
-          { is_visible_to_customer: visible, is_milestone: milestone, reveals_delivery_details: reveals, counts_as_delivered: delivered },
+          {
+            is_visible_to_customer: visible,
+            is_milestone: milestone,
+            reveals_delivery_details: reveals,
+            counts_as_delivered: delivered,
+            notifies_customer: notifies,
+          },
           code === 'PENDING_ASSIGNMENT',
           code === 'DELIVERED' || code === 'CANCELLED',
         ),
@@ -300,6 +306,39 @@ export const CATALOGS: CatalogSeed[] = [
       { code: 'TIMER', is_automatic: true },
     ]),
   },
+  // ─────────────── E06 · Notificaciones push ───────────────
+  { table: 'push_providers', key: 'code', rows: ordered([{ code: 'FCM' }, { code: 'HMS' }]) },
+  {
+    table: 'push_token_invalidation_reasons',
+    key: 'code',
+    rows: ordered(['REPLACED', 'SIGNED_OUT', 'REJECTED_BY_PROVIDER'].map((code) => ({ code }))),
+  },
+  {
+    // Alta prioridad: el proveedor lo entrega de inmediato aunque el teléfono ahorre batería (Doze).
+    table: 'notification_types',
+    key: 'code',
+    rows: ordered(
+      (
+        [
+          ['ORDER_OFFERED', true],
+          ['OFFER_WITHDRAWN', false],
+          ['ORDER_STATUS_CHANGED', true],
+          ['PREPARATION_TIME_REACHED', true],
+          ['ADJUSTMENT_REQUESTED', true],
+          ['ADJUSTMENT_RESOLVED', true],
+          ['INCIDENT_OPENED', true],
+          ['INCIDENT_RESOLVED', false],
+          ['DELIVERY_PROOF_PENDING', true],
+        ] as const
+      ).map(([code, high]) => ({ code, is_high_priority: high })),
+    ),
+  },
+  {
+    table: 'notification_delivery_statuses',
+    key: 'code',
+    rows: ordered([STATUS('QUEUED', {}, true), STATUS('SENT', {}, false, true), STATUS('FAILED', {}, false, true)]),
+  },
+
 ];
 
 /** Máquinas de estado en datos: pares permitidos `desde → hacia`. */

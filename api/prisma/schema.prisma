@@ -313,6 +313,7 @@ model User {
   recipients             CustomerRecipient[]
   orders                 Order[]
   orderStatusChanges     OrderStatusHistory[]
+  notifications          Notification[]
 
   @@index([statusId])
   @@map("users")
@@ -420,14 +421,15 @@ model Platform {
 
 /// Una instalación de la app o un navegador. Se relaciona con usuarios solo a través de sus sesiones.
 model Device {
-  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  installationId String    @unique @map("installation_id") @db.Uuid
-  platformId     Int       @map("platform_id") @db.SmallInt
-  appVersion     String?   @map("app_version") @db.VarChar(20)
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  lastSeenAt     DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(6)
-  platform       Platform  @relation(fields: [platformId], references: [id], onDelete: Restrict)
+  id             String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  installationId String            @unique @map("installation_id") @db.Uuid
+  platformId     Int               @map("platform_id") @db.SmallInt
+  appVersion     String?           @map("app_version") @db.VarChar(20)
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastSeenAt     DateTime          @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  platform       Platform          @relation(fields: [platformId], references: [id], onDelete: Restrict)
   sessions       Session[]
+  pushTokens     DevicePushToken[]
 
   @@map("devices")
 }
@@ -1280,6 +1282,8 @@ model OrderStatus {
   revealsDeliveryDetails Boolean   @map("reveals_delivery_details")
   /// Cuenta como entregado (tope de cliente nuevo, comisión, métricas).
   countsAsDelivered      Boolean   @map("counts_as_delivered")
+  /// Al llegar aquí se avisa al cliente por push (H06.2), salvo que el cambio lo haya hecho él mismo.
+  notifiesCustomer       Boolean   @default(false) @map("notifies_customer")
 
   orders          Order[]
   transitionsFrom OrderStatusTransition[] @relation("OrderTransitionFrom")
@@ -1354,6 +1358,7 @@ model Order {
   status            OrderStatus          @relation(fields: [statusId], references: [id], onDelete: Restrict)
   items             OrderItem[]
   statusHistory     OrderStatusHistory[]
+  notifications     Notification[]
 
   @@index([customerUserId, createdAt(sort: Desc)])
   @@index([customerUserId, statusId])
@@ -1397,7 +1402,116 @@ model OrderStatusHistory {
   changedBy       User?                  @relation(fields: [changedByUserId], references: [id], onDelete: Restrict)
   actingRole      Role?                  @relation(fields: [actingRoleId], references: [id], onDelete: Restrict)
   source          StatusChangeSource     @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  notifications   Notification[]
 
   @@index([orderId, recordedAt])
   @@map("order_status_history")
+}
+
+// ─────────────── E06 · Notificaciones push (Docs/14-base-de-datos/E06-notificaciones.md) ───────────────
+
+/// FCM (Android con Google, iOS) o HMS (Huawei Push Kit, teléfonos sin Google).
+model PushProvider {
+  id            Int               @id @default(autoincrement()) @db.SmallInt
+  code          String            @unique @db.VarChar(40)
+  sortOrder     Int               @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?         @map("deactivated_at") @db.Timestamptz(6)
+  tokens        DevicePushToken[]
+
+  @@map("push_providers")
+}
+
+/// Por qué un token push dejó de usarse: la app lo cambió, cerró sesión o el proveedor lo rechazó.
+model PushTokenInvalidationReason {
+  id            Int               @id @default(autoincrement()) @db.SmallInt
+  code          String            @unique @db.VarChar(40)
+  sortOrder     Int               @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?         @map("deactivated_at") @db.Timestamptz(6)
+  tokens        DevicePushToken[]
+
+  @@map("push_token_invalidation_reasons")
+}
+
+/// Token push de un dispositivo. El proveedor lo rota: uno vigente por dispositivo y proveedor (índices parciales en SQL).
+model DevicePushToken {
+  id                   String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  deviceId             String                       @map("device_id") @db.Uuid
+  pushProviderId       Int                          @map("push_provider_id") @db.SmallInt
+  token                String                       @db.VarChar(512)
+  createdAt            DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
+  invalidatedAt        DateTime?                    @map("invalidated_at") @db.Timestamptz(6)
+  invalidationReasonId Int?                         @map("invalidation_reason_id") @db.SmallInt
+  device               Device                       @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  provider             PushProvider                 @relation(fields: [pushProviderId], references: [id], onDelete: Restrict)
+  invalidationReason   PushTokenInvalidationReason? @relation(fields: [invalidationReasonId], references: [id], onDelete: Restrict)
+  deliveries           NotificationDelivery[]
+
+  @@index([deviceId])
+  @@map("device_push_tokens")
+}
+
+/// Qué se avisa. is_high_priority: sonido y prioridad alta en el proveedor (ofertas al domiciliario).
+model NotificationType {
+  id             Int            @id @default(autoincrement()) @db.SmallInt
+  code           String         @unique @db.VarChar(40)
+  sortOrder      Int            @map("sort_order") @db.SmallInt
+  deactivatedAt  DateTime?      @map("deactivated_at") @db.Timestamptz(6)
+  isHighPriority Boolean        @map("is_high_priority")
+  notifications  Notification[]
+
+  @@map("notification_types")
+}
+
+/// Un aviso para una persona. El texto no se guarda: se arma con el tipo, el pedido y el idioma de quien lo recibe.
+model Notification {
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  recipientUserId      String                 @map("recipient_user_id") @db.Uuid
+  notificationTypeId   Int                    @map("notification_type_id") @db.SmallInt
+  orderId              String?                @map("order_id") @db.Uuid
+  /// En ORDER_STATUS_CHANGED, el cambio que se avisa: el estado nuevo se lee de ahí.
+  orderStatusHistoryId String?                @unique @map("order_status_history_id") @db.Uuid
+  /// Solo argumentos de la plantilla que no existen en otra tabla.
+  params               Json?
+  createdAt            DateTime               @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(6)
+  /// Cuándo se repartió a los dispositivos (o se descartó por viejo). Nulo = pendiente en la bandeja de salida.
+  dispatchedAt         DateTime?              @map("dispatched_at") @db.Timestamptz(6)
+  readAt               DateTime?              @map("read_at") @db.Timestamptz(6)
+  recipient            User                   @relation(fields: [recipientUserId], references: [id], onDelete: Restrict)
+  type                 NotificationType       @relation(fields: [notificationTypeId], references: [id], onDelete: Restrict)
+  order                Order?                 @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  orderStatusHistory   OrderStatusHistory?    @relation(fields: [orderStatusHistoryId], references: [id], onDelete: Restrict)
+  deliveries           NotificationDelivery[]
+
+  @@index([recipientUserId, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+model NotificationDeliveryStatus {
+  id            Int                    @id @default(autoincrement()) @db.SmallInt
+  code          String                 @unique @db.VarChar(40)
+  sortOrder     Int                    @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?              @map("deactivated_at") @db.Timestamptz(6)
+  isInitial     Boolean                @map("is_initial")
+  isTerminal    Boolean                @map("is_terminal")
+  deliveries    NotificationDelivery[]
+
+  @@map("notification_delivery_statuses")
+}
+
+/// Un intento de envío a un token. Un reintento es una fila nueva; el estado da un solo paso (en cola → enviado o fallido).
+model NotificationDelivery {
+  id                String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  notificationId    String                     @map("notification_id") @db.Uuid
+  devicePushTokenId String                     @map("device_push_token_id") @db.Uuid
+  statusId          Int                        @map("status_id") @db.SmallInt
+  providerMessageId String?                    @map("provider_message_id") @db.VarChar(200)
+  errorCode         String?                    @map("error_code") @db.VarChar(80)
+  attemptedAt       DateTime                   @default(dbgenerated("clock_timestamp()")) @map("attempted_at") @db.Timestamptz(6)
+  notification      Notification               @relation(fields: [notificationId], references: [id], onDelete: Restrict)
+  devicePushToken   DevicePushToken            @relation(fields: [devicePushTokenId], references: [id], onDelete: Restrict)
+  status            NotificationDeliveryStatus @relation(fields: [statusId], references: [id], onDelete: Restrict)
+
+  @@index([notificationId])
+  @@index([devicePushTokenId])
+  @@map("notification_deliveries")
 }

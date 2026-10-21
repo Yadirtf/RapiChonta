@@ -7,6 +7,7 @@ import { CatalogModule } from './modules/catalog/catalog.module';
 import { FilesModule } from './modules/files/files.module';
 import { HealthModule } from './modules/health/health.module';
 import { IdentityModule } from './modules/identity/identity.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { PrismaModule } from './shared/infrastructure/prisma/prisma.module';
 
@@ -23,6 +24,7 @@ import { PrismaModule } from './shared/infrastructure/prisma/prisma.module';
     CatalogModule,
     BusinessConfigModule,
     OrdersModule,
+    NotificationsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
