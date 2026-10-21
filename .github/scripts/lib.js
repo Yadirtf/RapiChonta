@@ -245,7 +245,7 @@ function documentoRequerimientos({ requerimientos, epicas }) {
 // al inicio de la rama, por ejemplo feature/23-carrito.
 function issuesQueCierra({ title = '', body = '', head = '' }) {
   const numeros = new Set();
-  const re = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?|cierra|cierran|resuelve|resuelven|soluciona)\b\s*:?\s*((?:#\d+(?:\s*(?:,|y|and)\s*)?)+)/gi;
+  const re = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?|cierra|cierran|resuelve|resuelven|soluciona)\b\s*:?\s*((?:#\d+(?:[ \t]*(?:,|y|and)?[ \t]*)?)+)/gi;
   for (const m of `${title}\n${body || ''}`.matchAll(re)) {
     for (const n of m[1].matchAll(/#(\d+)/g)) numeros.add(Number(n[1]));
   }

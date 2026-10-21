@@ -1,19 +1,23 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseIntPipe, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
 import { ROLES } from '../../../identity/domain/identity.codes';
 import { Principal } from '../../../identity/domain/principal';
 import { CurrentPrincipal, RequirePermissions, Roles } from '../../../identity/presentation/http/decorators/auth.decorators';
+import { ManageCoverageUseCase } from '../../application/coverage.use-cases';
 import { ExchangeRatesUseCase } from '../../application/exchange-rates.use-cases';
 import { MunicipalityScope } from '../../application/municipality-scope';
 import { ManageScheduleUseCase } from '../../application/schedule.use-cases';
 import { ManageCommissionUseCase, ManageSettingsUseCase } from '../../application/settings.use-cases';
 import { ManageZonesUseCase } from '../../application/zones.use-cases';
-import { BUSINESS_PERMISSIONS, ZONE_KINDS } from '../../domain/business-config.codes';
+import { BUSINESS_PERMISSIONS, FEE_ZONE_KINDS } from '../../domain/business-config.codes';
+import { RADIUS_LIMITS } from '../../domain/value-objects/geo-circle';
 import { MAX_SLOTS_PER_DAY } from '../../domain/value-objects/time-slot';
-import { ZONE_LIMITS } from '../../domain/value-objects/zone-limits';
+import { COVERAGE_LIMITS, ZONE_LIMITS } from '../../domain/value-objects/zone-limits';
 import { BusinessPresenter as P } from './business-presenter';
 import {
   CommissionDto,
+  CoverageDto,
   MunicipalityQueryDto,
+  MunicipalityUpdateDto,
   ScheduleExceptionDto,
   SettingValueDto,
   TrimZoneDto,
@@ -22,7 +26,7 @@ import {
   ZoneOrderDto,
 } from './business.dto';
 
-const { ZONES_MANAGE, HOURS_MANAGE, SETTINGS_MANAGE, COMMISSION_MANAGE } = BUSINESS_PERMISSIONS;
+const { ZONES_MANAGE, HOURS_MANAGE, SETTINGS_MANAGE, COMMISSION_MANAGE, MUNICIPALITIES_MANAGE } = BUSINESS_PERMISSIONS;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Panel del administrador: zonas y tarifas (H03.1), horario (H03.2), parámetros y comisión (H03.3), tasas (H03.4). */
@@ -32,6 +36,7 @@ export class AdminBusinessController {
   constructor(
     private readonly scope: MunicipalityScope,
     private readonly zones: ManageZonesUseCase,
+    private readonly coverage: ManageCoverageUseCase,
     private readonly schedule: ManageScheduleUseCase,
     private readonly settings: ManageSettingsUseCase,
     private readonly commission: ManageCommissionUseCase,
@@ -44,9 +49,39 @@ export class AdminBusinessController {
   async options(@CurrentPrincipal() principal: Principal) {
     return {
       municipalities: (await this.scope.list(principal)).map(P.municipality),
-      zoneKinds: Object.values(ZONE_KINDS),
-      limits: { zone: ZONE_LIMITS, slotsPerDay: MAX_SLOTS_PER_DAY },
+      zoneKinds: FEE_ZONE_KINDS,
+      limits: { zone: ZONE_LIMITS, coverage: COVERAGE_LIMITS, radius: RADIUS_LIMITS, slotsPerDay: MAX_SLOTS_PER_DAY },
     };
+  }
+
+  // ─────────────── Cobertura por municipio (H03.5) ───────────────
+
+  /** Municipios del alcance con su cobertura, cuántas zonas tienen y qué les falta para abrir. */
+  @Get('coverage')
+  @RequirePermissions(ZONES_MANAGE)
+  async coverageOverview(@CurrentPrincipal() principal: Principal) {
+    return (await this.coverage.overview(principal)).map(P.overview);
+  }
+
+  /** Crea o reemplaza la cobertura; si solo cambia la tarifa base, la zona (y su historial) se conserva. */
+  @Put('coverage')
+  @RequirePermissions(ZONES_MANAGE)
+  async saveCoverage(@CurrentPrincipal() principal: Principal, @Body() body: CoverageDto) {
+    return P.zone(await this.coverage.save(principal, body as Parameters<ManageCoverageUseCase['save']>[1]));
+  }
+
+  @Delete('coverage')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermissions(ZONES_MANAGE)
+  async removeCoverage(@CurrentPrincipal() principal: Principal, @Query() query: MunicipalityQueryDto) {
+    await this.coverage.remove(principal, query.municipalityId);
+  }
+
+  /** Abrir o pausar un municipio, o mover el punto donde arranca su mapa (administrador general). */
+  @Put('municipalities/:id')
+  @RequirePermissions(MUNICIPALITIES_MANAGE)
+  async updateMunicipality(@CurrentPrincipal() principal: Principal, @Param('id', ParseIntPipe) id: number, @Body() body: MunicipalityUpdateDto) {
+    return P.municipality(await this.coverage.update(principal, id, body));
   }
 
   // ─────────────── Zonas y tarifas ───────────────
@@ -54,8 +89,8 @@ export class AdminBusinessController {
   @Get('zones')
   @RequirePermissions(ZONES_MANAGE)
   async listZones(@CurrentPrincipal() principal: Principal, @Query() query: MunicipalityQueryDto) {
-    const { municipality, zones } = await this.zones.list(principal, query.municipalityId);
-    return { municipality: P.municipality(municipality), zones: zones.map(P.zone) };
+    const { municipality, zones, coverage } = await this.zones.list(principal, query.municipalityId);
+    return { municipality: P.municipality(municipality), zones: zones.map(P.zone), coverage: coverage && P.zone(coverage) };
   }
 
   @Post('zones')

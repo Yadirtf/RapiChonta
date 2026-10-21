@@ -3,7 +3,7 @@ import { GeoPoint } from '../../catalog/domain/value-objects/geo-point';
 import { GeoPolygon } from '../../catalog/domain/value-objects/geo-polygon';
 import { Price } from '../../catalog/domain/value-objects/price';
 import { Principal } from '../../identity/domain/principal';
-import { ZONE_KINDS, ZoneKindCode } from '../domain/business-config.codes';
+import { FEE_ZONE_KINDS, ZONE_KINDS, ZONE_SHAPES, ZoneKindCode } from '../domain/business-config.codes';
 import { BusinessErrors } from '../domain/business-config.errors';
 import { DeliveryQuote, ZoneData, ZoneRecord, ZonesRepository } from '../domain/ports/zones.repository';
 import { ZONE_LIMITS } from '../domain/value-objects/zone-limits';
@@ -35,7 +35,9 @@ export class ManageZonesUseCase {
 
   async list(principal: Principal, municipalityId?: number) {
     const municipality = await this.scope.resolve(principal, municipalityId);
-    return { municipality, zones: await this.zones.list(municipality.id) };
+    const zones = await this.zones.list(municipality.id);
+    // La cobertura se dibuja como contexto en el mapa, pero se administra en su propia página.
+    return { municipality, zones: zones.filter((z) => z.kind !== ZONE_KINDS.COVERAGE), coverage: zones.find((z) => z.kind === ZONE_KINDS.COVERAGE) ?? null };
   }
 
   async create(principal: Principal, input: ZoneInput): Promise<ZoneRecord> {
@@ -65,7 +67,7 @@ export class ManageZonesUseCase {
 
   async reorder(principal: Principal, municipalityId: number | undefined, ids: string[]): Promise<void> {
     const municipality = await this.scope.resolve(principal, municipalityId);
-    const current = (await this.zones.list(municipality.id)).map((z) => z.id);
+    const current = (await this.zones.list(municipality.id)).filter((z) => z.kind !== ZONE_KINDS.COVERAGE).map((z) => z.id);
     if (ids.length !== current.length || new Set(ids).size !== ids.length || !ids.every((zoneId) => current.includes(zoneId))) {
       throw BusinessErrors.zoneNotFound();
     }
@@ -95,7 +97,7 @@ export class ManageZonesUseCase {
   private async validate(municipalityId: number, input: ZoneInput, exceptId?: string): Promise<ZoneData> {
     const name = cleanName(input.name);
     if (name.length < 2) throw BusinessErrors.zoneNameRequired();
-    const kind = Object.values(ZONE_KINDS).includes(input.kind) ? input.kind : ZONE_KINDS.URBAN;
+    const kind = (FEE_ZONE_KINDS as readonly string[]).includes(input.kind) ? input.kind : ZONE_KINDS.URBAN;
     const fee = Price.parse(String(input.fee).replace(',', '.')).toDecimalString();
     const area = GeoPolygon.fromRing(input.area, ZONE_LIMITS);
     if (await this.zones.nameTaken(municipalityId, name, exceptId)) throw BusinessErrors.zoneNameTaken();
@@ -106,19 +108,21 @@ export class ManageZonesUseCase {
       const overlaps = await this.zones.overlaps(municipalityId, area, exceptId);
       if (overlaps.length) throw BusinessErrors.zoneOverlap(overlaps);
     }
-    return { name, kind, area, fee, trimOverlaps };
+    return { name, kind, shape: ZONE_SHAPES.POLYGON, area, fee, trimOverlaps };
   }
 
   private async inScope(principal: Principal, id: string): Promise<ZoneRecord> {
     const zone = await this.zones.find(id);
-    if (!zone || (principal.municipalityId !== null && principal.municipalityId !== zone.municipalityId)) throw BusinessErrors.zoneNotFound();
+    const outOfScope = principal.municipalityId !== null && principal.municipalityId !== zone?.municipalityId;
+    if (!zone || outOfScope || zone.kind === ZONE_KINDS.COVERAGE) throw BusinessErrors.zoneNotFound();
     return zone;
   }
 }
 
 /**
- * Tarifa para entregar en un punto (H03.1, H04.2): la de la zona que lo cubre en el municipio del local.
- * Sin zona: NO_COVERAGE, y el cliente lo ve antes de confirmar.
+ * Tarifa para entregar en un punto (H03.1, H04.2): la del barrio o vereda que lo cubre en el municipio del
+ * local, o la tarifa base de la cobertura. Fuera de todo: NO_COVERAGE con la distancia hasta la cobertura,
+ * y el cliente lo ve antes de confirmar.
  */
 @Injectable()
 export class QuoteDeliveryUseCase {
@@ -129,13 +133,13 @@ export class QuoteDeliveryUseCase {
     const municipalityId = await this.zones.establishmentMunicipality(input.establishmentId);
     if (municipalityId === null) throw BusinessErrors.establishmentNotFound();
     const quote = await this.zones.quote(municipalityId, point);
-    if (!quote) throw BusinessErrors.noCoverage();
+    if (!quote) throw BusinessErrors.noCoverage((await this.zones.distanceToCoverage(point, municipalityId))?.meters ?? null);
     return quote;
   }
 }
 
 /** Compara con lo que envió el panel (sin redondear): reenviar el mismo anillo no crea una zona nueva. */
-function sameRing(a: [number, number][], b: [number, number][]): boolean {
+export function sameRing(a: [number, number][], b: [number, number][]): boolean {
   if (!Array.isArray(b)) return false;
   const ring = b.length > 1 && b[0][0] === b[b.length - 1][0] && b[0][1] === b[b.length - 1][1] ? b.slice(0, -1) : b;
   return a.length === ring.length && a.every(([lng, lat], i) => Math.abs(lng - ring[i][0]) < 1e-6 && Math.abs(lat - ring[i][1]) < 1e-6);

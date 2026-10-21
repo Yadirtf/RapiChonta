@@ -1075,10 +1075,23 @@ model ZoneKind {
   @@map("zone_kinds")
 }
 
+/// Cómo se trazó la zona: a mano (POLYGON) o como radio alrededor de un centro (CIRCLE). El área siempre
+/// es el polígono; centro y radio se derivan de él al leer (no se guardan dos veces).
+model ZoneShape {
+  id            Int            @id @default(autoincrement()) @db.SmallInt
+  code          String         @unique @db.VarChar(40)
+  sortOrder     Int            @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?      @map("deactivated_at") @db.Timestamptz(6)
+  zones         DeliveryZone[]
+
+  @@map("zone_shapes")
+}
+
 model DeliveryZone {
   id              String                                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   municipalityId  Int                                     @map("municipality_id")
   zoneKindId      Int                                     @map("zone_kind_id") @db.SmallInt
+  zoneShapeId     Int                                     @map("zone_shape_id") @db.SmallInt
   name            String                                  @db.VarChar(80)
   area            Unsupported("geography(Polygon, 4326)")
   sortOrder       Int                                     @map("sort_order") @db.SmallInt
@@ -1087,6 +1100,7 @@ model DeliveryZone {
   deactivatedAt   DateTime?                               @map("deactivated_at") @db.Timestamptz(6)
   municipality    Municipality                            @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
   zoneKind        ZoneKind                                @relation(fields: [zoneKindId], references: [id], onDelete: Restrict)
+  zoneShape       ZoneShape                               @relation(fields: [zoneShapeId], references: [id], onDelete: Restrict)
   createdBy       User                                    @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
   fees            DeliveryZoneFee[]
 

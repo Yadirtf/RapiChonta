@@ -92,6 +92,7 @@ export const CATALOGS: CatalogSeed[] = [
         'PRODUCT_CHANGED',
         'ESTABLISHMENT_CHANGED',
         'CATEGORY_CHANGED',
+        'MUNICIPALITY_CHANGED',
       ].map((code) => ({ code })),
     ),
   },
@@ -240,7 +241,8 @@ export const CATALOGS: CatalogSeed[] = [
   },
 
   // ─────────────── E03 · Zonas, horario y configuración ───────────────
-  { table: 'zone_kinds', key: 'code', rows: ordered(['URBAN', 'RURAL'].map((code) => ({ code }))) },
+  { table: 'zone_kinds', key: 'code', rows: ordered(['COVERAGE', 'URBAN', 'RURAL'].map((code) => ({ code }))) },
+  { table: 'zone_shapes', key: 'code', rows: ordered(['POLYGON', 'CIRCLE'].map((code) => ({ code }))) },
   {
     table: 'setting_data_types',
     key: 'code',
@@ -410,6 +412,7 @@ const ADMIN_PERMISSIONS = [
   'audit.read',
   'legal.manage',
   'categories.manage',
+  'municipalities.manage',
 ];
 
 /** Permisos por rol (Docs/14-base-de-datos/E01-identidad-y-acceso.md). */
@@ -462,15 +465,28 @@ export const SETTINGS: {
   { key: 'security.auth_log_retention_days', type: 'DAYS', value: 90, min: 7, max: 730, scoped: false },
 ];
 
-/** Geografía inicial: Colombia → Putumayo → Villagarzón (municipio del piloto). */
+/**
+ * Geografía: Colombia → Putumayo y sus 13 municipios (códigos DANE). Solo Villagarzón (el piloto) arranca
+ * abierto; los demás quedan "en preparación" hasta que el administrador les define cobertura, horario y
+ * comisión y los abre desde el panel (H03.5). El centro es la cabecera municipal: se ajusta en el panel.
+ */
 export const GEOGRAPHY = {
   country: { iso2: 'CO', name: 'Colombia' },
   department: { daneCode: '86', name: 'Putumayo' },
-  municipality: {
-    daneCode: '86885',
-    name: 'Villagarzón',
-    timeZone: 'America/Bogota',
-    center: { lat: 1.0294, lng: -76.6165 },
-    launchedAt: '2026-10-16T00:00:00-05:00',
-  },
+  municipalities: [
+    { daneCode: '86885', name: 'Villagarzón', center: { lat: 1.0294, lng: -76.6165 }, launchedAt: '2026-10-16T00:00:00-05:00' },
+    { daneCode: '86001', name: 'Mocoa', center: { lat: 1.1514, lng: -76.6464 } },
+    { daneCode: '86219', name: 'Colón', center: { lat: 1.1897, lng: -76.9731 } },
+    { daneCode: '86320', name: 'Orito', center: { lat: 0.6664, lng: -76.8711 } },
+    { daneCode: '86568', name: 'Puerto Asís', center: { lat: 0.505, lng: -76.4958 } },
+    { daneCode: '86569', name: 'Puerto Caicedo', center: { lat: 0.6853, lng: -76.6044 } },
+    { daneCode: '86571', name: 'Puerto Guzmán', center: { lat: 0.9628, lng: -76.4086 } },
+    { daneCode: '86573', name: 'Puerto Leguízamo', center: { lat: -0.1931, lng: -74.7811 } },
+    { daneCode: '86749', name: 'Sibundoy', center: { lat: 1.2033, lng: -76.9192 } },
+    { daneCode: '86755', name: 'San Francisco', center: { lat: 1.1764, lng: -76.8783 } },
+    { daneCode: '86757', name: 'San Miguel', center: { lat: 0.3422, lng: -76.9111 } },
+    { daneCode: '86760', name: 'Santiago', center: { lat: 1.1475, lng: -77.0006 } },
+    { daneCode: '86865', name: 'Valle del Guamuez', center: { lat: 0.4256, lng: -76.9075 } },
+  ] as { daneCode: string; name: string; center: { lat: number; lng: number }; launchedAt?: string }[],
+  timeZone: 'America/Bogota',
 };
