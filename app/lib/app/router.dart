@@ -7,6 +7,8 @@ import '../features/auth/presentation/pages/account_page.dart';
 import '../features/auth/presentation/pages/consents_page.dart';
 import '../features/auth/presentation/pages/sign_in_page.dart';
 import '../features/auth/presentation/providers/auth_providers.dart';
+import '../features/courier/presentation/pages/courier_home_page.dart';
+import '../features/courier/presentation/pages/trip_page.dart';
 import '../features/establishments/presentation/pages/establishment_page.dart';
 import '../features/establishments/presentation/pages/home_page.dart';
 import '../features/notifications/presentation/pages/notifications_page.dart';
@@ -15,7 +17,11 @@ import '../features/orders/presentation/pages/my_orders_page.dart';
 import '../features/orders/presentation/pages/order_detail_page.dart';
 
 /// Rutas que exigen sesión. El mapa es público: el ingreso se pide solo al confirmar el pedido (H01.1).
-bool _protected(String path) => path == '/cuenta' || path == '/pedido' || path == '/pedidos' || path.startsWith('/pedidos/') || path == '/avisos';
+bool _protected(String path) =>
+    path == '/cuenta' || path == '/pedido' || path == '/pedidos' || path.startsWith('/pedidos/') || path == '/avisos' || _courier(path);
+
+/// Pantallas del modo domiciliario (E08).
+bool _courier(String path) => path == '/turno' || path.startsWith('/turno/');
 
 /// Navegador raíz: los avisos push abren rutas y muestran su aviso encima de cualquier pantalla.
 final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -45,6 +51,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (path == '/consentimientos') return account == null ? '/' : state.uri.queryParameters['next'] ?? '/';
       if (account == null && _protected(path)) return Uri(path: '/ingresar', queryParameters: {'next': state.uri.toString()}).toString();
       if (account != null && path == '/ingresar') return state.uri.queryParameters['next'] ?? '/';
+      // En modo domiciliario el inicio es el turno; fuera de él, el turno no existe (RF-06).
+      final courierMode = account?.activeRole == Role.courier;
+      if (courierMode && path == '/') return '/turno';
+      if (!courierMode && account != null && _courier(path)) return '/';
       return null;
     },
     routes: [
@@ -56,6 +66,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/pedido', builder: (context, state) => const CheckoutPage()),
       GoRoute(path: '/pedidos', builder: (context, state) => const MyOrdersPage()),
       GoRoute(path: '/avisos', builder: (context, state) => const NotificationsPage()),
+      GoRoute(path: '/turno', builder: (context, state) => const CourierHomePage()),
+      GoRoute(path: '/turno/pedido/:code', builder: (context, state) => TripPage(code: state.pathParameters['code']!)),
       GoRoute(
         path: '/pedidos/:code',
         builder: (context, state) => OrderDetailPage(code: state.pathParameters['code']!, placed: state.uri.queryParameters['nuevo'] == '1'),

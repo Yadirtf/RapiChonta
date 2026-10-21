@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import '../../../core/config/env.dart';
 import '../../../core/network/api_failure.dart';
 import '../../establishments/domain/entities/establishment.dart';
 import '../domain/entities/order.dart';
@@ -138,6 +139,8 @@ OrderSummary summaryFromJson(Map<String, dynamic> json) {
 OrderDetail detailFromJson(Map<String, dynamic> json) {
   final s = summaryFromJson(json);
   final recipient = json['recipient'] as Map<String, dynamic>?;
+  final preparation = json['preparation'] as Map<String, dynamic>?;
+  final purchase = json['purchase'] as Map<String, dynamic>?;
   return OrderDetail(
     code: s.code,
     establishmentId: s.establishmentId,
@@ -171,5 +174,9 @@ OrderDetail detailFromJson(Map<String, dynamic> json) {
       for (final t in (json['timeline'] as List? ?? const []).cast<Map<String, dynamic>>()) TimelineEntry(t['status'] as String, DateTime.parse(t['at'] as String)),
     ],
     journey: (json['journey'] as List? ?? const []).cast<String>(),
+    preparation: preparation == null
+        ? null
+        : (estimatedReadyAt: DateTime.parse(preparation['estimatedReadyAt'] as String), delayed: preparation['delayed'] as bool? ?? false),
+    purchase: purchase == null ? null : (amountCents: _cents(purchase['amount']), receiptUrl: Env.resolveAsset(purchase['receiptUrl'] as String?)),
   );
 }

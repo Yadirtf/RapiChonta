@@ -84,11 +84,12 @@ jobs:
           sed -i 's|android:label="rapichonta"|android:label="RapiChonta"|' android/app/src/main/AndroidManifest.xml
 
       # El manifiesto principal no trae INTERNET (solo el de debug); la ubicación la usa geolocator y
-      # POST_NOTIFICATIONS es el permiso de avisos de Android 13+.
+      # POST_NOTIFICATIONS es el permiso de avisos de Android 13+. En turno (E08) el GPS corre en un servicio
+      # en primer plano de geolocator (con su notificación fija): FOREGROUND_SERVICE(_LOCATION) y WAKE_LOCK.
       - name: Permisos de Android
         run: |
           manifest=android/app/src/main/AndroidManifest.xml
-          for p in INTERNET ACCESS_FINE_LOCATION ACCESS_COARSE_LOCATION POST_NOTIFICATIONS; do
+          for p in INTERNET ACCESS_FINE_LOCATION ACCESS_COARSE_LOCATION POST_NOTIFICATIONS FOREGROUND_SERVICE FOREGROUND_SERVICE_LOCATION WAKE_LOCK; do
             grep -q "android.permission.$p\"" "$manifest" || \
               sed -i "s|<application|<uses-permission android:name=\"android.permission.$p\"/>\n    <application|" "$manifest"
           done

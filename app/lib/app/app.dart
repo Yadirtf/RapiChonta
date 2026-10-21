@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/auth/domain/entities/account.dart';
 import '../features/auth/presentation/providers/auth_providers.dart';
+import '../features/courier/presentation/courier_providers.dart';
 import '../features/notifications/presentation/push_controller.dart';
 import '../l10n/app_localizations.dart';
 import 'router.dart';
@@ -20,6 +21,8 @@ class RapiChontaApp extends ConsumerWidget {
       if (now != null && now != before) ref.read(pushControllerProvider).start(now);
       if (now == null && before != null) ref.read(pushControllerProvider).stop();
     });
+    // Modo domiciliario (E08): el GPS y la cola sin señal siguen con cualquier pantalla abierta.
+    ref.watch(courierShiftProvider);
     return MaterialApp.router(
       title: 'RapiChonta',
       debugShowCheckedModeBanner: false,

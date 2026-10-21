@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/brand_logo.dart';
 import '../../../../app/theme.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../auth/presentation/widgets/account_sheets.dart';
+import '../../../auth/presentation/widgets/error_text.dart';
 import '../../../business/presentation/business_widgets.dart';
 import '../../../notifications/presentation/push_controller.dart';
 import '../../../../l10n/app_localizations.dart';
@@ -74,6 +76,21 @@ class SideMenu extends ConsumerWidget {
                   onTap: () {
                     Scaffold.maybeOf(context)?.closeDrawer();
                     context.push('/avisos');
+                  },
+                ),
+              // RF-06: quien también es domiciliario vuelve a su turno desde aquí (pide la contraseña).
+              if (account != null && account.canSwitchMode)
+                _MenuItem(
+                  icon: Icons.two_wheeler_rounded,
+                  label: l10n.switchToCourierMenu,
+                  onTap: () async {
+                    final messenger = ScaffoldMessenger.maybeOf(context);
+                    Scaffold.maybeOf(context)?.closeDrawer();
+                    try {
+                      await switchMode(context, ref, account);
+                    } catch (error) {
+                      messenger?.showSnackBar(SnackBar(content: Text(errorText(l10n, error))));
+                    }
                   },
                 ),
               _MenuItem(

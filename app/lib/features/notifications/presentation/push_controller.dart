@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/router.dart';
 import '../../auth/domain/entities/account.dart';
 import '../../auth/presentation/providers/auth_providers.dart';
+import '../../courier/presentation/courier_providers.dart';
 import '../../orders/presentation/providers/orders_providers.dart';
 import '../data/notification_repository_impl.dart';
 import '../data/push_channel_resolver.dart';
@@ -121,10 +122,13 @@ class PushController {
     if (overlay != null) PushBanner.show(overlay, notice, onOpen: () => _open(notice.tap));
   }
 
-  /// Lo que el aviso cambió: el contador, la lista de pedidos y el detalle abierto.
+  /// Lo que el aviso cambió: el contador, la lista de pedidos y el detalle abierto (o el turno del domiciliario).
   void _refresh(PushTap tap) {
     _ref.invalidate(unreadNotificationsProvider);
-    if (tap.orderCode != null) {
+    if (tap.forCourier) {
+      _ref.invalidate(courierOffersProvider);
+      _ref.invalidate(courierTripProvider);
+    } else if (tap.orderCode != null) {
       _ref.invalidate(myOrdersProvider);
       _ref.invalidate(orderDetailProvider);
     }

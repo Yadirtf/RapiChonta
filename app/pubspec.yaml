@@ -35,6 +35,10 @@ dependencies:
   firebase_core: ^5.0.0
   firebase_messaging: ^17.0.0
   huawei_push: ^6.15.0+300
+  # Modo domiciliario (E08): foto de la factura, cola sin señal guardada en el teléfono y su huella SHA-256.
+  image_picker: ^1.2.4
+  path_provider: ^2.1.6
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:

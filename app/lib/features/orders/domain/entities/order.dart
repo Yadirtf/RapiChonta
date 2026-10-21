@@ -198,6 +198,8 @@ class OrderDetail extends OrderSummary {
     required this.journey,
     this.recipient,
     this.notes,
+    this.preparation,
+    this.purchase,
   });
 
   final List<OrderLine> lines;
@@ -214,8 +216,14 @@ class OrderDetail extends OrderSummary {
   /// Hitos del recorrido normal, en orden (los define la API).
   final List<String> journey;
 
+  /// Mientras se prepara (E08): la hora estimada y si el domiciliario avisó que va con retraso (alta demanda).
+  final ({DateTime estimatedReadyAt, bool delayed})? preparation;
+
+  /// Lo que el domiciliario pagó en el local, con la foto de la factura (H08.4).
+  final ({int amountCents, String? receiptUrl})? purchase;
+
   @override
-  List<Object?> get props => [...super.props, timeline];
+  List<Object?> get props => [...super.props, timeline, preparation, purchase];
 }
 
 class OrderHistory {
