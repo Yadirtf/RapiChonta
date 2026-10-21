@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start -p ${PORT:-3001}",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
     "@sentry/nextjs": "^11.8.0",
