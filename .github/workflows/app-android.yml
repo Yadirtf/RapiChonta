@@ -68,8 +68,12 @@ jobs:
           echo "API_URL=$url" >> "$GITHUB_STEP_SUMMARY"
 
       # android/ no se versiona todavía (ver app/README.md): se genera en cada build.
+      # sentry_flutter exige Android 8.0 (API 26) o superior; la plantilla trae el mínimo de Flutter (24).
       - name: Generar plataforma Android
-        run: flutter create . --org com.rapichonta --project-name rapichonta --platforms=android
+        run: |
+          flutter create . --org com.rapichonta --project-name rapichonta --platforms=android
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 26/' android/app/build.gradle.kts
+          grep -q 'minSdk = 26' android/app/build.gradle.kts
 
       # Ícono del lanzador y nombre visible: los recursos versionados en app/branding/android/res
       # (generados por Docs/marca/generar_marca.py) reemplazan los de la plantilla de flutter create.
