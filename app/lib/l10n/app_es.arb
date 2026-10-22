@@ -892,6 +892,7 @@
   "errCourierBusy": "Ya llevas un pedido.",
   "errCourierNotAvailable": "Activa Disponible para tomar pedidos.",
   "errCourierNotVerified": "Tu cuenta aún no está verificada para recibir pedidos.",
+  "errCourierMunicipalityNotOperating": "Tu municipio todavía no opera en RapiChonta. Pide a la oficina que te asigne el municipio donde vas a trabajar.",
   "errLocationConsentRequired": "Acepta la autorización de ubicación para recibir pedidos.",
   "errLocationNotExpected": "Activa Disponible para compartir tu ubicación.",
   "errFileUpload": "No pudimos subir la foto. Inténtalo de nuevo."

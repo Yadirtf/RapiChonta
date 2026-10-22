@@ -16,6 +16,7 @@ export interface AdminRepository {
   courier(userId: string): Promise<CourierDetail>;
   createCourier(input: NewCourier): Promise<CourierDetail>;
   changeVerification(userId: string, status: CourierVerificationCode, reason?: string): Promise<CourierDetail>;
+  changeCourierMunicipality(userId: string, municipalityId: number): Promise<CourierDetail>;
   changeUserStatus(userId: string, status: UserStatusCode, reason?: string): Promise<void>;
   staff(): Promise<StaffMember[]>;
   createStaff(input: NewStaffMember): Promise<void>;

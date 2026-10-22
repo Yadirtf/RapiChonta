@@ -67,7 +67,7 @@ export class MemoryDispatchBoard extends DispatchBoard {
 }
 
 export class MemoryCourierDesk extends CourierDesk {
-  current: CourierStatus | null = { verified: true, locationConsentPending: false, availableSince: null, activeOrder: null, lastLocationAt: null };
+  current: CourierStatus | null = { verified: true, locationConsentPending: false, availableSince: null, activeOrder: null, lastLocationAt: null, municipality: { id: 1, name: 'Villagarzón', launched: true } };
   expecting = true;
   recorded: LocationReading[] = [];
   closedWith: string | null = null;

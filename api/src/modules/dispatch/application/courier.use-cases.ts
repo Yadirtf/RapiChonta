@@ -45,6 +45,8 @@ export class CourierAvailabilityUseCase {
     const status = await this.status(principal);
     if (!status.verified) throw DispatchErrors.notVerified();
     if (status.locationConsentPending) throw DispatchErrors.locationConsentRequired();
+    // El despacho es por municipio: en uno que aún no opera nadie lo vería (registro con el municipio equivocado).
+    if (!status.municipality?.launched) throw DispatchErrors.municipalityNotOperating();
     await this.desk.openAvailability(principal.userId);
     return this.status(principal);
   }

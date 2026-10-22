@@ -64,7 +64,8 @@ export interface IdentityOptions {
   paymentMethods: { code: string; requiresBank: boolean }[];
   banks: { code: string; name: string }[];
   bankAccountTypes: string[];
-  municipalities: { id: number; name: string }[];
+  /** Los que operan primero; en uno sin operación el domiciliario no ve pedidos. */
+  municipalities: { id: number; name: string; launched: boolean }[];
 }
 
 export interface PersonInput {

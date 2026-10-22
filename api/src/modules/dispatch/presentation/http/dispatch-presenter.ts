@@ -60,6 +60,7 @@ export const DispatchPresenter = {
     availableSince: s.availableSince?.toISOString() ?? null,
     activeOrder: s.activeOrder,
     lastLocationAt: s.lastLocationAt?.toISOString() ?? null,
+    municipality: s.municipality,
     locationFresh: s.locationFresh,
   }),
 

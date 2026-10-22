@@ -17,9 +17,13 @@ describe('CourierAvailabilityUseCase', () => {
     expect(status.availableSince).not.toBeNull();
   });
 
-  it('sin verificar o sin autorización no se activa; desactivarse siempre se puede', async () => {
+  it('sin verificar, sin autorización o en un municipio que no opera no se activa; desactivarse siempre se puede', async () => {
     const desk = new MemoryCourierDesk();
     const useCase = new CourierAvailabilityUseCase(desk, geofence());
+    desk.current = { ...desk.current!, municipality: { id: 2, name: 'Colón', launched: false } };
+    expect(await codeOf(useCase.setAvailable(courierPrincipal, true))).toBe('COURIER_MUNICIPALITY_NOT_OPERATING');
+    desk.current = { ...desk.current!, municipality: null };
+    expect(await codeOf(useCase.setAvailable(courierPrincipal, true))).toBe('COURIER_MUNICIPALITY_NOT_OPERATING');
     desk.current = { ...desk.current!, locationConsentPending: true };
     expect(await codeOf(useCase.setAvailable(courierPrincipal, true))).toBe('LOCATION_CONSENT_REQUIRED');
     desk.current = { ...desk.current!, verified: false };

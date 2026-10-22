@@ -12,6 +12,7 @@ import { Button } from "../../../components/ui/Button";
 import { Dialog } from "../../../components/ui/Dialog";
 import { SelectField, TextField } from "../../../components/ui/Field";
 import { useErrorMessage } from "../../../hooks/useErrorMessage";
+import { usePanelMunicipality } from "../PanelMunicipality";
 
 type AccountForm = NewCourier["collectionAccounts"][number] & { key: number };
 
@@ -33,6 +34,7 @@ export function CreateCourierDialog({ open, options, onClose, onCreated }: Props
   const tc = useTranslations("catalog");
   const tp = useTranslations("people");
   const errorMessage = useErrorMessage();
+  const { municipalityId: panelMunicipalityId } = usePanelMunicipality();
   const [person, setPerson] = useState<PersonForm>(emptyPerson);
   const [municipalityId, setMunicipalityId] = useState<number | "">("");
   const [fundingMode, setFundingMode] = useState("");
@@ -42,13 +44,15 @@ export function CreateCourierDialog({ open, options, onClose, onCreated }: Props
   const [localError, setLocalError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Valores por defecto en cuanto llegan los catálogos (el piloto tiene un solo municipio).
+  // Valores por defecto en cuanto llegan los catálogos. El municipio es el del panel ("Trabajando en"), o el
+  // primero que opera: nunca el primero del alfabeto, que dejaba al domiciliario en un despacho que no existe.
   useEffect(() => {
     if (!options) return;
-    setMunicipalityId((m) => m || options.municipalities[0]?.id || "");
+    const preferred = options.municipalities.find((m) => m.id === panelMunicipalityId) ?? options.municipalities.find((m) => m.launched) ?? options.municipalities[0];
+    setMunicipalityId((m) => m || preferred?.id || "");
     setFundingMode((f) => f || options.fundingModes[0] || "");
     setVehicle((v) => (v.type ? v : { ...v, type: options.vehicleTypes[0]?.code ?? "" }));
-  }, [options]);
+  }, [options, panelMunicipalityId]);
 
   const reset = () => {
     setPerson(emptyPerson());
@@ -124,13 +128,7 @@ export function CreateCourierDialog({ open, options, onClose, onCreated }: Props
 
         <FormSection title={t("sectionOperation")}>
           {options && options.municipalities.length > 1 && (
-            <SelectField label={tp("municipality")} value={municipalityId} onChange={(e) => setMunicipalityId(Number(e.target.value))}>
-              {options.municipalities.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </SelectField>
+            <MunicipalitySelect label={tp("municipality")} municipalities={options.municipalities} value={municipalityId} onChange={setMunicipalityId} />
           )}
           <div role="radiogroup" aria-label={t("fundingMode")} className="grid gap-2 sm:grid-cols-2">
             {(options?.fundingModes ?? []).map((mode) => {
@@ -237,5 +235,38 @@ export function CreateCourierDialog({ open, options, onClose, onCreated }: Props
         </div>
       </form>
     </Dialog>
+  );
+}
+
+/**
+ * Municipio del domiciliario: el despacho de cada municipio solo ve a los suyos. Los que operan van primero y los
+ * demás se marcan, y si se elige uno sin operación se advierte (no recibiría pedidos).
+ */
+export function MunicipalitySelect({
+  label,
+  municipalities,
+  value,
+  onChange,
+}: {
+  label: string;
+  municipalities: IdentityOptions["municipalities"];
+  value: number | "";
+  onChange: (id: number) => void;
+}) {
+  const t = useTranslations("couriers");
+  const chosen = municipalities.find((m) => m.id === value);
+  return (
+    <SelectField
+      label={label}
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      hint={chosen && !chosen.launched ? t("municipalityNotOperatingHint", { name: chosen.name }) : undefined}
+    >
+      {municipalities.map((m) => (
+        <option key={m.id} value={m.id}>
+          {m.launched ? m.name : t("municipalityNotOperating", { name: m.name })}
+        </option>
+      ))}
+    </SelectField>
   );
 }

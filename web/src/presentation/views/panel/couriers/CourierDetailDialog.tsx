@@ -4,7 +4,7 @@ import { Bike, CircleUserRound, Clock3, CreditCard, Loader2 } from "lucide-react
 import { useFormatter, useTranslations } from "next-intl";
 import { useState, type ReactNode } from "react";
 import { can, PERMISSIONS, type Account, type UserStatusCode } from "@/core/domain/entities/account";
-import { ACCOUNT_TRANSITIONS, VERIFICATION_TRANSITIONS, type CourierDetail, type CourierVerificationCode } from "@/core/domain/entities/staff";
+import { ACCOUNT_TRANSITIONS, VERIFICATION_TRANSITIONS, type CourierDetail, type CourierVerificationCode, type IdentityOptions } from "@/core/domain/entities/staff";
 import { container } from "@/infrastructure/di/container";
 import { AccountStatusBadge, VerificationBadge } from "../../../components/panel/StatusBadges";
 import { StatusChangeDialog } from "../../../components/panel/StatusChangeDialog";
@@ -13,6 +13,7 @@ import { Button } from "../../../components/ui/Button";
 import { Dialog } from "../../../components/ui/Dialog";
 import { formatPhone } from "../../../format";
 import { useErrorMessage } from "../../../hooks/useErrorMessage";
+import { MunicipalitySelect } from "./CreateCourierDialog";
 
 type PendingChange =
   | { kind: "verification"; to: CourierVerificationCode }
@@ -26,12 +27,14 @@ interface Props {
   error: unknown;
   viewer: Account;
   justCreated?: boolean;
+  /** Para corregir el municipio; sin opciones (o sin permiso) solo se muestra. */
+  municipalities?: IdentityOptions["municipalities"];
   onClose: () => void;
   onChanged: (courier: CourierDetail) => void;
 }
 
 /** Ficha del domiciliario: datos, vehículo, cuentas de cobro, historial y acciones permitidas. */
-export function CourierDetailDialog({ courier, loading, error, viewer, justCreated, onClose, onChanged }: Props) {
+export function CourierDetailDialog({ courier, loading, error, viewer, justCreated, municipalities, onClose, onChanged }: Props) {
   const t = useTranslations("couriers");
   const tc = useTranslations("catalog");
   const tv = useTranslations("verification");
@@ -102,7 +105,11 @@ export function CourierDetailDialog({ courier, loading, error, viewer, justCreat
             <Item label={t("document")}>
               {courier.documentType ? `${td.has(courier.documentType) ? td(courier.documentType) : courier.documentType} ${courier.documentNumber}` : "—"}
             </Item>
-            <Item label={t("municipality")}>{courier.municipality?.name ?? "—"}</Item>
+            {municipalities && can(viewer, PERMISSIONS.MANAGE_COURIERS) ? (
+              <MunicipalityEditor key={courier.userId} courier={courier} municipalities={municipalities} onChanged={onChanged} />
+            ) : (
+              <Item label={t("municipality")}>{courier.municipality?.name ?? "—"}</Item>
+            )}
             <Item label={t("fundingMode")}>{courier.fundingMode ? tc(`fundingModes.${courier.fundingMode}`) : "—"}</Item>
             <Item label={t("createdAt")}>{format.dateTime(new Date(courier.createdAt), { dateStyle: "medium" })}</Item>
           </Block>
@@ -177,6 +184,72 @@ function Block({ icon, title, children }: { icon: ReactNode; title: string; chil
       </h3>
       <div className="flex flex-col gap-2.5">{children}</div>
     </section>
+  );
+}
+
+/** El municipio decide en qué despacho aparece: si quedó mal al registrarlo, aquí se corrige. */
+function MunicipalityEditor({
+  courier,
+  municipalities,
+  onChanged,
+}: {
+  courier: CourierDetail;
+  municipalities: IdentityOptions["municipalities"];
+  onChanged: (courier: CourierDetail) => void;
+}) {
+  const t = useTranslations("couriers");
+  const errorMessage = useErrorMessage();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState<number | "">(courier.municipality?.id ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const current = municipalities.find((m) => m.id === courier.municipality?.id);
+
+  const save = async () => {
+    if (value === "" || value === courier.municipality?.id) return setEditing(false);
+    setBusy(true);
+    setError(null);
+    try {
+      onChanged(await container.admin.changeCourierMunicipality(courier.userId, value));
+      setEditing(false);
+    } catch (e) {
+      setError(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!editing) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-baseline justify-between gap-4 text-sm">
+          <span className="text-ink/55">{t("municipality")}</span>
+          <span className="flex items-baseline gap-2 text-right font-medium">
+            {courier.municipality?.name ?? "—"}
+            <button type="button" onClick={() => setEditing(true)} className="text-xs font-bold text-chonta-strong underline-offset-2 hover:underline">
+              {t("changeMunicipality")}
+            </button>
+          </span>
+        </div>
+        {current && !current.launched && <Alert tone="info">{t("municipalityNotOperatingNotice", { name: current.name })}</Alert>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-2xl bg-surface p-3">
+      <MunicipalitySelect label={t("municipality")} municipalities={municipalities} value={value} onChange={setValue} />
+      <p className="text-xs text-ink/55">{t("changeMunicipalityHint")}</p>
+      {error ? <Alert>{errorMessage(error)}</Alert> : null}
+      <div className="flex justify-end gap-2">
+        <Button size="sm" variant="outline" onClick={() => setEditing(false)} disabled={busy}>
+          {t("cancel")}
+        </Button>
+        <Button size="sm" onClick={save} loading={busy}>
+          {t("saveMunicipality")}
+        </Button>
+      </div>
+    </div>
   );
 }
 

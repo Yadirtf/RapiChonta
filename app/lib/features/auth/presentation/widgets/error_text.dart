@@ -63,6 +63,7 @@ String errorText(AppLocalizations l10n, Object error) {
     'COURIER_BUSY' => l10n.errCourierBusy,
     'COURIER_NOT_AVAILABLE' => l10n.errCourierNotAvailable,
     'COURIER_NOT_VERIFIED' => l10n.errCourierNotVerified,
+    'COURIER_MUNICIPALITY_NOT_OPERATING' => l10n.errCourierMunicipalityNotOperating,
     'LOCATION_CONSENT_REQUIRED' => l10n.errLocationConsentRequired,
     'LOCATION_NOT_EXPECTED' => l10n.errLocationNotExpected,
     'FILE_CONTENT_MISMATCH' || 'FILE_INVALID_CHECKSUM' || 'FILE_NOT_UPLOADED' || 'FILE_TOO_LARGE' || 'FILE_TYPE_NOT_ALLOWED' || 'UPLOAD_EXPIRED' || 'UPLOAD_INVALID' =>

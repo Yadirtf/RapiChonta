@@ -12,6 +12,7 @@ import { DeleteMyDataUseCase } from './application/use-cases/account/delete-my-d
 import { GetMyAccountUseCase } from './application/use-cases/account/get-my-account.use-case';
 import { SetMyDisplayCurrencyUseCase, SetMyLanguageUseCase } from './application/use-cases/account/set-my-language.use-case';
 import { UpdateMyProfileUseCase } from './application/use-cases/account/update-my-profile.use-case';
+import { ChangeCourierMunicipalityUseCase } from './application/use-cases/admin/change-courier-municipality.use-case';
 import { ChangeCourierVerificationUseCase } from './application/use-cases/admin/change-courier-verification.use-case';
 import { ChangeUserStatusUseCase } from './application/use-cases/admin/change-user-status.use-case';
 import { CreateCourierUseCase } from './application/use-cases/admin/create-courier.use-case';
@@ -136,6 +137,7 @@ function otpProviderFactory(config: ConfigService): OtpProvider {
     ListCouriersUseCase,
     GetCourierUseCase,
     ChangeCourierVerificationUseCase,
+    ChangeCourierMunicipalityUseCase,
     ChangeUserStatusUseCase,
     CreateStaffMemberUseCase,
     ListStaffUseCase,

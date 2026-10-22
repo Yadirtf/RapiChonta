@@ -42,14 +42,20 @@ export class PrismaCourierDesk extends CourierDesk {
         order_code: string | null;
         order_status: string | null;
         last_location_at: Date | null;
+        municipality_id: number | null;
+        municipality_name: string | null;
+        municipality_launched: boolean | null;
       }[]
     >`
       SELECT vs.can_receive_offers AS verified,
              EXISTS (SELECT 1 FROM v_pending_consents pc WHERE pc.user_id = cp.user_id AND pc.document_type_code = ${LOCATION_CONSENT}) AS consent_pending,
              av.started_at AS available_since, o.code AS order_code, os.code AS order_status,
-             (SELECT max(lp.recorded_at) FROM courier_location_pings lp WHERE lp.courier_user_id = cp.user_id) AS last_location_at
+             (SELECT max(lp.recorded_at) FROM courier_location_pings lp WHERE lp.courier_user_id = cp.user_id) AS last_location_at,
+             m.id AS municipality_id, m.name AS municipality_name, (m.launched_at IS NOT NULL) AS municipality_launched
       FROM courier_profiles cp
       JOIN courier_verification_statuses vs ON vs.id = cp.verification_status_id
+      LEFT JOIN v_active_user_roles ar ON ar.user_id = cp.user_id AND ar.role_code = ${ROLES.COURIER}
+      LEFT JOIN municipalities m ON m.id = ar.municipality_id
       LEFT JOIN v_open_availability av ON av.courier_user_id = cp.user_id
       LEFT JOIN order_assignments a ON a.courier_user_id = cp.user_id AND a.released_at IS NULL
       LEFT JOIN orders o ON o.id = a.order_id
@@ -62,6 +68,8 @@ export class PrismaCourierDesk extends CourierDesk {
           availableSince: row.available_since,
           activeOrder: row.order_code && row.order_status ? { code: row.order_code, status: row.order_status } : null,
           lastLocationAt: row.last_location_at,
+          municipality:
+            row.municipality_id === null ? null : { id: row.municipality_id, name: row.municipality_name ?? '', launched: row.municipality_launched ?? false },
         }
       : null;
   }

@@ -34,6 +34,10 @@ export class HttpAdminRepository implements AdminRepository {
     });
   }
 
+  changeCourierMunicipality(userId: string, municipalityId: number) {
+    return apiRequest<CourierDetail>("POST", `/admin/couriers/${encodeURIComponent(userId)}/municipality`, { body: { municipalityId } });
+  }
+
   changeUserStatus(userId: string, status: UserStatusCode, reason?: string) {
     return apiRequest<void>("POST", `/admin/users/${encodeURIComponent(userId)}/status`, { body: { status, reason: reason || undefined } });
   }
