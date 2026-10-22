@@ -7,14 +7,16 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { createElement, useEffect, useRef, type ReactNode } from "react";
 import { toCents } from "@/core/domain/entities/money";
-import { addressPoint, type OrderDetail } from "@/core/domain/entities/order";
+import { addressPoint, openAdjustment, type OrderDetail } from "@/core/domain/entities/order";
 import { container } from "@/infrastructure/di/container";
 import { isApiError } from "@/infrastructure/http/api-client";
 import { useAuth } from "../../auth/AuthProvider";
 import { useCart } from "../../cart/CartProvider";
 import { ApproxPrice } from "../../components/business/ApproxPrice";
 import { DoorCard, StorePage } from "../../components/layout/StorePage";
+import { AdjustmentChanges, AdjustmentDesk } from "../../components/orders/AdjustmentDesk";
 import { OrderRoute } from "../../components/orders/OrderRoute";
+import { PrepCountdown } from "../../components/orders/PrepClock";
 import { paymentIcon } from "../../components/orders/orderVisuals";
 import { DeliveryCodePass, LeftWithPhoto } from "../../components/orders/DeliveryClose";
 import { HighDemandNote, ReceiptButton } from "../../components/orders/PurchaseReceipt";
@@ -35,6 +37,9 @@ const PlacePreviewMap = dynamic(() => import("../../components/map/PlacePreviewM
 
 /** Mientras el pedido está activo, el estado se vuelve a pedir cada 15 s (si la pestaña está a la vista). */
 const REFRESH_MS = 15_000;
+/** En el local la pregunta del domiciliario puede llegar en cualquier momento y tiene 3 minutos: más seguido. */
+const AT_STORE_REFRESH_MS = 4_000;
+const AT_STORE = new Set(["AT_ESTABLISHMENT", "AWAITING_CUSTOMER"]);
 
 /** H04.4 / RF-50: el pedido con su código, la ruta de estados y la comanda. Sin ubicación del domiciliario. */
 export function OrderDetailView({ code, placed }: { code: string; placed: boolean }) {
@@ -75,11 +80,12 @@ function Detail({ code, placed }: { code: string; placed: boolean }) {
   }, [order, placed, cart, replace]);
 
   const active = !!order?.active;
+  const every = order && AT_STORE.has(order.status) ? AT_STORE_REFRESH_MS : REFRESH_MS;
   useEffect(() => {
     if (!active) return;
-    const timer = window.setInterval(() => document.visibilityState === "visible" && void reload(), REFRESH_MS);
+    const timer = window.setInterval(() => document.visibilityState === "visible" && void reload(), every);
     return () => window.clearInterval(timer);
-  }, [active, reload]);
+  }, [active, every, reload]);
 
   if (loading && !order) return <DetailSkeleton />;
   if (!order) {
@@ -95,12 +101,14 @@ function Detail({ code, placed }: { code: string; placed: boolean }) {
     return <Alert className="mt-8">{errorMessage(error)}</Alert>;
   }
 
+  const question = order.status === "AWAITING_CUSTOMER" ? openAdjustment(order) : null;
   return (
     <div className="mt-6 flex flex-col gap-6 pb-16">
       {placed && <PlacedBanner code={order.code} />}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
         <div className="flex min-w-0 flex-col gap-6">
           <StatusTicket order={order} />
+          {question && <AdjustmentDesk key={question.id} order={order} adjustment={question} onChanged={() => void reload()} />}
           {order.active && <DeliveryCodePass order={order} onClosed={() => void reload()} />}
           {order.status === "PENDING_REVIEW" && <LeftWithPhoto order={order} time={time} onClosed={() => void reload()} />}
           {order.active && order.preparation?.delayed && <HighDemandNote store={order.establishment.name} />}
@@ -180,8 +188,9 @@ function StatusTicket({ order }: { order: OrderDetail }) {
           <span>{t("items", { count: order.itemCount })}</span>
         )}
         {order.active && order.preparation ? (
-          <span className="flex items-center gap-1 font-bold text-brand">
-            <Clock3 className="size-3.5" aria-hidden /> {t("readyAround", { time: time(order.preparation.estimatedReadyAt) })}
+          <span className="flex items-center gap-3">
+            <PrepCountdown preparation={order.preparation} />
+            <span className="hidden text-white/45 sm:inline">{t("readyAround", { time: time(order.preparation.estimatedReadyAt) })}</span>
           </span>
         ) : (
           order.prepMinutes > 0 &&
@@ -216,6 +225,7 @@ function OrderReceipt({ order }: { order: OrderDetail }) {
           </li>
         ))}
       </ul>
+      <AdjustmentChanges adjustments={order.adjustments} />
       <dl className="mt-1 flex flex-col gap-1.5 border-t-2 border-dashed border-ink/15 pt-3 text-sm">
         <div className="flex justify-between">
           <dt className="text-ink/60">{t("products")}</dt>

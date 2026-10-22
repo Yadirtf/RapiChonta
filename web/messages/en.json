@@ -173,7 +173,10 @@
     "DELIVERY_CODE_LOCKED": "No code attempts left. Deliver with a photo.",
     "DELIVERY_PROOF_TOO_EARLY": "You can't deliver with a photo yet. Wait a few minutes at the spot.",
     "DELIVERY_PROOF_INVALID": "The delivery photo is not valid. Take it again.",
-    "DELIVERY_STEP_NOT_ALLOWED": "The order already changed. Refresh to see where it is."
+    "DELIVERY_STEP_NOT_ALLOWED": "The order already changed. Refresh to see where it is.",
+    "ADJUSTMENT_CLOSED": "That question was already answered. We refreshed your order.",
+    "ADJUSTMENT_OPTION_INVALID": "That option doesn't apply to this item.",
+    "SUBSTITUTE_UNAVAILABLE": "That item can't be ordered anymore: pick another one."
   },
   "auth": {
     "signInTitle": "Sign in with your phone",
@@ -1311,7 +1314,60 @@
     "notReceivedConfirmTitle": "Didn't get your order?",
     "notReceivedConfirmBody": "We'll open a case and RapiChonta will review the delivery with the courier.",
     "notReceivedConfirm": "Yes, I didn't get it",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "prepLeft": "Ready in",
+    "prepLeftLabel": "Ready in {time}",
+    "prepAlmost": "Almost ready",
+    "prepBusy": "Busy store: still preparing",
+    "prepProgress": "Preparation progress"
+  },
+  "adjustments": {
+    "kicker": "Your courier is asking",
+    "title": "{count, plural, one {Something changed in your order at {store}} other {# things changed in your order at {store}}}",
+    "body": "Your courier is waiting at the store. Choose what we do with each item.",
+    "timeLeft": "{time} left to decide",
+    "timeoutRule": "If you don't answer in time, we remove what's pending and carry on with the rest. If nothing is left, the order is cancelled.",
+    "timeoutNow": "Time's up: we're removing what's pending to carry on shopping.",
+    "perUnit": "{price} each",
+    "reason": {
+      "UNAVAILABLE": "Sold out at the store",
+      "PRICE_CHANGED": "The price changed"
+    },
+    "option": {
+      "SUBSTITUTE": "Swap it",
+      "REMOVE_ITEM": "Remove it",
+      "ACCEPT_PRICE": "Pay the new price"
+    },
+    "hint": {
+      "SUBSTITUTE": "We'll show similar ones"
+    },
+    "decided": {
+      "SUBSTITUTE": "Swapped for {name} ({price})",
+      "REMOVE_ITEM": "Removed from your order",
+      "ACCEPT_PRICE": "You pay the new price",
+      "CANCEL_ORDER": "You cancelled the order",
+      "EXPIRED_REMOVED": "Time ran out: we removed it"
+    },
+    "pickTitle": "Swap {name} for…",
+    "pickBody": "{quantity, plural, one {We'll bring # of the one you pick, at the menu price.} other {We'll bring # of the one you pick, at the menu price.}}",
+    "pickSimilar": "Similar",
+    "pickOthers": "More from the store",
+    "pickEmpty": "Nothing to swap it for",
+    "pickEmptyBody": "The store has no other items available right now. You can remove it and carry on.",
+    "samePrice": "Same price",
+    "cancelOrder": "Cancel the whole order",
+    "cancelTitle": "Cancel the order?",
+    "cancelBody": "The courier buys nothing at {store} and the order ends here. You aren't charged.",
+    "keepOrder": "Keep the order",
+    "cancelConfirm": "Yes, cancel",
+    "close": "Close",
+    "changesTitle": "Changes to your order",
+    "change": {
+      "SUBSTITUTE": "→ {name}",
+      "REMOVE_ITEM": "Removed",
+      "ACCEPT_PRICE": "New price {price} each",
+      "EXPIRED_REMOVED": "Removed (time ran out)"
+    }
   },
   "coverage": {
     "title": "Coverage",

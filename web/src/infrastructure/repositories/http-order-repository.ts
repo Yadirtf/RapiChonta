@@ -1,4 +1,4 @@
-import type { MyOrdersPage, OrderDetail, OrderQuote, PaymentMethodCode, SavedAddress, SavedRecipient } from "@/core/domain/entities/order";
+import type { MyOrdersPage, OrderDetail, OrderQuote, PaymentMethodCode, SavedAddress, SavedRecipient, SubstituteOption } from "@/core/domain/entities/order";
 import type { OrderRepository, PlaceOrderInput } from "@/core/domain/repositories/order-repository";
 import { apiGet, apiRequest } from "../http/api-client";
 
@@ -31,6 +31,15 @@ export class HttpOrderRepository implements OrderRepository {
 
   async reportNotReceived(code: string) {
     await apiRequest<unknown>("POST", `/orders/${id(code)}/not-received`);
+  }
+
+  async substitutes(code: string, adjustmentId: string, language: string) {
+    const page = await apiRequest<{ items: SubstituteOption[] }>("GET", `/orders/${id(code)}/adjustments/${id(adjustmentId)}/substitutes`, { query: { lang: language } });
+    return page.items;
+  }
+
+  async decideAdjustment(code: string, adjustmentId: string, input: Parameters<OrderRepository["decideAdjustment"]>[2]) {
+    await apiRequest<unknown>("POST", `/orders/${id(code)}/adjustments/${id(adjustmentId)}/decision`, { body: input });
   }
 
   addresses() {

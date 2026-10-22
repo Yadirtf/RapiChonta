@@ -4,12 +4,19 @@ import { motion } from "framer-motion";
 import { useLocale, useTranslations } from "next-intl";
 import { orderRoute, type OrderDetail } from "@/core/domain/entities/order";
 import { statusIcon, statusTone } from "./orderVisuals";
+import { PrepStove } from "./PrepClock";
 
 /**
  * Línea de tiempo del pedido (RF-50) como la ruta de la moto: paradas cumplidas en chontaduro, la actual
  * latiendo en amarillo y las que faltan en punteado. Nunca muestra dónde está el domiciliario.
  */
-export function OrderRoute({ order, timeZone = "America/Bogota" }: { order: Pick<OrderDetail, "timeline" | "journey" | "active">; timeZone?: string }) {
+export function OrderRoute({
+  order,
+  timeZone = "America/Bogota",
+}: {
+  order: Pick<OrderDetail, "timeline" | "journey" | "active"> & Partial<Pick<OrderDetail, "preparation">>;
+  timeZone?: string;
+}) {
   const t = useTranslations("orderStatus");
   const locale = useLocale();
   const time = (iso: string) =>
@@ -53,6 +60,7 @@ export function OrderRoute({ order, timeZone = "America/Bogota" }: { order: Pick
                 {stop.at && <span className="text-xs font-semibold tabular-nums text-ink/45">{time(stop.at)}</span>}
               </p>
               {stop.state === "current" && t.has(`${stop.status}.body`) && <p className="mt-0.5 text-sm text-ink/60">{t(`${stop.status}.body`)}</p>}
+              {stop.state === "current" && stop.status === "PREPARING" && order.preparation && <PrepStove order={{ timeline: order.timeline, preparation: order.preparation }} />}
             </div>
           </motion.li>
         );
