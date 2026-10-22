@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/auth/domain/entities/account.dart';
@@ -27,6 +28,10 @@ class RapiChontaApp extends ConsumerWidget {
       title: 'RapiChonta',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
+      // Una sola paleta (la de marca): con el teléfono en modo oscuro la app se ve igual y los textos no se vuelven
+      // blancos sobre fondos claros. Los íconos del sistema (hora, batería) van oscuros sobre el fondo claro.
+      themeMode: ThemeMode.light,
+      builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(value: AppTheme.systemBars, child: child!),
       routerConfig: ref.watch(routerProvider),
       // Idioma elegido (guardado en la cuenta); si no hay, el del teléfono si es español o inglés; si no, español.
       locale: ref.watch(localeControllerProvider),
