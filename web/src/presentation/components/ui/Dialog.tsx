@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import { useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useEffectEvent, useId, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 interface DialogProps {
@@ -39,6 +39,11 @@ export function Dialog({ open, onClose, title, description, children, size = "sm
   const descriptionId = useId();
   const panel = useRef<HTMLDivElement>(null);
   const mounted = useSyncExternalStore(noop, isClient, isServer);
+  // Evento y no dependencia: quien usa el diálogo suele pasar onClose como función nueva en cada render,
+  // y si el efecto se repitiera en cada tecla devolvería el foco al primer campo.
+  const dismiss = useEffectEvent(() => {
+    if (dismissible) onClose?.();
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -53,7 +58,7 @@ export function Dialog({ open, onClose, title, description, children, size = "sm
 
     const onKey = (event: KeyboardEvent) => {
       if (openStack[openStack.length - 1] !== titleId) return;
-      if (event.key === "Escape" && dismissible) onClose?.();
+      if (event.key === "Escape") dismiss();
       if (event.key !== "Tab" || !panel.current) return;
       const focusable = [...panel.current.querySelectorAll<HTMLElement>("a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex='-1'])")];
       if (!focusable.length) return;
@@ -75,7 +80,7 @@ export function Dialog({ open, onClose, title, description, children, size = "sm
       if (!openStack.length) document.body.style.overflow = previousOverflow;
       opener?.focus?.();
     };
-  }, [open, dismissible, onClose, titleId]);
+  }, [open, titleId]);
 
   const desktop = side
     ? "sm:inset-y-0 sm:right-0 sm:left-auto sm:h-full sm:max-h-none sm:w-full sm:max-w-xl sm:rounded-none sm:rounded-l-[28px]"
