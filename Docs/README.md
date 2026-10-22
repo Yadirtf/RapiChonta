@@ -11,10 +11,10 @@ Esta carpeta es la fuente de verdad del proyecto: qué se construye, con qué, c
 | 05 | [Flujos y UX](05-flujos-y-ux.md) | Recorrido del cliente, del operador y del domiciliario; estados del pedido; lineamientos visuales |
 | 06 | [Seguridad](06-seguridad.md) | Autenticación, roles, protección de datos y del dinero |
 | 07 | [Roadmap por fases](07-roadmap.md) | Orden de implementación y criterio de "terminado" de cada fase |
-| 08 | [Despliegue en Render](08-despliegue-render.md) | Alternativa: el mismo contenedor en Render con `render.yaml` y base en Neon |
+| 08 | [Despliegue en Render](08-despliegue-render.md) | Entorno de pruebas actual: un contenedor Docker en Render con `render.yaml` y base en Neon |
 | 09 | [Convenciones de trabajo](09-convenciones.md) | Ramas, commits, PRs, pruebas y estilo |
 | 10 | [Decisiones y preguntas abiertas](10-aspectos-adicionales.md) | Decisiones del negocio ya tomadas y lo que falta por definir |
-| 11 | [Despliegue en SnapDeploy](11-despliegue-snapdeploy.md) | Cómo levantar el entorno de pruebas actual (un contenedor Docker + Neon) |
+| 11 | [Despliegue en SnapDeploy](11-despliegue-snapdeploy.md) | En desuso; se conserva por Sentry, notificaciones push y prueba local de la imagen |
 | 12 | [Flujo de trabajo](12-flujo-de-trabajo.md) | Épicas, historias, estados automáticos con GitHub Actions, progreso y asignación a agentes |
 | 13 | [Requerimientos y backlog](13-requerimientos.md) | Catálogo de requerimientos y las épicas e historias del roadmap (generado desde `backlog/`) |
 | 14 | [Base de datos normalizada](14-base-de-datos/README.md) | Diseño objetivo de la base de datos por épica: tablas, relaciones, catálogos de estados, reglas de integridad y vistas |

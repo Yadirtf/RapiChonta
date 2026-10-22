@@ -41,7 +41,7 @@ Después de `flutter create`, agregar los permisos de ubicación:
 
 ## APK de prueba (GitHub Actions)
 
-El workflow `App Android` (`.github/workflows/app-android.yml`) compila un APK apuntando al entorno de prueba en SnapDeploy (`https://rapichonta-2bb49.containers.snapdeploy.app/api/v1`):
+El workflow `App Android` (`.github/workflows/app-android.yml`) compila un APK apuntando al entorno de prueba en Render (`https://rapichonta.onrender.com/api/v1`):
 
 - En cada push a `develop` que toque `app/`, el APK queda en la pre-release **app-develop** (Releases del repositorio): se descarga e instala desde el teléfono.
 - En cada PR que toque `app/`, el APK queda como artefacto del run (pestaña Actions → el run → Artifacts).
@@ -51,7 +51,7 @@ El APK está firmado con la clave de debug: sirve para probar, no para publicar 
 
 ## Huawei
 
-El mapa usa `flutter_map` con teselas de OpenStreetMap y la ubicación usa `geolocator`, que funciona con el `LocationManager` de Android cuando no hay Google Play Services. Así la misma APK se publica en Google Play y en Huawei AppGallery. Las notificaciones push van por un canal intercambiable (`lib/features/notifications`): FCM en teléfonos con Google y Huawei Push Kit en los que no lo tienen. Firebase se configura con `--dart-define=FIREBASE_*` (sin `google-services.json`) y Huawei con `agconnect-services.json` y `--dart-define=HMS_PUSH_ENABLED=true`; ver "Notificaciones push" en `Docs/11-despliegue-snapdeploy.md`. El ícono de la barra (`ic_stat_rapichonta`) lo genera `Docs/marca/generar_icono_aviso.py`.
+El mapa usa `flutter_map` con teselas de OpenStreetMap y la ubicación usa `geolocator`, que funciona con el `LocationManager` de Android cuando no hay Google Play Services. Así la misma APK se publica en Google Play y en Huawei AppGallery. Las notificaciones push van por un canal intercambiable (`lib/features/notifications`): FCM en teléfonos con Google y Huawei Push Kit en los que no lo tienen. Firebase se configura con `--dart-define=FIREBASE_*` (sin `google-services.json`) y Huawei con `agconnect-services.json` y `--dart-define=HMS_PUSH_ENABLED=true`; ver "Notificaciones push" en `Docs/11-despliegue-snapdeploy.md` (aplica igual a Render). El ícono de la barra (`ic_stat_rapichonta`) lo genera `Docs/marca/generar_icono_aviso.py`.
 
 ## Pruebas
 

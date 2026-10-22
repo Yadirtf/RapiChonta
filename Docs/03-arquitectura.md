@@ -38,10 +38,10 @@ RapiChonta/
 ├── Docs/         # Esta documentación
 ├── Dockerfile    # Contenedor único (API + web) para SnapDeploy
 ├── start.sh      # Arranque de ese contenedor
-└── render.yaml   # Alternativa: infraestructura en Render
+└── render.yaml   # Entorno de pruebas en Render
 ```
 
-Cada carpeta es un proyecto independiente con sus propias dependencias. En pruebas, el `Dockerfile` de la raíz construye la API y la web en un solo contenedor: la web atiende el puerto público y reenvía `/api/*` a la API interna ([guía](11-despliegue-snapdeploy.md)). `api/` y `web/` conservan su propio `Dockerfile` para desplegarlos por separado cuando haga falta escalar.
+Cada carpeta es un proyecto independiente con sus propias dependencias. En pruebas, el `Dockerfile` de la raíz construye la API y la web en un solo contenedor: la web atiende el puerto público y reenvía `/api/*` a la API interna ([guía](08-despliegue-render.md)). `api/` y `web/` conservan su propio `Dockerfile` para desplegarlos por separado cuando haga falta escalar.
 
 ## Arquitectura limpia
 

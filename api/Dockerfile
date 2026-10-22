@@ -1,5 +1,5 @@
 # Imagen de la API para SnapDeploy (o cualquier plataforma de contenedores).
-# Guía: Docs/11-despliegue-snapdeploy.md
+# Guía: Docs/08-despliegue-render.md
 FROM node:24-bookworm-slim AS build
 WORKDIR /app
 # Prisma necesita OpenSSL para elegir y ejecutar su motor de consultas.

@@ -12,8 +12,8 @@ La documentación del proyecto vive en [`Docs/`](Docs/README.md).
 | [`web/`](web/README.md) | Web para clientes, operadores y administradores | Next.js, Tailwind CSS, MapLibre |
 | [`app/`](app/README.md) | App móvil (Android, iOS, Huawei) | Flutter |
 | [`Docs/`](Docs/README.md) | Documentación del proyecto | Markdown |
-| `Dockerfile`, `start.sh` | Contenedor único (API + web) del entorno de pruebas en SnapDeploy ([guía](Docs/11-despliegue-snapdeploy.md)) | Docker |
-| `render.yaml` | Alternativa: infraestructura en Render | Blueprint |
+| `Dockerfile`, `start.sh` | Contenedor único (API + web) del entorno de pruebas | Docker |
+| `render.yaml` | Entorno de pruebas en Render con base en Neon ([guía](Docs/08-despliegue-render.md)) | Blueprint |
 
 ## Identidad y acceso
 
