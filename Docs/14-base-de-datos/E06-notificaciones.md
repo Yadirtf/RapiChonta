@@ -61,7 +61,7 @@ erDiagram
 | | `invalidated_at` | Se llena cuando el proveedor responde que el token ya no existe, la app envía uno nuevo o se cierra la sesión. Un token vigente por dispositivo y proveedor: índice único parcial `(device_id, push_provider_id) WHERE invalidated_at IS NULL` |
 | | `invalidation_reason_id` | FK `push_token_invalidation_reasons`; se llena junto con `invalidated_at` (CHECK: los dos o ninguno). La fila es inmutable salvo esa única invalidación |
 | `push_token_invalidation_reasons` (sistema) | `code` | `REPLACED` (la app registró otro token), `SIGNED_OUT` (cerró sesión en ese teléfono), `REJECTED_BY_PROVIDER` (FCM/HMS dijo que ya no existe) |
-| `notification_types` (sistema) | `code` | `ORDER_OFFERED`, `OFFER_WITHDRAWN`, `ORDER_STATUS_CHANGED`, `PREPARATION_TIME_REACHED`, `ADJUSTMENT_REQUESTED`, `ADJUSTMENT_RESOLVED`, `INCIDENT_OPENED`, `INCIDENT_RESOLVED`, `DELIVERY_PROOF_PENDING`. Columna extra `is_high_priority boolean` (sonido y prioridad alta en el proveedor) |
+| `notification_types` (sistema) | `code` | `ORDER_OFFERED`, `OFFER_WITHDRAWN`, `ORDER_STATUS_CHANGED`, `PREPARATION_TIME_REACHED`, `ADJUSTMENT_REQUESTED`, `ADJUSTMENT_RESOLVED`, `TRIP_CANCELLED` (E09: al domiciliario, cuando el cliente cancela o no queda nada que comprar), `INCIDENT_OPENED`, `INCIDENT_RESOLVED`, `DELIVERY_PROOF_PENDING`. Columna extra `is_high_priority boolean` (sonido y prioridad alta en el proveedor) |
 | `notifications` | `recipient_user_id` | FK `users` |
 | | `notification_type_id` | FK |
 | | `order_id` | FK `orders`, nulo si no es de un pedido |

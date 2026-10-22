@@ -115,7 +115,7 @@ Resolver (H10.5), en una transacción: llenar `resolution_type_id` y `resolution
 
 `order_cancellations` (1:1 con el pedido): `cancellation_reason_id` y `notes`. Quién y cuándo canceló están en la fila `→ CANCELLED` del historial; un disparador diferido exige que todo pedido cancelado tenga su motivo.
 
-`cancellation_reasons` (**sistema**, porque el programa usa algunos códigos, con nombres en `cancellation_reason_translations`): `CUSTOMER_REQUEST`, `NO_COURIER_AVAILABLE`, `ESTABLISHMENT_CLOSED`, `ALL_ITEMS_UNAVAILABLE`, `CUSTOMER_UNREACHABLE`, `INCIDENT_RESOLUTION`. Columna `is_automatic boolean` para las que usa el sistema.
+`cancellation_reasons` (**sistema**, porque el programa usa algunos códigos; creada en la migración de E09, que es la primera que cancela. Los nombres los traducen la web y la app por código, como los estados, así que no hay tabla de traducciones): `CUSTOMER_REQUEST`, `NO_COURIER_AVAILABLE`, `ESTABLISHMENT_CLOSED`, `ALL_ITEMS_UNAVAILABLE`, `CUSTOMER_UNREACHABLE`, `INCIDENT_RESOLUTION`. Columna `is_automatic boolean` para las que usa el sistema.
 
 ## Alertas del panel (H10.5, RF-64)
 
