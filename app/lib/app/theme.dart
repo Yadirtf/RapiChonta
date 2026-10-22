@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Mismos tokens de marca que la web (web/src/app/globals.css).
 class AppColors {
@@ -17,16 +18,33 @@ class AppColors {
 }
 
 class AppTheme {
+  /// Barras del sistema sobre fondo claro, aunque el teléfono esté en modo oscuro.
+  static const systemBars = SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.dark,
+    statusBarBrightness: Brightness.light,
+    systemNavigationBarColor: AppColors.surface,
+    systemNavigationBarIconBrightness: Brightness.dark,
+  );
+
   static ThemeData get light => ThemeData(
         useMaterial3: true,
+        brightness: Brightness.light,
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.brand,
+          brightness: Brightness.light,
           primary: AppColors.brand,
           onPrimary: AppColors.ink,
           surface: AppColors.surface,
         ),
         scaffoldBackgroundColor: AppColors.surface,
-        appBarTheme: const AppBarTheme(backgroundColor: AppColors.surface, foregroundColor: AppColors.ink, elevation: 0, scrolledUnderElevation: 0),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: AppColors.surface,
+          foregroundColor: AppColors.ink,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          systemOverlayStyle: systemBars,
+        ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white,

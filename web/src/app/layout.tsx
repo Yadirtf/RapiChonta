@@ -16,7 +16,12 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: "RapiChonta", description: t("description") };
 }
 
-export const viewport: Viewport = { themeColor: "#14121F" };
+/*
+ * La paleta de marca es una sola (clara, con el menú lateral oscuro). `only light` evita que el modo oscuro del
+ * sistema o del navegador (Chrome/Edge/Samsung Internet en Android y Windows) "oscurezca" la página a su manera:
+ * esa inversión automática deja textos blancos sobre fondos claros y botones apagados.
+ */
+export const viewport: Viewport = { themeColor: "#14121F", colorScheme: "only light" };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const locale = await getLocale();

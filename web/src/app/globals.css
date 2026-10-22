@@ -20,6 +20,21 @@
   --font-display: var(--font-bricolage), var(--font-jakarta), ui-sans-serif, sans-serif;
 }
 
+/* Ver `viewport` en layout.tsx: controles nativos (selectores, casillas, barras de desplazamiento) siempre claros. */
+:root {
+  color-scheme: only light;
+}
+
+/*
+ * La lista desplegable de un <select> hereda el color del texto: en el menú lateral oscuro (selector de municipio)
+ * salía blanco sobre la lista blanca de Windows/Android.
+ */
+option,
+optgroup {
+  background-color: white;
+  color: var(--color-ink);
+}
+
 body {
   background: var(--color-surface);
   color: var(--color-ink);
