@@ -6,9 +6,9 @@ class GetNearbyEstablishments {
 
   final EstablishmentRepository _repository;
 
-  /// Sin categorías elegidas se muestran todas.
-  Future<List<Establishment>> call(GeoPoint origin, Iterable<String> categories) async {
-    final result = await _repository.findNearby(origin: origin, categories: categories.toList());
+  /// Sin categorías elegidas se muestran todas. `radiusMeters` crece cuando el cliente está a las afueras.
+  Future<List<Establishment>> call(GeoPoint origin, Iterable<String> categories, {int radiusMeters = 3000}) async {
+    final result = await _repository.findNearby(origin: origin, categories: categories.toList(), radiusMeters: radiusMeters);
     return [...result]..sort((a, b) => a.distanceMeters.compareTo(b.distanceMeters));
   }
 }

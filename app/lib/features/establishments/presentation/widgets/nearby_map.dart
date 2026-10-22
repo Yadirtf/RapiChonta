@@ -11,7 +11,7 @@ import '../../../business/presentation/coverage_layers.dart';
 import '../../domain/entities/establishment.dart';
 import 'category_icon.dart';
 
-class NearbyMap extends StatelessWidget {
+class NearbyMap extends StatefulWidget {
   const NearbyMap({super.key, required this.center, required this.establishments, required this.onSelect, this.selectedId, this.coverage = const []});
 
   final GeoPoint center;
@@ -23,9 +23,51 @@ class NearbyMap extends StatelessWidget {
   final List<CoverageArea> coverage;
 
   @override
+  State<NearbyMap> createState() => _NearbyMapState();
+}
+
+class _NearbyMapState extends State<NearbyMap> {
+  final _controller = MapController();
+  bool _ready = false;
+  GeoPoint? _framedFor;
+
+  @override
+  void didUpdateWidget(NearbyMap old) {
+    super.didUpdateWidget(old);
+    if (old.center != widget.center) _framedFor = null;
+    _frameNearest();
+  }
+
+  /// A las afueras, el local más cercano puede quedar fuera de la vista con zoom 15: se encuadra junto con
+  /// el cliente para que no parezca que no hay locales. Una vez por ubicación, para no pelear con el usuario.
+  void _frameNearest() {
+    final nearest = widget.establishments.firstOrNull;
+    if (!_ready || nearest == null || _framedFor == widget.center) return;
+    _framedFor = widget.center;
+    final point = LatLng(nearest.location.lat, nearest.location.lng);
+    if (_controller.camera.visibleBounds.contains(point)) return;
+    _controller.fitCamera(
+      CameraFit.coordinates(
+        coordinates: [LatLng(widget.center.lat, widget.center.lng), point],
+        padding: const EdgeInsets.all(72),
+        maxZoom: 15,
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final center = widget.center;
     return FlutterMap(
-      options: MapOptions(initialCenter: LatLng(center.lat, center.lng), initialZoom: 15),
+      mapController: _controller,
+      options: MapOptions(
+        initialCenter: LatLng(center.lat, center.lng),
+        initialZoom: 15,
+        onMapReady: () {
+          _ready = true;
+          _frameNearest();
+        },
+      ),
       children: [
         TileLayer(
           urlTemplate: Env.mapTilesUrl,
@@ -33,7 +75,7 @@ class NearbyMap extends StatelessWidget {
           // Mismas calles de OSM, con colores más cálidos y vivos (en línea con la paleta de la web).
           tileBuilder: (context, tile, _) => ColorFiltered(colorFilter: brandTint, child: tile),
         ),
-        ...coverageLayers(coverage),
+        ...coverageLayers(widget.coverage),
         MarkerLayer(
           markers: [
             Marker(
@@ -48,7 +90,7 @@ class NearbyMap extends StatelessWidget {
                 ),
               ),
             ),
-            for (final e in establishments)
+            for (final e in widget.establishments)
               Marker(
                 point: LatLng(e.location.lat, e.location.lng),
                 width: 48,
@@ -57,7 +99,7 @@ class NearbyMap extends StatelessWidget {
                 child: Semantics(
                   button: true,
                   label: e.name,
-                  child: GestureDetector(onTap: () => onSelect(e), child: PlacePin(icon: e.categoryIcon, open: e.acceptsOrders, selected: e.id == selectedId)),
+                  child: GestureDetector(onTap: () => widget.onSelect(e), child: PlacePin(icon: e.categoryIcon, open: e.acceptsOrders, selected: e.id == widget.selectedId)),
                 ),
               ),
           ],

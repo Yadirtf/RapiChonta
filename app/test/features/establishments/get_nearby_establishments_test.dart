@@ -5,10 +5,12 @@ import 'package:rapichonta/features/establishments/domain/usecases/get_nearby_es
 
 class _FakeRepository implements EstablishmentRepository {
   List<String>? lastCategories;
+  int? lastRadius;
 
   @override
   Future<List<Establishment>> findNearby({required GeoPoint origin, List<String> categories = const [], int radiusMeters = 3000}) async {
     lastCategories = categories;
+    lastRadius = radiusMeters;
     return const [
       Establishment(id: 'b', name: 'Lejos', category: 'comidas-rapidas', address: '', location: GeoPoint(0, 0), distanceMeters: 900),
       Establishment(id: 'a', name: 'Cerca', category: 'comidas-rapidas', address: '', location: GeoPoint(0, 0), distanceMeters: 100),
@@ -28,5 +30,12 @@ void main() {
     final result = await GetNearbyEstablishments(repository)(const GeoPoint(0, 0), {'comidas-rapidas'});
     expect(result.map((e) => e.id), ['a', 'b']);
     expect(repository.lastCategories, ['comidas-rapidas']);
+    expect(repository.lastRadius, 3000);
+  });
+
+  test('pasa el radio ampliado cuando el cliente está a las afueras', () async {
+    final repository = _FakeRepository();
+    await GetNearbyEstablishments(repository)(const GeoPoint(0, 0), const [], radiusMeters: 11000);
+    expect(repository.lastRadius, 11000);
   });
 }
