@@ -49,6 +49,10 @@ El workflow `App Android` (`.github/workflows/app-android.yml`) compila un APK a
 
 El APK está firmado con la clave de debug: sirve para probar, no para publicar en tiendas.
 
+## IPA de prueba para iPhone (GitHub Actions)
+
+El workflow `App iOS` (`.github/workflows/app-ios.yml`) hace lo mismo en macOS y publica el IPA en la pre-release **app-ios-develop**. Sin cuenta Apple Developer el IPA sale sin firmar y se instala con Sideloadly y un Apple ID gratuito (caduca a 7 días, sin push); con los secrets de firma sale firmado (Ad Hoc o TestFlight). Pasos en "App de iPhone" de `Docs/08-despliegue-render.md`. El ícono es `branding/ios/AppIcon-1024.png`.
+
 ## Huawei
 
 El mapa usa `flutter_map` con teselas de OpenStreetMap y la ubicación usa `geolocator`, que funciona con el `LocationManager` de Android cuando no hay Google Play Services. Así la misma APK se publica en Google Play y en Huawei AppGallery. Las notificaciones push van por un canal intercambiable (`lib/features/notifications`): FCM en teléfonos con Google y Huawei Push Kit en los que no lo tienen. Firebase se configura con `--dart-define=FIREBASE_*` (sin `google-services.json`) y Huawei con `agconnect-services.json` y `--dart-define=HMS_PUSH_ENABLED=true`; ver "Notificaciones push" en `Docs/11-despliegue-snapdeploy.md` (aplica igual a Render). El ícono de la barra (`ic_stat_rapichonta`) lo genera `Docs/marca/generar_icono_aviso.py`.
