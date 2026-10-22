@@ -8,6 +8,8 @@ export interface CourierStatus {
   availableSince: Date | null;
   /** El pedido en curso (uno a la vez) y su estado. */
   activeOrder: { code: string; status: string } | null;
+  /** La lectura más reciente guardada (hora del servidor): dice si el panel lo está viendo. */
+  lastLocationAt: Date | null;
 }
 
 export interface LocationReading {

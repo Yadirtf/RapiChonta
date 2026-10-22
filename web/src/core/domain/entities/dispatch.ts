@@ -48,19 +48,30 @@ export interface DispatchBoardSnapshot {
   orders: DispatchOrder[];
 }
 
+/** Domiciliario en turno (Disponible y sin pedido). Sin `locationFresh` no se le puede ofrecer. */
 export interface DispatchCourier extends PersonName {
   userId: string;
   phone: string | null;
   vehicle: { type: string; plate: string | null } | null;
-  latitude: number;
-  longitude: number;
+  /** La última lectura recibida; nulas si nunca reportó. */
+  latitude: number | null;
+  longitude: number | null;
   accuracyM: number | null;
-  lastSeenAt: string;
+  lastSeenAt: string | null;
+  /** Reportó ubicación en los últimos `freshSeconds`: se ve en el mapa y se le puede ofrecer. */
+  locationFresh: boolean;
   availableSince: string;
-  /** Al local del pedido elegido. */
+  /** Al local del pedido elegido (solo con ubicación reciente). */
   distanceMeters: number | null;
   hasPendingOffer: boolean;
   declined: boolean;
+}
+
+/** Con ubicación reciente: está en el mapa y se le puede ofrecer. */
+export type LocatedCourier = DispatchCourier & { latitude: number; longitude: number; lastSeenAt: string };
+
+export function isLocated(courier: DispatchCourier): courier is LocatedCourier {
+  return courier.locationFresh && courier.latitude !== null && courier.longitude !== null && courier.lastSeenAt !== null;
 }
 
 export interface StaffActivityEntry {

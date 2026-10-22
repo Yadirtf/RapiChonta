@@ -8,6 +8,8 @@ export const DispatchErrors = {
   /** SPECIFIC sin domiciliario, o un domiciliario que no está disponible ahora. */
   courierRequired: () => new DomainError('Elige a qué domiciliario enviarlo', 'COURIER_REQUIRED'),
   courierNotAvailable: () => new ConflictError('COURIER_NOT_AVAILABLE', 'Ese domiciliario ya no está disponible'),
+  /** Está en turno pero su teléfono no reporta ubicación hace rato. */
+  courierLocationStale: () => new ConflictError('COURIER_LOCATION_STALE', 'Ese domiciliario no está enviando su ubicación'),
   /** Ya tiene una oferta pendiente de este pedido. */
   offerAlreadyPending: () => new ConflictError('OFFER_ALREADY_PENDING', 'Ese domiciliario ya tiene este pedido en pantalla'),
   noCouriersAvailable: () => new ConflictError('NO_COURIERS_AVAILABLE', 'No hay domiciliarios disponibles en este momento'),

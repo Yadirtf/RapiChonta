@@ -82,6 +82,8 @@ export class CourierController {
     return this.availability.reportLocations(
       principal,
       body.readings.map((r) => ({ latitude: r.latitude, longitude: r.longitude, accuracyM: r.accuracyM, recordedAt: new Date(r.recordedAt), mocked: r.mocked })),
+      new Date(),
+      body.sentAt ? new Date(body.sentAt) : undefined,
     );
   }
 

@@ -42,21 +42,25 @@ export const DispatchPresenter = {
     ...person(c.name),
     phone: c.phoneE164,
     vehicle: c.vehicle,
-    ...geo(c.location),
+    latitude: c.location?.latitude ?? null,
+    longitude: c.location?.longitude ?? null,
     accuracyM: c.accuracyM,
-    lastSeenAt: c.lastSeenAt.toISOString(),
+    lastSeenAt: c.lastSeenAt?.toISOString() ?? null,
+    locationFresh: c.locationFresh,
     availableSince: c.availableSince.toISOString(),
     distanceMeters: c.distanceMeters,
     hasPendingOffer: c.hasPendingOffer,
     declined: c.declined,
   }),
 
-  courierStatus: (s: CourierStatus) => ({
+  courierStatus: (s: CourierStatus & { locationFresh: boolean }) => ({
     verified: s.verified,
     locationConsentPending: s.locationConsentPending,
     available: s.availableSince !== null,
     availableSince: s.availableSince?.toISOString() ?? null,
     activeOrder: s.activeOrder,
+    lastLocationAt: s.lastLocationAt?.toISOString() ?? null,
+    locationFresh: s.locationFresh,
   }),
 
   courierOffer: (o: CourierOffer) => ({

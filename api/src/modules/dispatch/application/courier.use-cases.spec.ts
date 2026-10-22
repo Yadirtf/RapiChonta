@@ -46,6 +46,46 @@ describe('CourierAvailabilityUseCase', () => {
     expect(await codeOf(useCase.reportLocations(courierPrincipal, [{ latitude: 1, longitude: -76, recordedAt: now }], now))).toBe('LOCATION_NOT_EXPECTED');
   });
 
+  it('corrige la hora de un teléfono con el reloj mal puesto usando la hora de envío', async () => {
+    const desk = new MemoryCourierDesk();
+    const useCase = new CourierAvailabilityUseCase(desk, geofence());
+    const now = new Date('2026-10-21T12:00:00Z');
+    // Reloj 5 horas atrasado (hora local tomada como UTC): sin corregir, el panel la vería vieja.
+    const behind = await useCase.reportLocations(
+      courierPrincipal,
+      [
+        { latitude: 1.03, longitude: -76.61, recordedAt: new Date('2026-10-21T06:59:50Z') },
+        { latitude: 1.03, longitude: -76.61, recordedAt: new Date('2026-10-21T06:59:58Z') },
+      ],
+      now,
+      new Date('2026-10-21T07:00:00Z'),
+    );
+    expect(behind.accepted).toBe(2);
+    expect(desk.recorded.map((r) => r.recordedAt.toISOString())).toEqual(['2026-10-21T11:59:50.000Z', '2026-10-21T11:59:58.000Z']);
+    // Adelantado: sin corregir se descartaría como "del futuro".
+    desk.recorded = [];
+    desk.last = null;
+    const ahead = await useCase.reportLocations(
+      courierPrincipal,
+      [{ latitude: 1.03, longitude: -76.61, recordedAt: new Date('2026-10-21T16:59:55Z') }],
+      now,
+      new Date('2026-10-21T17:00:00Z'),
+    );
+    expect(ahead.accepted).toBe(1);
+    expect(desk.recorded[0].recordedAt.toISOString()).toBe('2026-10-21T11:59:55.000Z');
+  });
+
+  it('el estado dice si la ubicación le está llegando al panel', async () => {
+    const desk = new MemoryCourierDesk();
+    const useCase = new CourierAvailabilityUseCase(desk, geofence());
+    const now = new Date('2026-10-21T12:00:00Z');
+    expect((await useCase.status(courierPrincipal, now)).locationFresh).toBe(false);
+    desk.current = { ...desk.current!, lastLocationAt: new Date('2026-10-21T11:59:00Z') };
+    expect((await useCase.status(courierPrincipal, now)).locationFresh).toBe(true);
+    desk.current = { ...desk.current!, lastLocationAt: new Date('2026-10-21T11:57:00Z') };
+    expect((await useCase.status(courierPrincipal, now)).locationFresh).toBe(false);
+  });
+
   it('descarta lecturas simuladas y saltos imposibles; con lecturas válidas revisa las geocercas', async () => {
     const desk = new MemoryCourierDesk();
     const probe = geofence({ orderCode: 'RC-7K3M', status: 'AT_ESTABLISHMENT' });

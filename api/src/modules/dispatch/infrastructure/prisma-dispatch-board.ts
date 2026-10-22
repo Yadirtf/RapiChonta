@@ -197,10 +197,11 @@ export class PrismaDispatchBoard extends DispatchBoard {
         phone_e164: string | null;
         vehicle_type: string | null;
         plate: string | null;
-        lat: number;
-        lng: number;
+        lat: number | null;
+        lng: number | null;
         accuracy_m: number | null;
-        recorded_at: Date;
+        recorded_at: Date | null;
+        fresh: boolean;
         available_since: Date;
         distance: number | null;
         pending: boolean;
@@ -209,6 +210,7 @@ export class PrismaDispatchBoard extends DispatchBoard {
     >`
       SELECT c.user_id, p.given_names, p.family_names, pp.phone_e164, vt.code AS vehicle_type, v.plate,
              ST_Y(l.location::geometry) AS lat, ST_X(l.location::geometry) AS lng, l.accuracy_m::float8 AS accuracy_m, l.recorded_at,
+             coalesce(l.recorded_at > now() - make_interval(secs => ${freshSeconds}), false) AS fresh,
              av.started_at AS available_since,
              ST_Distance(l.location, e.location)::float8 AS distance,
              EXISTS (SELECT 1 FROM v_live_offers lo JOIN order_offer_recipients r ON r.order_offer_id = lo.order_offer_id
@@ -219,8 +221,9 @@ export class PrismaDispatchBoard extends DispatchBoard {
                      WHERE oo.order_id = ${order}::uuid AND r.courier_user_id = c.user_id) AS declined
       FROM v_dispatchable_couriers c
       JOIN v_open_availability av ON av.courier_user_id = c.user_id
-      CROSS JOIN LATERAL (SELECT location, accuracy_m, recorded_at FROM courier_location_pings lp
-                          WHERE lp.courier_user_id = c.user_id ORDER BY lp.recorded_at DESC LIMIT 1) l
+      LEFT JOIN LATERAL (SELECT location, accuracy_m, recorded_at FROM courier_location_pings lp
+                         WHERE lp.courier_user_id = c.user_id
+                         ORDER BY lp.recorded_at DESC LIMIT 1) l ON true
       JOIN users u ON u.id = c.user_id
       JOIN people p ON p.id = u.person_id
       LEFT JOIN person_phones pp ON pp.person_id = p.id AND pp.is_primary
@@ -230,19 +233,20 @@ export class PrismaDispatchBoard extends DispatchBoard {
       LEFT JOIN orders o ON o.id = ${order}::uuid
       LEFT JOIN establishments e ON e.id = o.establishment_id
       WHERE c.municipality_id = ${municipalityId}
-        AND l.recorded_at > now() - make_interval(secs => ${freshSeconds})
         AND NOT EXISTS (SELECT 1 FROM order_assignments x WHERE x.courier_user_id = c.user_id AND x.released_at IS NULL)
-      ORDER BY distance NULLS LAST, l.recorded_at DESC`;
+      ORDER BY fresh DESC, distance NULLS LAST, l.recorded_at DESC NULLS LAST, av.started_at`;
     return rows.map((r) => ({
       userId: r.user_id,
       name: name(r.given_names, r.family_names),
       phoneE164: r.phone_e164,
       vehicle: r.vehicle_type ? { type: r.vehicle_type, plate: r.plate } : null,
-      location: point(r.lat, r.lng),
+      location: r.lat === null || r.lng === null ? null : point(r.lat, r.lng),
       accuracyM: r.accuracy_m,
       lastSeenAt: r.recorded_at,
+      locationFresh: r.fresh,
       availableSince: r.available_since,
-      distanceMeters: r.distance === null ? null : Math.round(r.distance),
+      // Una distancia desde una ubicación vieja engaña: solo se da con lectura reciente.
+      distanceMeters: r.distance === null || !r.fresh ? null : Math.round(r.distance),
       hasPendingOffer: r.pending,
       declined: r.declined,
     }));

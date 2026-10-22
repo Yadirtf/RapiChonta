@@ -34,6 +34,14 @@ describe('SendOfferUseCase', () => {
     expect(board.couriersAsked[0]).toEqual({ municipalityId: 1, orderId: 'pedido-1' });
   });
 
+  it('a todos: no incluye a quien está en turno sin ubicación reciente', async () => {
+    const { board, send } = setup();
+    board.available = [availableCourier('ana'), availableCourier('beto', { locationFresh: false, location: null, lastSeenAt: null })];
+    await send.execute(operator(), 'RC-7K3M', { mode: 'BROADCAST' });
+    expect(board.created[0].courierUserIds).toEqual(['ana']);
+    expect(await codeOf(send.execute(operator(), 'RC-7K3M', { mode: 'SPECIFIC', courierUserId: 'beto' }))).toBe('COURIER_LOCATION_STALE');
+  });
+
   it('un pedido de otro municipio no existe para el operador con alcance', async () => {
     const { send } = setup();
     expect(await codeOf(send.execute(operator(2), 'RC-7K3M', { mode: 'BROADCAST' }))).toBe('ORDER_NOT_FOUND');

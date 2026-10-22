@@ -149,6 +149,7 @@
     "ORDER_NOT_DISPATCHABLE": "This order is no longer looking for a courier.",
     "COURIER_REQUIRED": "Choose which courier to send it to.",
     "COURIER_NOT_AVAILABLE": "That courier is no longer available. We refreshed the list.",
+    "COURIER_LOCATION_STALE": "That courier is on shift but their phone is not sending its location. Ask them to check the GPS.",
     "OFFER_ALREADY_PENDING": "That courier already has this order on screen.",
     "NO_COURIERS_AVAILABLE": "There are no available couriers to call right now.",
     "OFFER_NOT_FOUND": "We couldn't find that offer.",
@@ -1392,6 +1393,10 @@
     "noCouriersBody": "Couriers show up here when they switch on availability in the app and report their location within the last {minutes} min.",
     "closest": "Closest",
     "seenAgo": "Seen {time} ago",
+    "silentTitle": "{count} on shift without location",
+    "silentBody": "They switched on availability, but their phone is not sending its location. They can't get offers until it comes back: call them to check GPS, signal or battery saver.",
+    "lastLocationAgo": "Last location {time} ago",
+    "neverLocated": "No location sent yet",
     "vehicle": {
       "MOTORCYCLE": "Motorbike",
       "BICYCLE": "Bike",

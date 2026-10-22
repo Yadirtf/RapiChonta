@@ -7,7 +7,14 @@ import '../../establishments/domain/entities/establishment.dart';
 
 /// GET /courier/status.
 class CourierStatus extends Equatable {
-  const CourierStatus({required this.verified, required this.locationConsentPending, required this.availableSince, this.activeOrder});
+  const CourierStatus({
+    required this.verified,
+    required this.locationConsentPending,
+    required this.availableSince,
+    this.activeOrder,
+    this.lastLocationAt,
+    this.locationFresh = false,
+  });
 
   final bool verified;
   final bool locationConsentPending;
@@ -16,13 +23,19 @@ class CourierStatus extends Equatable {
   /// El pedido que lleva ahora (código y estado), o null.
   final ({String code, String status})? activeOrder;
 
+  /// La última ubicación que recibió la API (hora del servidor).
+  final DateTime? lastLocationAt;
+
+  /// La API recibió su ubicación hace poco: el panel lo ve y le puede ofrecer pedidos.
+  final bool locationFresh;
+
   bool get available => availableSince != null;
 
   /// Mientras esté disponible o con un pedido, el teléfono reporta su ubicación (H08.1, H08.3).
   bool get tracking => available || activeOrder != null;
 
   @override
-  List<Object?> get props => [verified, locationConsentPending, availableSince, activeOrder];
+  List<Object?> get props => [verified, locationConsentPending, availableSince, activeOrder, lastLocationAt, locationFresh];
 }
 
 class TripLine extends Equatable {

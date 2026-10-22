@@ -47,7 +47,8 @@ const code = () => `RC-${Array.from({ length: 6 }, () => '0123456789ABCDEFGHJKMN
 const VILLAGARZON = Prisma.sql`(SELECT id FROM municipalities WHERE dane_code = '86885')`;
 
 /** Un domiciliario del piloto: verificado (o no), con turno abierto y una lectura reciente a `metros` al norte del centro. */
-async function courier(db: Db, staffId: string, label: string, options: { verified?: boolean; meters?: number } = {}) {
+/** `pingSecondsAgo`: hace cuánto fue su última lectura (por defecto ahora); null, ninguna. */
+async function courier(db: Db, staffId: string, label: string, options: { verified?: boolean; meters?: number; pingSecondsAgo?: number | null } = {}) {
   const [person] = await db.$queryRaw<{ id: string }[]>`INSERT INTO people (given_names) VALUES (${label}) RETURNING id`;
   const [user] = await db.$queryRaw<{ id: string }[]>`
     INSERT INTO users (person_id, status_id) VALUES (${person.id}::uuid, ${id('user_statuses', 'ACTIVE')}) RETURNING id`;
@@ -66,9 +67,12 @@ async function courier(db: Db, staffId: string, label: string, options: { verifi
   }
   await db.$executeRaw`INSERT INTO courier_availability_periods (courier_user_id) VALUES (${user.id}::uuid)`;
   const lat = 1.0294 + (options.meters ?? 200) / 111_320;
-  await db.$executeRaw`
-    INSERT INTO courier_location_pings (courier_user_id, location, accuracy_m, recorded_at)
-    VALUES (${user.id}::uuid, ST_SetSRID(ST_MakePoint(-76.6165, ${lat}), 4326)::geography, 8, now())`;
+  const ago = options.pingSecondsAgo === undefined ? 0 : options.pingSecondsAgo;
+  if (ago !== null) {
+    await db.$executeRaw`
+      INSERT INTO courier_location_pings (courier_user_id, location, accuracy_m, recorded_at)
+      VALUES (${user.id}::uuid, ST_SetSRID(ST_MakePoint(-76.6165, ${lat}), 4326)::geography, 8, now() - make_interval(secs => ${ago}))`;
+  }
   return user.id;
 }
 
@@ -256,6 +260,33 @@ describe('Despacho en PostgreSQL (datos confirmados)', () => {
       expect(audit.map((e) => e.action)).toContain('ORDER_OFFERED');
     } finally {
       await cleanUp(s, [ana, beto]);
+    }
+  });
+
+  it('en turno sin ubicación reciente: aparece al final, sin distancia y marcado para que el panel no le ofrezca', async () => {
+    const { s, ana, beto, caro } = await committed(async (tx) => {
+      const s = await orderScenario(tx);
+      return {
+        s,
+        ana: await courier(tx, s.staffId, 'Ana', { meters: 900 }),
+        beto: await courier(tx, s.staffId, 'Beto', { meters: 100, pingSecondsAgo: 600 }),
+        caro: await courier(tx, s.staffId, 'Caro', { pingSecondsAgo: null }),
+      };
+    });
+    try {
+      const [{ id: municipalityId }] = await prisma.$queryRaw<{ id: number }[]>`SELECT id FROM municipalities WHERE dane_code = '86885'`;
+      const listed = (await board.couriers(municipalityId, 120, s.orderId)).filter((c) => [ana, beto, caro].includes(c.userId));
+      expect(listed.map((c) => [c.userId, c.locationFresh, c.distanceMeters === null])).toEqual([
+        [ana, true, false],
+        [beto, false, true],
+        [caro, false, true],
+      ]);
+      expect(listed[2]).toMatchObject({ location: null, lastSeenAt: null });
+      const status = await desk.status(caro);
+      expect(status?.lastLocationAt).toBeNull();
+      expect((await desk.status(beto))?.lastLocationAt).toBeInstanceOf(Date);
+    } finally {
+      await cleanUp(s, [ana, beto, caro]);
     }
   });
 

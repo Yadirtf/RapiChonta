@@ -35,11 +35,19 @@ export class PrismaCourierDesk extends CourierDesk {
 
   async status(courierUserId: string): Promise<CourierStatus | null> {
     const [row] = await this.prisma.$queryRaw<
-      { verified: boolean; consent_pending: boolean; available_since: Date | null; order_code: string | null; order_status: string | null }[]
+      {
+        verified: boolean;
+        consent_pending: boolean;
+        available_since: Date | null;
+        order_code: string | null;
+        order_status: string | null;
+        last_location_at: Date | null;
+      }[]
     >`
       SELECT vs.can_receive_offers AS verified,
              EXISTS (SELECT 1 FROM v_pending_consents pc WHERE pc.user_id = cp.user_id AND pc.document_type_code = ${LOCATION_CONSENT}) AS consent_pending,
-             av.started_at AS available_since, o.code AS order_code, os.code AS order_status
+             av.started_at AS available_since, o.code AS order_code, os.code AS order_status,
+             (SELECT max(lp.recorded_at) FROM courier_location_pings lp WHERE lp.courier_user_id = cp.user_id) AS last_location_at
       FROM courier_profiles cp
       JOIN courier_verification_statuses vs ON vs.id = cp.verification_status_id
       LEFT JOIN v_open_availability av ON av.courier_user_id = cp.user_id
@@ -53,6 +61,7 @@ export class PrismaCourierDesk extends CourierDesk {
           locationConsentPending: row.consent_pending,
           availableSince: row.available_since,
           activeOrder: row.order_code && row.order_status ? { code: row.order_code, status: row.order_status } : null,
+          lastLocationAt: row.last_location_at,
         }
       : null;
   }

@@ -124,18 +124,18 @@ Si **todos** los destinatarios dicen "No puedo" antes del plazo, el pedido vuelv
 
 ## Domiciliarios cercanos (H07.2, RF-31)
 
-Todos los disponibles, verificados y libres, ordenados por cercanía al local (el mapa los muestra todos):
+Todos los disponibles, verificados y libres. Los que reportaron ubicación en los últimos 2 minutos (`fresca`) van primero, por cercanía al local, y son los únicos que salen en el mapa y a los que se puede ofrecer. Los demás también se listan, aparte y sin botón de envío ("en turno sin ubicación"), con la hora de su última lectura o "aún no envía ubicación": así el operador sabe que activaron Disponible pero su teléfono no reporta, y puede llamarlos. Ofrecerle a uno de ellos responde `COURIER_LOCATION_STALE`.
 
 ```sql
-SELECT c.user_id, ST_Distance(l.location, e.location) AS distancia
+SELECT c.user_id, l.recorded_at > now() - interval '2 minutes' AS fresca,
+       ST_Distance(l.location, e.location) AS distancia
 FROM v_dispatchable_couriers c
 JOIN v_open_availability a ON a.courier_user_id = c.user_id      -- E08
-JOIN v_courier_last_location l ON l.courier_user_id = c.user_id  -- E08
+LEFT JOIN v_courier_last_location l ON l.courier_user_id = c.user_id  -- E08
 JOIN establishments e ON e.id = :establecimiento
-WHERE l.recorded_at > now() - interval '2 minutes'
-  AND NOT EXISTS (SELECT 1 FROM order_assignments x
+WHERE NOT EXISTS (SELECT 1 FROM order_assignments x
                   WHERE x.courier_user_id = c.user_id AND x.released_at IS NULL)
-ORDER BY distancia;
+ORDER BY fresca DESC, distancia;
 ```
 
 ## Auditoría del personal (H07.5, RNF-07)

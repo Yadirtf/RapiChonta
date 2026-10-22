@@ -35,7 +35,11 @@ class CourierRepositoryImpl implements CourierRepository {
 
   @override
   Future<({int accepted, ({String orderCode, String status})? arrival})> reportLocations(List<LocationReading> readings) => _call(() async {
-        final response = await _authed.post<Map<String, dynamic>>('/courier/locations', data: {'readings': [for (final r in readings) r.toJson()]});
+        final response = await _authed.post<Map<String, dynamic>>('/courier/locations', data: {
+          'readings': [for (final r in readings) r.toJson()],
+          // La API compara esta hora con la suya y corrige la de cada lectura si el reloj está mal puesto.
+          'sentAt': DateTime.now().toUtc().toIso8601String(),
+        });
         final json = response.data ?? const {};
         final arrival = json['arrival'] as Map<String, dynamic>?;
         return (
@@ -126,6 +130,8 @@ CourierStatus statusFromJson(Map<String, dynamic> json) {
     locationConsentPending: json['locationConsentPending'] as bool? ?? false,
     availableSince: _date(json['availableSince']),
     activeOrder: active == null ? null : (code: active['code'] as String, status: active['status'] as String),
+    lastLocationAt: _date(json['lastLocationAt']),
+    locationFresh: json['locationFresh'] as bool? ?? false,
   );
 }
 

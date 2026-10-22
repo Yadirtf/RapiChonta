@@ -149,6 +149,7 @@
     "ORDER_NOT_DISPATCHABLE": "Este pedido ya no está buscando domiciliario.",
     "COURIER_REQUIRED": "Elige a qué domiciliario se lo envías.",
     "COURIER_NOT_AVAILABLE": "Ese domiciliario ya no está disponible. Actualizamos la lista.",
+    "COURIER_LOCATION_STALE": "Ese domiciliario está en turno pero su teléfono no está enviando ubicación. Pídele que revise el GPS.",
     "OFFER_ALREADY_PENDING": "Ese domiciliario ya tiene este pedido en su pantalla.",
     "NO_COURIERS_AVAILABLE": "No hay domiciliarios disponibles para llamar en este momento.",
     "OFFER_NOT_FOUND": "No encontramos esa oferta.",
@@ -1392,6 +1393,10 @@
     "noCouriersBody": "Aquí aparecen los domiciliarios que activan su disponibilidad en la app y reportan ubicación en los últimos {minutes} min.",
     "closest": "Más cerca",
     "seenAgo": "Visto hace {time}",
+    "silentTitle": "{count} en turno sin ubicación",
+    "silentBody": "Activaron Disponible, pero su teléfono no está enviando la ubicación. No se les puede ofrecer hasta que vuelva: llámalos para que revisen el GPS, la señal o el ahorro de batería.",
+    "lastLocationAgo": "Última ubicación hace {time}",
+    "neverLocated": "Aún no envía ubicación",
     "vehicle": {
       "MOTORCYCLE": "Moto",
       "BICYCLE": "Bici",
