@@ -125,6 +125,7 @@ export function CouriersView() {
           error={selected ? detail.error : null}
           viewer={account}
           justCreated={selected?.justCreated}
+          municipalities={options.data?.municipalities}
           onClose={() => setSelected(null)}
           onChanged={onChanged}
         />

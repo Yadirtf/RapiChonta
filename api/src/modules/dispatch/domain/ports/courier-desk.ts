@@ -10,6 +10,8 @@ export interface CourierStatus {
   activeOrder: { code: string; status: string } | null;
   /** La lectura más reciente guardada (hora del servidor): dice si el panel lo está viendo. */
   lastLocationAt: Date | null;
+  /** Donde trabaja (su rol COURIER): el despacho de ese municipio es el único que lo ve. */
+  municipality: { id: number; name: string; launched: boolean } | null;
 }
 
 export interface LocationReading {

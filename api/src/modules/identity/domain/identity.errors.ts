@@ -38,6 +38,9 @@ export const IdentityErrors = {
   courierNotFound: () => new NotFoundError('COURIER_NOT_FOUND', 'Domiciliario no encontrado'),
   invalidTransition: () => new ConflictError('INVALID_STATUS_TRANSITION', 'Ese cambio de estado no está permitido'),
   cannotChangeOwnStatus: () => new PermissionDeniedError('CANNOT_CHANGE_OWN_STATUS', 'No puede cambiar el estado de su propia cuenta'),
+  municipalityOutOfScope: () => new PermissionDeniedError('MUNICIPALITY_OUT_OF_SCOPE', 'Solo puede asignar su propio municipio'),
+  /** Su pedido en curso es del municipio actual: se cambia cuando lo termine. */
+  courierBusyElsewhere: () => new ConflictError('COURIER_ON_ACTIVE_ORDER', 'El domiciliario tiene un pedido en curso'),
   municipalityRequired: () => new DomainError('El rol exige municipio', 'MUNICIPALITY_REQUIRED'),
   invalidOption: (field: string) => new DomainError(`Valor no válido para ${field}`, 'INVALID_OPTION', { field }),
   noPassword: () => new DomainError('La cuenta no usa contraseña', 'PASSWORD_NOT_SET'),

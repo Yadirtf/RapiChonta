@@ -165,7 +165,10 @@
     "PURCHASE_AMOUNT_INVALID": "Check the total paid.",
     "RECEIPT_INVALID": "The receipt photo can't be used. Take another one.",
     "CLIENT_EVENT_CONFLICT": "That step was already recorded on another order.",
-    "COURIER_HAS_ACTIVE_ORDER": "Finish your current order before switching to customer mode."
+    "COURIER_HAS_ACTIVE_ORDER": "Finish your current order before switching to customer mode.",
+    "MUNICIPALITY_OUT_OF_SCOPE": "You can only assign your own municipality.",
+    "COURIER_ON_ACTIVE_ORDER": "The courier has an order in progress. Change their municipality once they finish.",
+    "COURIER_MUNICIPALITY_NOT_OPERATING": "The courier's municipality isn't operating yet."
   },
   "auth": {
     "signInTitle": "Sign in with your phone",
@@ -449,7 +452,13 @@
       "VERIFIED": "Verified",
       "SUSPENDED": "Suspended",
       "REJECTED": "Rejected"
-    }
+    },
+    "municipalityNotOperating": "{name} · not operating yet",
+    "municipalityNotOperatingHint": "{name} has no dispatch yet: the courier won't be able to go available or get orders.",
+    "municipalityNotOperatingNotice": "{name} isn't operating yet: this courier can't go available and doesn't show up in any dispatch. Move them to the municipality where they'll work.",
+    "changeMunicipality": "Change",
+    "changeMunicipalityHint": "They only show up in their municipality's dispatch. With an order in progress, change it once they finish.",
+    "saveMunicipality": "Save municipality"
   },
   "staff": {
     "title": "Staff",

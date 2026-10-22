@@ -56,6 +56,7 @@ erDiagram
 | `end_reason_id` | FK `availability_end_reasons` | sí | `TOGGLED_OFF`, `INACTIVITY_TIMEOUT`, `ACCOUNT_DISABLED`. `CHECK ((ended_at IS NULL) = (end_reason_id IS NULL))` |
 
 - **Disponible** = tiene un periodo abierto (`v_open_availability`). **Ocupado** = tiene una asignación vigente ([E07](E07-asignacion.md)). Ninguno de los dos se guarda como booleano.
+- Abrir un periodo exige que el municipio de su rol `COURIER` ya opere (`launched_at` no nulo); si no, la API responde `COURIER_MUNICIPALITY_NOT_OPERATING`. Sin esta regla el domiciliario quedaría "Disponible" en un municipio que ningún despacho mira.
 - Abrir un periodo exige haber aceptado la versión vigente de `COURIER_LOCATION_AUTHORIZATION` ([E01](E01-identidad-y-acceso.md#consentimientos-ley-1581-rf-07)).
 - Las horas trabajadas por día salen de esta tabla (métricas y, más adelante, pagos por turno).
 

@@ -582,6 +582,7 @@
   "errCourierBusy": "You're already carrying an order.",
   "errCourierNotAvailable": "Switch on Available to take orders.",
   "errCourierNotVerified": "Your account isn't verified to receive orders yet.",
+  "errCourierMunicipalityNotOperating": "Your municipality isn't served by RapiChonta yet. Ask the office to assign you the municipality where you'll work.",
   "errLocationConsentRequired": "Accept the location authorization to receive orders.",
   "errLocationNotExpected": "Switch on Available to share your location.",
   "errFileUpload": "We couldn't upload the photo. Please try again."

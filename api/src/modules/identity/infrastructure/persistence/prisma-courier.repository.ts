@@ -4,7 +4,7 @@ import { CatalogIds } from '../../../../shared/infrastructure/prisma/catalog-ids
 import { writeAudit } from '../../../../shared/infrastructure/prisma/audit';
 import { PrismaService } from '../../../../shared/infrastructure/prisma/prisma.service';
 import { COURIER_VERIFICATION, CourierVerificationCode, ROLES, UserStatusCode } from '../../domain/identity.codes';
-import { CourierDetail, CourierRepository, CourierSummary, NewCourier } from '../../domain/ports/courier.repository';
+import { CourierDetail, CourierRepository, CourierSummary, MunicipalityChange, NewCourier } from '../../domain/ports/courier.repository';
 import { AccountWriter } from './account-writer';
 
 interface CourierRow {
@@ -165,6 +165,27 @@ export class PrismaCourierRepository extends CourierRepository {
   async currentVerification(userId: string): Promise<CourierVerificationCode | null> {
     const profile = await this.prisma.courierProfile.findUnique({ where: { userId }, include: { verificationStatus: true } });
     return (profile?.verificationStatus.code as CourierVerificationCode) ?? null;
+  }
+
+  async changeMunicipality(input: { userId: string; municipalityId: number; changedByUserId: string }): Promise<MunicipalityChange> {
+    return this.prisma.$transaction(async (tx) => {
+      // El bloqueo del usuario es el mismo que toma el disparador de user_roles: dos cambios a la vez no se cruzan.
+      await tx.$executeRaw`SELECT 1 FROM users WHERE id = ${input.userId}::uuid FOR UPDATE`;
+      const roleId = await this.ids.of('roles', ROLES.COURIER, tx);
+      const current = await tx.userRole.findFirst({ where: { userId: input.userId, roleId, revokedAt: null } });
+      if (!current) return 'NOT_FOUND';
+      if (current.municipalityId === input.municipalityId) return 'SAME';
+      const [{ busy }] = await tx.$queryRaw<{ busy: boolean }[]>`
+        SELECT EXISTS (SELECT 1 FROM order_assignments WHERE courier_user_id = ${input.userId}::uuid AND released_at IS NULL) AS busy`;
+      if (busy) return 'HAS_ACTIVE_ORDER';
+
+      await tx.userRole.update({ where: { id: current.id }, data: { revokedAt: new Date(), revokedByUserId: input.changedByUserId } });
+      await this.writer.grantRole(tx, { userId: input.userId, role: ROLES.COURIER, municipalityId: input.municipalityId, grantedByUserId: input.changedByUserId });
+      const changes = { role: ROLES.COURIER, fromMunicipalityId: current.municipalityId, municipalityId: input.municipalityId };
+      await writeAudit(tx, { actorUserId: input.changedByUserId, action: 'ROLE_REVOKED', entityTable: 'users', entityId: input.userId, changes });
+      await writeAudit(tx, { actorUserId: input.changedByUserId, action: 'ROLE_GRANTED', entityTable: 'users', entityId: input.userId, changes });
+      return 'CHANGED';
+    });
   }
 
   async isTransitionAllowed(from: CourierVerificationCode, to: CourierVerificationCode): Promise<boolean> {

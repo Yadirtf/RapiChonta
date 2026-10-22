@@ -16,6 +16,7 @@ class RecordingCouriers extends CourierRepository {
   currentVerification = jest.fn();
   isTransitionAllowed = jest.fn();
   changeVerification = jest.fn();
+  changeMunicipality = jest.fn();
 }
 
 class StaticOptions extends IdentityOptionsRepository {
@@ -33,7 +34,7 @@ class StaticOptions extends IdentityOptionsRepository {
       ],
       banks: [{ code: 'BANCOLOMBIA', name: 'Bancolombia' }],
       bankAccountTypes: ['SAVINGS'],
-      municipalities: [{ id: 1, name: 'Villagarzón' }],
+      municipalities: [{ id: 1, name: 'Villagarzón', launched: true }],
     };
   }
 }

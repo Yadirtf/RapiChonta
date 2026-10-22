@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import { ChangeCourierMunicipalityUseCase } from '../../application/use-cases/admin/change-courier-municipality.use-case';
 import { ChangeCourierVerificationUseCase } from '../../application/use-cases/admin/change-courier-verification.use-case';
 import { ChangeUserStatusUseCase } from '../../application/use-cases/admin/change-user-status.use-case';
 import { CreateCourierUseCase } from '../../application/use-cases/admin/create-courier.use-case';
@@ -8,7 +9,7 @@ import { PERMISSIONS, ROLES } from '../../domain/identity.codes';
 import { Principal } from '../../domain/principal';
 import { IdentityOptionsRepository } from '../../domain/ports/identity-options.repository';
 import { CurrentPrincipal, RequirePermissions, Roles } from './decorators/auth.decorators';
-import { ChangeUserStatusDto, ChangeVerificationDto, CreateCourierDto, CreateStaffDto, ListCouriersQueryDto } from './dto/admin.dto';
+import { ChangeCourierMunicipalityDto, ChangeUserStatusDto, ChangeVerificationDto, CreateCourierDto, CreateStaffDto, ListCouriersQueryDto } from './dto/admin.dto';
 
 /** Panel del administrador (H01.3, H01.4). El operador no tiene estos permisos: la API los rechaza. */
 @Controller('admin')
@@ -19,6 +20,7 @@ export class AdminIdentityController {
     private readonly listCouriers: ListCouriersUseCase,
     private readonly getCourier: GetCourierUseCase,
     private readonly changeVerification: ChangeCourierVerificationUseCase,
+    private readonly changeMunicipality: ChangeCourierMunicipalityUseCase,
     private readonly changeUserStatus: ChangeUserStatusUseCase,
     private readonly createStaff: CreateStaffMemberUseCase,
     private readonly listStaff: ListStaffUseCase,
@@ -60,6 +62,19 @@ export class AdminIdentityController {
     @Body() body: ChangeVerificationDto,
   ) {
     await this.changeVerification.execute(principal, { userId, to: body.status, reason: body.reason });
+    return this.getCourier.execute(userId);
+  }
+
+  /** Corrige el municipio del domiciliario (el despacho de cada municipio solo ve a los suyos). */
+  @Post('couriers/:userId/municipality')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermissions(PERMISSIONS.COURIERS_MANAGE)
+  async municipality(
+    @CurrentPrincipal() principal: Principal,
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Body() body: ChangeCourierMunicipalityDto,
+  ) {
+    await this.changeMunicipality.execute(principal, { userId, municipalityId: body.municipalityId });
     return this.getCourier.execute(userId);
   }
 

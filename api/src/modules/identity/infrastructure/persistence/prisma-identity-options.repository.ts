@@ -19,7 +19,7 @@ export class PrismaIdentityOptionsRepository extends IdentityOptionsRepository {
       this.prisma.paymentMethod.findMany({ where: { ...active, isAccountBased: true, isCashOnDelivery: true }, orderBy: bySort }),
       this.prisma.bank.findMany({ where: active, orderBy: bySort }),
       this.prisma.bankAccountType.findMany({ where: active, orderBy: bySort }),
-      this.prisma.municipality.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+      this.prisma.municipality.findMany({ select: { id: true, name: true, launchedAt: true }, orderBy: { name: 'asc' } }),
     ]);
     return {
       documentTypes: documentTypes.map((d) => d.code),
@@ -28,7 +28,9 @@ export class PrismaIdentityOptionsRepository extends IdentityOptionsRepository {
       paymentMethods: paymentMethods.map((m) => ({ code: m.code, requiresBank: m.requiresBank })),
       banks: banks.map((b) => ({ code: b.code, name: b.name })),
       bankAccountTypes: bankAccountTypes.map((t) => t.code),
-      municipalities,
+      municipalities: municipalities
+        .map((m) => ({ id: m.id, name: m.name, launched: m.launchedAt !== null }))
+        .sort((a, b) => Number(b.launched) - Number(a.launched)),
     };
   }
 }

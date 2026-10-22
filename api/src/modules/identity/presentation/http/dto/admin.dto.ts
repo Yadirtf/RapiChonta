@@ -9,6 +9,7 @@ import {
   Length,
   Matches,
   MaxLength,
+  Min,
   MinLength,
   ValidateNested,
 } from 'class-validator';
@@ -112,6 +113,12 @@ export class ListCouriersQueryDto {
   @IsString()
   @MaxLength(60)
   q?: string;
+}
+
+export class ChangeCourierMunicipalityDto {
+  @IsInt()
+  @Min(1)
+  municipalityId: number;
 }
 
 export class ChangeVerificationDto {

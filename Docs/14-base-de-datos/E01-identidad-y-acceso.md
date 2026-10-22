@@ -198,6 +198,7 @@ Semilla de `roles`:
 | `ADMIN` | sí | no | sí | no |
 
 - `municipality_id` es el alcance del rol: un operador de Villagarzón no ve pedidos de otro municipio (RF-98). Es nulo para `CUSTOMER` (puede pedir en cualquier municipio) y para un `ADMIN` global.
+- **Municipio del domiciliario:** es el `municipality_id` de su rol `COURIER` vigente, y decide en qué despacho aparece. Al registrarlo, el panel propone el municipio en el que está trabajando el administrador y marca los que todavía no operan (`launched_at` nulo). Cambiarlo no edita la fila: revoca el rol vigente y otorga uno nuevo en la misma transacción (`ROLE_REVOKED` + `ROLE_GRANTED` en la auditoría), y se niega si tiene un pedido sin liberar (`COURIER_ON_ACTIVE_ORDER`).
 - `granted_by_user_id` es nulo solo cuando el cliente se registra solo (`CUSTOMER`, `is_self_assignable`).
 - **Modo cliente (H08.7, RF-06):** el domiciliario tiene los roles `COURIER` y `CUSTOMER`. Cambiar de modo es abrir el token con otro `sessions.active_role_id`. Ningún endpoint otorga `COURIER` a quien no lo tiene, porque ese rol no es `is_self_assignable` (H01.3).
 - Los guards de NestJS (H01.2) verifican **permisos** del rol activo, cargados en memoria desde `role_permissions`. La regla de propiedad ("un cliente solo ve sus pedidos", respuesta 404) es del caso de uso, no de la base de datos.
@@ -488,6 +489,7 @@ Prefijo `/api/v1`. Los errores responden `{ code, details }` y cada cliente trad
 | `POST /me/consents` | `ACCOUNT_MANAGE_OWN` | Acepta versiones nuevas pendientes |
 | `POST /me/data-deletion` | `ACCOUNT_MANAGE_OWN` | Anonimiza a la persona y cierra todas sus sesiones |
 | `GET/POST /admin/couriers`, `GET /admin/couriers/:id` | `COURIERS_MANAGE` | Alta y consulta de domiciliarios |
+| `POST /admin/couriers/:id/municipality` | `COURIERS_MANAGE` | Cambia el municipio del domiciliario (`MUNICIPALITY_OUT_OF_SCOPE` si un administrador con alcance apunta a otro municipio) |
 | `POST /admin/couriers/:id/verification` | `COURIERS_VERIFY` | Verifica o rechaza al domiciliario |
 | `POST /admin/users/:id/status` | Según el rol de la cuenta | Activa, suspende o desactiva; desactivar revoca las sesiones |
 | `GET/POST /admin/staff` | `USERS_MANAGE_STAFF` (solo administrador) | Operadores y administradores |

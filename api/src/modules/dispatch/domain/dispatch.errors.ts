@@ -7,6 +7,8 @@ export const DispatchErrors = {
   orderNotDispatchable: () => new ConflictError('ORDER_NOT_DISPATCHABLE', 'Este pedido ya no está buscando domiciliario'),
   /** SPECIFIC sin domiciliario, o un domiciliario que no está disponible ahora. */
   courierRequired: () => new DomainError('Elige a qué domiciliario enviarlo', 'COURIER_REQUIRED'),
+  /** Su municipio todavía no opera: el despacho de ese municipio no existe y nadie le ofrecería pedidos. */
+  municipalityNotOperating: () => new ConflictError('COURIER_MUNICIPALITY_NOT_OPERATING', 'Tu municipio todavía no opera en RapiChonta'),
   courierNotAvailable: () => new ConflictError('COURIER_NOT_AVAILABLE', 'Ese domiciliario ya no está disponible'),
   /** Está en turno pero su teléfono no reporta ubicación hace rato. */
   courierLocationStale: () => new ConflictError('COURIER_LOCATION_STALE', 'Ese domiciliario no está enviando su ubicación'),

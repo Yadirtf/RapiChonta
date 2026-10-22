@@ -165,7 +165,10 @@
     "PURCHASE_AMOUNT_INVALID": "Revisa el total pagado.",
     "RECEIPT_INVALID": "La foto de la factura no sirve. Toma otra.",
     "CLIENT_EVENT_CONFLICT": "Ese paso ya se registró en otro pedido.",
-    "COURIER_HAS_ACTIVE_ORDER": "Termina el pedido en curso antes de cambiar a modo cliente."
+    "COURIER_HAS_ACTIVE_ORDER": "Termina el pedido en curso antes de cambiar a modo cliente.",
+    "MUNICIPALITY_OUT_OF_SCOPE": "Solo puedes asignar tu propio municipio.",
+    "COURIER_ON_ACTIVE_ORDER": "El domiciliario tiene un pedido en curso. Cambia su municipio cuando lo termine.",
+    "COURIER_MUNICIPALITY_NOT_OPERATING": "El municipio del domiciliario todavía no opera."
   },
   "auth": {
     "signInTitle": "Entra con tu celular",
@@ -449,7 +452,13 @@
       "VERIFIED": "Verificados",
       "SUSPENDED": "Suspendidos",
       "REJECTED": "Rechazados"
-    }
+    },
+    "municipalityNotOperating": "{name} · aún no opera",
+    "municipalityNotOperatingHint": "En {name} todavía no hay despacho: el domiciliario no podrá activarse ni recibir pedidos.",
+    "municipalityNotOperatingNotice": "{name} todavía no opera: este domiciliario no puede activarse ni aparece en ningún despacho. Cámbialo al municipio donde va a trabajar.",
+    "changeMunicipality": "Cambiar",
+    "changeMunicipalityHint": "Solo aparece en el despacho de su municipio. Si tiene un pedido en curso, se cambia cuando lo termine.",
+    "saveMunicipality": "Guardar municipio"
   },
   "staff": {
     "title": "Personal",
