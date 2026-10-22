@@ -165,7 +165,7 @@ export function SignInDialog({ open, onClose, onSignedIn }: Props) {
               }}
             >
               <div className="grid gap-4 sm:grid-cols-2">
-                <TextField label={t("givenNames")} value={givenNames} onChange={(e) => setGivenNames(e.target.value)} autoComplete="given-name" maxLength={80} required data-autofocus />
+                <TextField label={t("givenNames")} value={givenNames} onChange={(e) => setGivenNames(e.target.value)} autoComplete="given-name" maxLength={80} required autoFocus />
                 <TextField label={t("familyNames")} value={familyNames} onChange={(e) => setFamilyNames(e.target.value)} autoComplete="family-name" maxLength={80} hint={t("optional")} />
               </div>
               <ConsentChecklist
