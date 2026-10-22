@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/router.dart';
 import '../../../../app/theme.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/account.dart';
@@ -109,7 +110,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
   Future<void> _done(Account account) async {
     await ref.read(sessionProvider.notifier).signedIn(account);
     if (!mounted) return;
-    context.go(widget.next ?? '/');
+    context.go(landingAfterSignIn(account, widget.next));
   }
 
   Future<void> _run(Future<void> Function() task) async {

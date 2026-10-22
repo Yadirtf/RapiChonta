@@ -23,6 +23,13 @@ bool _protected(String path) =>
 /// Pantallas del modo domiciliario (E08).
 bool _courier(String path) => path == '/turno' || path.startsWith('/turno/');
 
+/// A dónde llega quien acaba de ingresar. El domiciliario aterriza en su turno aunque haya
+/// entrado desde «Mi cuenta»: el perfil se abre encima del turno, nunca en su lugar.
+String landingAfterSignIn(Account account, String? next) {
+  if (account.activeRole == Role.courier) return next != null && _courier(next) ? next : '/turno';
+  return next ?? '/';
+}
+
 /// Navegador raíz: los avisos push abren rutas y muestran su aviso encima de cualquier pantalla.
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -50,7 +57,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (account != null && account.pendingConsents.isNotEmpty) return path == '/consentimientos' ? null : '/consentimientos';
       if (path == '/consentimientos') return account == null ? '/' : state.uri.queryParameters['next'] ?? '/';
       if (account == null && _protected(path)) return Uri(path: '/ingresar', queryParameters: {'next': state.uri.toString()}).toString();
-      if (account != null && path == '/ingresar') return state.uri.queryParameters['next'] ?? '/';
+      if (account != null && path == '/ingresar') return landingAfterSignIn(account, state.uri.queryParameters['next']);
       // En modo domiciliario el inicio es el turno; fuera de él, el turno no existe (RF-06).
       final courierMode = account?.activeRole == Role.courier;
       if (courierMode && path == '/') return '/turno';
