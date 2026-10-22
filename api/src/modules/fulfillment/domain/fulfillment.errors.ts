@@ -22,6 +22,16 @@ export const FulfillmentErrors = {
   orderNotFound: () => new NotFoundError('ORDER_NOT_FOUND', 'Pedido no encontrado'),
   /** El pedido no está en un paso donde el cliente pueda confirmar o reclamar. */
   deliveryStepNotAllowed: (status: string) => new DomainError('Tu pedido no está en ese paso', 'DELIVERY_STEP_NOT_ALLOWED', { status }),
+  /** E09: lo que mandó el domiciliario no es una consulta válida (`problem`: ver reportProblem). */
+  adjustmentReportInvalid: (problem: string) => new DomainError('Revisa los productos que marcaste', 'ADJUSTMENT_REPORT_INVALID', { problem }),
+  /** E09: alguna línea marcada ya no está en el pedido (se quitó en otra consulta). */
+  adjustmentLinesInvalid: () => new DomainError('Alguno de esos productos ya no está en el pedido', 'ADJUSTMENT_LINES_INVALID'),
+  /** E09: esa línea ya tiene decisión (la tomó otra pestaña o venció el tiempo), o el pedido ya no espera al cliente. */
+  adjustmentClosed: (status: string) => new DomainError('Esa pregunta ya se respondió', 'ADJUSTMENT_CLOSED', { status }),
+  /** E09: esa decisión no es una de las opciones de la línea (p. ej. aceptar precio si no cambió el precio). */
+  adjustmentOptionInvalid: () => new DomainError('Esa opción no aplica a este producto', 'ADJUSTMENT_OPTION_INVALID'),
+  /** E09: el producto elegido para cambiar ya no se puede pedir, o ya está en el pedido. */
+  substituteUnavailable: () => new DomainError('Ese producto ya no se puede pedir: elige otro', 'SUBSTITUTE_UNAVAILABLE'),
   /** El mismo evento de la cola sin señal ya se aplicó a otro pedido (no debería pasar: id generado en el teléfono). */
   eventConflict: () => new ConflictError('CLIENT_EVENT_CONFLICT', 'Ese cambio ya se registró en otro pedido'),
 };

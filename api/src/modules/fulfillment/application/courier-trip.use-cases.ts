@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Principal } from '../../identity/domain/principal';
 import { Notifier } from '../../notifications/application/notifier';
+import { rankSubstitutes, ReportedLine, reportProblem } from '../domain/adjustments';
 import { resolveOccurredAt, TripEvent } from '../domain/event-time';
 import { TRIP_STATUSES, TripStatusCode } from '../domain/fulfillment.codes';
 import { FulfillmentErrors } from '../domain/fulfillment.errors';
-import { CourierTrips, CustomerDeliveries, GeofenceProbe, TripCommand, TripResult } from '../domain/ports/courier-trips';
+import { AdjustmentReader, OrderAdjustments } from '../domain/ports/adjustments';
+import { CourierTrips, CustomerDeliveries, GeofenceProbe, Trip, TripCommand, TripResult } from '../domain/ports/courier-trips';
 import { PreparationSignal } from './preparation-signal';
 
 /** Pesos con hasta dos decimales; tope de 10 dígitos enteros (numeric(12,2)). */
@@ -23,6 +25,8 @@ function refusal(result: Extract<TripResult, { ok: false }>) {
       return FulfillmentErrors.proofTooEarly(result.availableAt ?? new Date());
     case 'PROOF':
       return FulfillmentErrors.proofInvalid();
+    case 'LINES':
+      return FulfillmentErrors.adjustmentLinesInvalid();
     default:
       return FulfillmentErrors.stepNotAllowed(result.status);
   }
@@ -46,10 +50,28 @@ export class CourierTripUseCase {
     private readonly trips: CourierTrips,
     private readonly notifier: Notifier,
     private readonly preparation: PreparationSignal,
+    private readonly adjustments: OrderAdjustments,
+    private readonly reader: AdjustmentReader,
   ) {}
 
-  active(principal: Principal, language: string) {
-    return this.trips.active(principal.userId, language);
+  /** En el local, con la última consulta al cliente: el domiciliario ve la cuenta regresiva y después la decisión. */
+  async active(principal: Principal, language: string): Promise<Trip | null> {
+    const trip = await this.trips.active(principal.userId, language);
+    if (!trip || (trip.status !== TRIP_STATUSES.AT_ESTABLISHMENT && trip.status !== TRIP_STATUSES.AWAITING_CUSTOMER)) return trip;
+    const [latest] = await this.reader.forOrder(trip.orderId, language);
+    return { ...trip, adjustment: latest ?? null };
+  }
+
+  /**
+   * H09.2 "Falta algo / cambió el precio": una sola consulta con todas las líneas con problema. Necesita señal (el
+   * cliente decide en ese momento), así que no sale de la cola sin señal: la hora es siempre la del servidor.
+   */
+  async reportAdjustment(principal: Principal, code: string, event: TripEvent & { lines: ReportedLine[] }, now = new Date()) {
+    return this.step(principal, code, { ...event, queued: false }, [TRIP_STATUSES.AT_ESTABLISHMENT], TRIP_STATUSES.AWAITING_CUSTOMER, now, async (command) => {
+      const problem = reportProblem(event.lines, await this.adjustments.linePrices(command.trip.orderId));
+      if (problem) throw FulfillmentErrors.adjustmentReportInvalid(problem);
+      return this.trips.openAdjustment({ ...command, lines: event.lines });
+    });
   }
 
   /** H08.4: total pagado + foto de la factura → PREPARING (empieza la cuenta de preparación). */
@@ -159,5 +181,46 @@ export class CustomerDeliveryUseCase {
       this.clock.reschedule();
     }
     return { orderCode: code, status: result.status };
+  }
+}
+
+/**
+ * H09.3: el cliente decide sobre lo que falta o cambió de precio, con opciones cerradas y el tiempo corriendo. Con
+ * la última decisión el pedido vuelve a la compra (o se cancela) y el domiciliario recibe el aviso.
+ */
+@Injectable()
+export class CustomerAdjustmentsUseCase {
+  constructor(
+    private readonly adjustments: OrderAdjustments,
+    private readonly notifier: Notifier,
+    private readonly clock: PreparationSignal,
+  ) {}
+
+  async decide(principal: Principal, code: string, adjustmentId: string, input: { decision: string; productVersionId?: string }) {
+    const result = await this.adjustments.decide({ customerUserId: principal.userId, orderCode: code, adjustmentId, ...input });
+    if (!result.ok) {
+      switch (result.reason) {
+        case 'NOT_FOUND':
+          throw FulfillmentErrors.orderNotFound();
+        case 'OPTION':
+          throw FulfillmentErrors.adjustmentOptionInvalid();
+        case 'SUBSTITUTE':
+          throw FulfillmentErrors.substituteUnavailable();
+        default:
+          throw FulfillmentErrors.adjustmentClosed(result.status ?? 'UNKNOWN');
+      }
+    }
+    if (result.resolved) {
+      this.notifier.kick();
+      this.clock.reschedule();
+    }
+    return { orderCode: code, status: result.status, resolved: result.resolved };
+  }
+
+  /** "Cambiar por": primero lo de la misma sección del menú y precio parecido (rankSubstitutes). */
+  async substitutes(principal: Principal, code: string, adjustmentId: string, language: string) {
+    const found = await this.adjustments.substitutes(principal.userId, code, adjustmentId, language);
+    if (!found) throw FulfillmentErrors.adjustmentClosed('UNKNOWN');
+    return rankSubstitutes(found.original, found.candidates, found.inOrder);
   }
 }

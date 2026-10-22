@@ -142,6 +142,7 @@ async function cleanUp(s: { orderId: string; staffId: string }, couriers: string
     await tx.$executeRaw`
       UPDATE order_assignments SET released_at = clock_timestamp(), release_reason_id = ${id('assignment_release_reasons', 'ORDER_CANCELLED')}, released_by_user_id = ${s.staffId}::uuid
       WHERE order_id = ${s.orderId}::uuid AND released_at IS NULL`;
+    await tx.$executeRaw`INSERT INTO order_cancellations (order_id, cancellation_reason_id) VALUES (${s.orderId}::uuid, ${id('cancellation_reasons', 'INCIDENT_RESOLUTION')})`;
     await history(tx, s.orderId, status, 'CANCELLED', s.staffId, 'OPERATOR');
     await tx.$executeRaw`
       UPDATE courier_availability_periods SET ended_at = clock_timestamp(), end_reason_id = ${id('availability_end_reasons', 'TOGGLED_OFF')}

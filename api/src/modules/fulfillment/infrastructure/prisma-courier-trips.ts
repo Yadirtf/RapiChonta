@@ -17,6 +17,7 @@ import {
   TRIP_STATUSES,
   TripStatusCode,
 } from '../domain/fulfillment.codes';
+import { ADJUSTMENT_NOTICES, ADJUSTMENT_SETTINGS, DEFAULT_ADJUSTMENT_TIMEOUT_SECONDS, ReportedLine } from '../domain/adjustments';
 import { CourierTrips, Trip, TripCommand, TripFailure, TripRef, TripResult } from '../domain/ports/courier-trips';
 
 type Tx = Prisma.TransactionClient;
@@ -146,8 +147,8 @@ export class PrismaCourierTrips extends CourierTrips {
       WHERE a.courier_user_id = ${courierUserId}::uuid AND a.released_at IS NULL`;
     if (!row) return null;
 
-    const lines = await this.prisma.$queryRaw<{ name: string; quantity: number; notes: string | null }[]>`
-      SELECT COALESCE(tl.name, te.name) AS name, l.quantity::int AS quantity, l.notes
+    const lines = await this.prisma.$queryRaw<{ id: string; name: string; quantity: number; unitPrice: string; notes: string | null }[]>`
+      SELECT l.order_item_id AS id, COALESCE(tl.name, te.name) AS name, l.quantity::int AS quantity, l.unit_price::text AS "unitPrice", l.notes
       FROM v_order_lines l
       JOIN languages les ON les.code = 'es'
       LEFT JOIN languages ll ON ll.code = ${language}
@@ -259,6 +260,40 @@ export class PrismaCourierTrips extends CourierTrips {
         INSERT INTO order_purchases (order_id, cash_movement_id, receipt_file_id)
         VALUES (${command.trip.orderId}::uuid, ${movement.id}::uuid, ${command.receiptFileId}::uuid)`;
       await this.history(tx, command, TRIP_STATUSES.AT_ESTABLISHMENT, TRIP_STATUSES.PREPARING);
+    });
+  }
+
+  /**
+   * H09.2: la consulta nace con el paso a AWAITING_CUSTOMER (la base exige ese orden) y vence a los
+   * adjustments.timeout_seconds del municipio del local, contados en el servidor. El cliente recibe el aviso.
+   */
+  async openAdjustment(command: TripCommand & { lines: readonly ReportedLine[] }): Promise<TripResult> {
+    const items = command.lines.map((l) => l.orderItemId);
+    return this.step(command, [TRIP_STATUSES.AT_ESTABLISHMENT], async (tx, status) => {
+      const [{ found }] = await tx.$queryRaw<{ found: number }[]>`
+        SELECT count(*)::int AS found FROM v_order_lines
+        WHERE order_id = ${command.trip.orderId}::uuid AND NOT is_removed AND order_item_id = ANY(${items}::uuid[])`;
+      if (found !== items.length) throw new Refused('LINES', status);
+      await this.history(tx, command, TRIP_STATUSES.AT_ESTABLISHMENT, TRIP_STATUSES.AWAITING_CUSTOMER);
+      const [request] = await tx.$queryRaw<{ id: string }[]>`
+        INSERT INTO order_adjustment_requests (order_id, reported_by_user_id, reported_at, expires_at)
+        SELECT o.id, ${command.courierUserId}::uuid, clock_timestamp(),
+               clock_timestamp() + make_interval(secs => coalesce(
+                 (SELECT value::float8 FROM v_current_settings WHERE key = ${ADJUSTMENT_SETTINGS.TIMEOUT_SECONDS} AND municipality_id = e.municipality_id),
+                 ${DEFAULT_ADJUSTMENT_TIMEOUT_SECONDS}))
+        FROM orders o JOIN establishments e ON e.id = o.establishment_id
+        WHERE o.id = ${command.trip.orderId}::uuid
+        RETURNING id`;
+      await tx.$executeRaw`
+        INSERT INTO order_item_adjustments (request_id, order_id, order_item_id, reason_id, reported_unit_price)
+        SELECT ${request.id}::uuid, ${command.trip.orderId}::uuid, x.item, r.id, x.price
+        FROM unnest(${items}::uuid[], ${command.lines.map((l) => l.reason)}::text[], ${command.lines.map((l) => l.unitPrice || null)}::numeric[]) AS x(item, reason, price)
+        JOIN adjustment_reasons r ON r.code = x.reason AND r.deactivated_at IS NULL`;
+      await tx.$executeRaw`
+        INSERT INTO notifications (recipient_user_id, notification_type_id, order_id)
+        SELECT o.customer_user_id, t.id, o.id FROM orders o
+        JOIN notification_types t ON t.code = ${ADJUSTMENT_NOTICES.REQUESTED} AND t.deactivated_at IS NULL
+        WHERE o.id = ${command.trip.orderId}::uuid`;
     });
   }
 

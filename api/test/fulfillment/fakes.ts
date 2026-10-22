@@ -11,6 +11,14 @@ import {
   TripResult,
 } from '../../src/modules/fulfillment/domain/ports/courier-trips';
 import { PreparationSignal } from '../../src/modules/fulfillment/application/preparation-signal';
+import { ReportedLine, SubstituteCandidate } from '../../src/modules/fulfillment/domain/adjustments';
+import {
+  AdjustmentReader,
+  AdjustmentRequestView,
+  DecideInput,
+  DecideResult,
+  OrderAdjustments,
+} from '../../src/modules/fulfillment/domain/ports/adjustments';
 
 export const courier: Principal = {
   userId: 'domiciliario-1',
@@ -23,11 +31,17 @@ export const courier: Principal = {
 export class MemoryCourierTrips extends CourierTrips {
   current: TripRef | null = { orderId: 'pedido-1', code: 'RC-7K3M', status: 'AT_ESTABLISHMENT', lastChangeAt: new Date('2026-10-21T12:00:00Z') };
   replays = new Map<string, string>();
-  commands: (TripCommand & { kind: string; amount?: string; receiptFileId?: string; deliveryCode?: string; fileId?: string })[] = [];
+  commands: (TripCommand & { kind: string; amount?: string; receiptFileId?: string; deliveryCode?: string; fileId?: string; lines?: readonly ReportedLine[] })[] = [];
+  trip: Trip | null = null;
   result: TripResult = { ok: true };
 
   async active(): Promise<Trip | null> {
-    return null;
+    return this.trip;
+  }
+
+  async openAdjustment(command: TripCommand & { lines: readonly ReportedLine[] }) {
+    this.commands.push({ ...command, kind: 'adjustment' });
+    return this.result;
   }
 
   async ref(_courier: string, code: string) {
@@ -114,5 +128,40 @@ export class FakePreparationWatch extends PreparationWatch {
   }
   async nextCheckAt() {
     return this.next;
+  }
+}
+
+/** E09 en memoria: guarda las decisiones que llegan y responde lo que la prueba fije. */
+export class MemoryOrderAdjustments extends OrderAdjustments {
+  prices = new Map<string, string>([
+    ['linea-1', '12000.00'],
+    ['linea-2', '3500.00'],
+  ]);
+  decisions: DecideInput[] = [];
+  result: DecideResult = { ok: true, status: 'AWAITING_CUSTOMER', resolved: false };
+  menu: { original: { productId: string; menuSectionId: string; unitPrice: string }; inOrder: Set<string>; candidates: SubstituteCandidate[] } | null = null;
+
+  async linePrices() {
+    return this.prices;
+  }
+  async decide(input: DecideInput) {
+    this.decisions.push(input);
+    return this.result;
+  }
+  async substitutes() {
+    return this.menu;
+  }
+  async expireDue() {
+    return 0;
+  }
+  async nextDueAt() {
+    return null;
+  }
+}
+
+export class MemoryAdjustmentReader extends AdjustmentReader {
+  requests: AdjustmentRequestView[] = [];
+  async forOrder() {
+    return this.requests;
   }
 }

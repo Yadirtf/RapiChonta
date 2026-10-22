@@ -13,6 +13,9 @@ import { PrismaOrdersRepository } from '../../src/modules/orders/infrastructure/
 import { PrismaCourierDesk } from '../../src/modules/dispatch/infrastructure/prisma-courier-desk';
 import { PrismaDispatchMaintenance } from '../../src/modules/dispatch/infrastructure/prisma-dispatch-maintenance';
 import { TripRef } from '../../src/modules/fulfillment/domain/ports/courier-trips';
+import { PrismaOrderAdjustments } from '../../src/modules/fulfillment/infrastructure/prisma-order-adjustments';
+import { readOrderAdjustments } from '../../src/modules/fulfillment/infrastructure/adjustment-read';
+import { rankSubstitutes } from '../../src/modules/fulfillment/domain/adjustments';
 
 /**
  * E08 en PostgreSQL (Docs/14-base-de-datos/E08-modo-domiciliario.md): geocercas con ST_Covers / ST_DWithin,
@@ -31,6 +34,7 @@ const desk = new PrismaCourierDesk(service, ids);
 const maintenance = new PrismaDispatchMaintenance(service, ids);
 const customers = new PrismaCustomerDeliveries(service, ids);
 const review = new PrismaDeliveryReviewWatch(service, ids);
+const adjustments = new PrismaOrderAdjustments(service, ids);
 
 type Db = Prisma.TransactionClient | PrismaClient;
 
@@ -178,6 +182,7 @@ async function finish(s: Scenario) {
       await tx.$executeRaw`
         UPDATE order_assignments SET released_at = clock_timestamp(), release_reason_id = ${id('assignment_release_reasons', 'ORDER_CANCELLED')}, released_by_user_id = ${s.staffId}::uuid
         WHERE order_id = ${s.orderId}::uuid AND released_at IS NULL`;
+      await tx.$executeRaw`INSERT INTO order_cancellations (order_id, cancellation_reason_id) VALUES (${s.orderId}::uuid, ${id('cancellation_reasons', 'INCIDENT_RESOLUTION')})`;
       await history(tx, s.orderId, current, 'CANCELLED', s.staffId, 'OPERATOR');
     }
     await tx.$executeRaw`
@@ -504,6 +509,141 @@ describe('Cierre de la entrega con código (E10)', () => {
       expect(await assignmentOf(s)).toEqual({ released: true, reason: 'ORDER_COMPLETED' });
       // Un paso tardío del domiciliario (desde la cola) ya no aplica.
       expect(await trips.ref(s.courierId, s.orderCode)).toBeNull();
+    } finally {
+      await finish(s);
+    }
+  });
+});
+
+describe('Producto faltante en PostgreSQL (E09)', () => {
+  /** Lleva el pedido al local (geocerca) y le agrega una segunda línea de otro producto del mismo local. */
+  async function atStore(s: Scenario, secondLine: boolean) {
+    await prisma.$transaction(async (tx) => {
+      if (secondLine) {
+        await tx.$executeRaw`
+          INSERT INTO order_items (order_id, product_version_id, quantity)
+          SELECT ${s.orderId}::uuid, m.product_version_id, 1 FROM v_menu m JOIN orders o ON o.establishment_id = m.establishment_id
+          WHERE o.id = ${s.orderId}::uuid AND m.is_orderable
+            AND m.product_id NOT IN (SELECT product_id FROM v_order_lines WHERE order_id = ${s.orderId}::uuid)
+          ORDER BY m.price LIMIT 1`;
+      }
+      await history(tx, s.orderId, 'ACCEPTED', 'AT_ESTABLISHMENT', null, null, 'GEOFENCE');
+    });
+    return prisma.$queryRaw<{ id: string; price: string; quantity: number }[]>`
+      SELECT order_item_id AS id, unit_price::text AS price, quantity::int AS quantity FROM v_order_lines WHERE order_id = ${s.orderId}::uuid ORDER BY unit_price DESC`;
+  }
+  const noticesOf = (s: Scenario, type: string) => prisma.$queryRaw<{ recipient: string }[]>`
+    SELECT n.recipient_user_id AS recipient FROM notifications n JOIN notification_types t ON t.id = n.notification_type_id AND t.code = ${type}
+    WHERE n.order_id = ${s.orderId}::uuid`;
+  const itemsTotal = async (s: Scenario) =>
+    Number((await prisma.$queryRaw<{ total: string }[]>`SELECT items_total::text AS total FROM v_order_amounts WHERE order_id = ${s.orderId}::uuid`)[0].total);
+
+  it('consulta, decisiones y vuelta a la compra con el total recalculado (H09.2, H09.3)', async () => {
+    const s = await acceptedOrder();
+    try {
+      const lines = await atStore(s, true);
+      if (lines.length < 2) throw new Error('La semilla de ejemplo necesita al menos dos productos en el local');
+      const [main, side] = lines;
+      const newPrice = (Number(side.price) + 700).toFixed(2);
+      expect(
+        await trips.openAdjustment({
+          ...command(s, await refOf(s)),
+          lines: [
+            { orderItemId: main.id, reason: 'UNAVAILABLE' },
+            { orderItemId: side.id, reason: 'PRICE_CHANGED', unitPrice: newPrice },
+          ],
+        }),
+      ).toEqual({ ok: true });
+      expect(await statusOf(s.orderId)).toBe('AWAITING_CUSTOMER');
+      expect(await noticesOf(s, 'ADJUSTMENT_REQUESTED')).toEqual([{ recipient: s.customerId }]);
+
+      const [request] = await readOrderAdjustments(service, s.orderId, 'es');
+      expect(request.open).toBe(true);
+      expect(request.expiresAt.getTime() - request.reportedAt.getTime()).toBe(180_000);
+      const lineOf = (itemId: string) => request.lines.find((l) => l.orderItemId === itemId)!;
+      expect(lineOf(main.id).options).toEqual(['SUBSTITUTE', 'REMOVE_ITEM', 'CANCEL_ORDER']);
+      expect(lineOf(side.id)).toMatchObject({ reason: 'PRICE_CHANGED', reportedUnitPrice: newPrice, options: ['SUBSTITUTE', 'REMOVE_ITEM', 'ACCEPT_PRICE', 'CANCEL_ORDER'] });
+
+      // Con líneas pendientes el pedido no puede volver a la compra, ni abrirse otra consulta.
+      await expect(prisma.$transaction((tx) => history(tx, s.orderId, 'AWAITING_CUSTOMER', 'AT_ESTABLISHMENT', s.customerId, 'CUSTOMER'))).rejects.toThrow(/Faltan decisiones/);
+
+      const decide = (adjustmentId: string, decision: string, productVersionId?: string) =>
+        adjustments.decide({ customerUserId: s.customerId, orderCode: s.orderCode, adjustmentId, decision, productVersionId });
+      expect(await decide(lineOf(main.id).id, 'ACCEPT_PRICE')).toEqual({ ok: false, reason: 'OPTION', status: 'AWAITING_CUSTOMER' });
+      expect(await adjustments.decide({ customerUserId: s.courierId, orderCode: s.orderCode, adjustmentId: lineOf(main.id).id, decision: 'REMOVE_ITEM' })).toEqual({
+        ok: false,
+        reason: 'NOT_FOUND',
+      });
+
+      expect(await decide(lineOf(side.id).id, 'ACCEPT_PRICE')).toEqual({ ok: true, status: 'AWAITING_CUSTOMER', resolved: false });
+      expect(await decide(lineOf(side.id).id, 'REMOVE_ITEM')).toEqual({ ok: false, reason: 'DECIDED', status: 'AWAITING_CUSTOMER' });
+      await expect(prisma.$executeRaw`UPDATE order_item_adjustments SET decided_at = now() WHERE id = ${lineOf(side.id).id}::uuid`).rejects.toThrow(/una vez/);
+
+      const menu = (await adjustments.substitutes(s.customerId, s.orderCode, lineOf(main.id).id, 'es'))!;
+      const [pick] = rankSubstitutes(menu.original, menu.candidates, menu.inOrder);
+      if (pick) {
+        expect(await decide(lineOf(main.id).id, 'SUBSTITUTE', pick.productVersionId)).toEqual({ ok: true, status: 'AT_ESTABLISHMENT', resolved: true });
+        expect(await itemsTotal(s)).toBeCloseTo(Number(pick.price) * main.quantity + Number(newPrice) * side.quantity, 2);
+        const [after] = await readOrderAdjustments(service, s.orderId, 'es');
+        expect(after.lines.find((l) => l.orderItemId === main.id)).toMatchObject({ decision: 'SUBSTITUTE', substitute: { name: pick.name, quantity: main.quantity }, options: [] });
+      } else {
+        expect(await decide(lineOf(main.id).id, 'REMOVE_ITEM')).toEqual({ ok: true, status: 'AT_ESTABLISHMENT', resolved: true });
+        expect(await itemsTotal(s)).toBeCloseTo(Number(newPrice) * side.quantity, 2);
+      }
+      expect(await lastChange(s)).toEqual({ to: 'AT_ESTABLISHMENT', source: 'USER_ACTION', role: 'CUSTOMER' });
+      expect(await noticesOf(s, 'ADJUSTMENT_RESOLVED')).toEqual([{ recipient: s.courierId }]);
+    } finally {
+      await finish(s);
+    }
+  });
+
+  it('si vence el tiempo se quita lo pendiente; si era lo único, el pedido se cancela y el domiciliario queda libre', async () => {
+    const s = await acceptedOrder();
+    try {
+      const [line] = await atStore(s, false);
+      // Una consulta de hace 3 minutos y medio (ya vencida), como la deja openAdjustment.
+      await prisma.$transaction(async (tx) => {
+        await history(tx, s.orderId, 'AT_ESTABLISHMENT', 'AWAITING_CUSTOMER', s.courierId, 'COURIER');
+        const [request] = await tx.$queryRaw<{ id: string }[]>`
+          INSERT INTO order_adjustment_requests (order_id, reported_by_user_id, reported_at, expires_at)
+          VALUES (${s.orderId}::uuid, ${s.courierId}::uuid, now() - interval '210 seconds', now() - interval '30 seconds') RETURNING id`;
+        await tx.$executeRaw`
+          INSERT INTO order_item_adjustments (request_id, order_id, order_item_id, reason_id)
+          VALUES (${request.id}::uuid, ${s.orderId}::uuid, ${line.id}::uuid, ${id('adjustment_reasons', 'UNAVAILABLE')})`;
+      });
+      expect((await adjustments.nextDueAt())!.getTime()).toBeLessThanOrEqual(Date.now());
+      expect(await adjustments.expireDue()).toBeGreaterThanOrEqual(1);
+
+      expect(await statusOf(s.orderId)).toBe('CANCELLED');
+      expect(await lastChange(s)).toEqual({ to: 'CANCELLED', source: 'TIMER', role: null });
+      const [{ reason }] = await prisma.$queryRaw<{ reason: string }[]>`
+        SELECT r.code AS reason FROM order_cancellations c JOIN cancellation_reasons r ON r.id = c.cancellation_reason_id WHERE c.order_id = ${s.orderId}::uuid`;
+      expect(reason).toBe('ALL_ITEMS_UNAVAILABLE');
+      expect(await assignmentOf(s)).toEqual({ released: true, reason: 'ORDER_CANCELLED' });
+      expect(await noticesOf(s, 'TRIP_CANCELLED')).toEqual([{ recipient: s.courierId }]);
+      const [request] = await readOrderAdjustments(service, s.orderId, 'es');
+      expect(request).toMatchObject({ open: false, lines: [{ decision: 'EXPIRED_REMOVED', options: [] }] });
+      expect(await adjustments.expireDue()).toBe(0);
+    } finally {
+      await finish(s);
+    }
+  });
+
+  it('"Cancelar el pedido" responde por toda la consulta', async () => {
+    const s = await acceptedOrder();
+    try {
+      const lines = await atStore(s, true);
+      await trips.openAdjustment({ ...command(s, await refOf(s)), lines: lines.map((l) => ({ orderItemId: l.id, reason: 'UNAVAILABLE' as const })) });
+      const [request] = await readOrderAdjustments(service, s.orderId, 'es');
+      expect(await adjustments.decide({ customerUserId: s.customerId, orderCode: s.orderCode, adjustmentId: request.lines[0].id, decision: 'CANCEL_ORDER' })).toEqual({
+        ok: true,
+        status: 'CANCELLED',
+        resolved: true,
+      });
+      const [after] = await readOrderAdjustments(service, s.orderId, 'es');
+      expect(after.lines.every((l) => l.decision === 'CANCEL_ORDER')).toBe(true);
+      expect(await lastChange(s)).toEqual({ to: 'CANCELLED', source: 'USER_ACTION', role: 'CUSTOMER' });
+      expect(await assignmentOf(s)).toEqual({ released: true, reason: 'ORDER_CANCELLED' });
     } finally {
       await finish(s);
     }

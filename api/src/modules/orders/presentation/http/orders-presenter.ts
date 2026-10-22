@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { FileUrls } from '../../../files/application/file-urls';
+import { adjustmentView } from '../../../fulfillment/presentation/http/fulfillment-presenter';
 import { Quote } from '../../application/checkout.use-cases';
 import { SavedAddress, SavedRecipient } from '../../domain/ports/address-book';
 import { OrderDetail, OrderSummary } from '../../domain/ports/orders.repository';
@@ -66,6 +67,7 @@ export class OrdersPresenter {
         proofUrl: this.urls.url(o.delivery.proofFileId),
         reviewClosesAt: o.delivery.reviewClosesAt?.toISOString() ?? null,
       },
+      adjustments: o.adjustments.map(adjustmentView),
     };
   }
 

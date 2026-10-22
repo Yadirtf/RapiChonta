@@ -1,3 +1,5 @@
+import { ADJUSTMENT_DECISIONS, ADJUSTMENT_NOTICES, ADJUSTMENT_REASONS, CANCELLATION_REASONS } from './adjustments';
+
 /**
  * Lo que el domiciliario hace con el pedido después de tomarlo (Docs/14-base-de-datos/E08-modo-domiciliario.md).
  * Estados que este módulo nombra porque tiene comportamiento propio con ellos (geocercas, compra y preparación);
@@ -6,8 +8,10 @@
 export const TRIP_STATUSES = {
   /** Lo tomó: va al local. La geocerca del local lo pasa a AT_ESTABLISHMENT. */
   ACCEPTED: 'ACCEPTED',
-  /** En el local: registra la compra con la factura. */
+  /** En el local: registra la compra con la factura, o consulta al cliente si falta algo (E09). */
   AT_ESTABLISHMENT: 'AT_ESTABLISHMENT',
+  /** Esperando la decisión del cliente sobre un producto faltante o con otro precio (E09). */
+  AWAITING_CUSTOMER: 'AWAITING_CUSTOMER',
   /** Pagó y espera que el local entregue. */
   PREPARING: 'PREPARING',
   /** Va donde el cliente. La distancia al punto de entrega lo pasa a ARRIVING. */
@@ -18,6 +22,8 @@ export const TRIP_STATUSES = {
   PENDING_REVIEW: 'PENDING_REVIEW',
   DISPUTED: 'DISPUTED',
   DELIVERED: 'DELIVERED',
+  /** E09: el cliente canceló desde la consulta, o no quedó nada que comprar. */
+  CANCELLED: 'CANCELLED',
 } as const;
 export type TripStatusCode = (typeof TRIP_STATUSES)[keyof typeof TRIP_STATUSES];
 
@@ -37,6 +43,9 @@ export const FULFILLMENT_PERMISSIONS = {
   CONFIRM_DELIVERY: 'orders.confirm_delivery',
   /** El cliente: "No lo recibí" después de una entrega con foto. */
   REPORT_INCIDENT: 'incidents.report',
+  /** E09: el domiciliario reporta un faltante; el cliente decide. */
+  REPORT_ADJUSTMENT: 'adjustments.report',
+  DECIDE_ADJUSTMENT: 'adjustments.decide',
 } as const;
 
 export const FULFILLMENT_SETTINGS = {
@@ -63,6 +72,9 @@ export const RECEIPT_PURPOSE = 'PURCHASE_RECEIPT';
 export const PREPARATION_NOTICE = 'PREPARATION_TIME_REACHED';
 export const PROOF_PURPOSE = 'DELIVERY_PROOF';
 export const COMPLETED_RELEASE = 'ORDER_COMPLETED';
+export const CANCELLED_RELEASE = 'ORDER_CANCELLED';
+/** Al domiciliario: el pedido que llevaba se canceló (ya no tiene que comprarlo). */
+export const TRIP_CANCELLED_NOTICE = 'TRIP_CANCELLED';
 
 /** Códigos que deben existir para que la API arranque (se verifican al iniciar). */
 export const REQUIRED_FULFILLMENT_CODES: Record<string, readonly string[]> = {
@@ -70,6 +82,9 @@ export const REQUIRED_FULFILLMENT_CODES: Record<string, readonly string[]> = {
   status_change_sources: Object.values(TRIP_SOURCES),
   cash_movement_types: [PURCHASE_MOVEMENT],
   file_purposes: [RECEIPT_PURPOSE, PROOF_PURPOSE],
-  notification_types: [PREPARATION_NOTICE],
-  assignment_release_reasons: [COMPLETED_RELEASE],
+  notification_types: [PREPARATION_NOTICE, TRIP_CANCELLED_NOTICE, ...Object.values(ADJUSTMENT_NOTICES)],
+  assignment_release_reasons: [COMPLETED_RELEASE, CANCELLED_RELEASE],
+  adjustment_reasons: Object.values(ADJUSTMENT_REASONS),
+  adjustment_decisions: Object.values(ADJUSTMENT_DECISIONS),
+  cancellation_reasons: Object.values(CANCELLATION_REASONS),
 };

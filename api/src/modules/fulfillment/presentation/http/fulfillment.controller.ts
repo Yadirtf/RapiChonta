@@ -1,15 +1,15 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { contentLanguage } from '../../../catalog/application/public/get-establishment.use-case';
 import { ROLES } from '../../../identity/domain/identity.codes';
 import { Principal } from '../../../identity/domain/principal';
 import { CurrentPrincipal, RequirePermissions, Roles } from '../../../identity/presentation/http/decorators/auth.decorators';
 import { OrderCode } from '../../../orders/domain/value-objects/order-code';
-import { CourierTripUseCase, CustomerDeliveryUseCase } from '../../application/courier-trip.use-cases';
+import { CourierTripUseCase, CustomerAdjustmentsUseCase, CustomerDeliveryUseCase } from '../../application/courier-trip.use-cases';
 import { TripEvent } from '../../domain/event-time';
 import { FULFILLMENT_PERMISSIONS as P } from '../../domain/fulfillment.codes';
 import { FulfillmentErrors } from '../../domain/fulfillment.errors';
 import { FulfillmentPresenter } from './fulfillment-presenter';
-import { DeliverDto, DeliveryProofDto, PurchaseDto, TripEventDto, TripQueryDto } from './fulfillment.dto';
+import { DecideAdjustmentDto, DeliverDto, DeliveryProofDto, PurchaseDto, ReportAdjustmentDto, TripEventDto, TripQueryDto } from './fulfillment.dto';
 
 const event = (body: TripEventDto): TripEvent => ({
   clientEventId: body.clientEventId,
@@ -57,6 +57,17 @@ export class CourierTripController {
   @RequirePermissions(P.PROGRESS)
   purchase(@CurrentPrincipal() principal: Principal, @Param('code') code: string, @Body() body: PurchaseDto) {
     return this.trips.purchase(principal, orderCode(code), { ...event(body), amount: body.amount, receiptFileId: body.receiptFileId });
+  }
+
+  /** POST /api/v1/courier/trip/:code/adjustments — "Falta algo / cambió el precio": consulta al cliente (H09.2). */
+  @Post(':code/adjustments')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermissions(P.REPORT_ADJUSTMENT)
+  reportAdjustment(@CurrentPrincipal() principal: Principal, @Param('code') code: string, @Body() body: ReportAdjustmentDto) {
+    return this.trips.reportAdjustment(principal, orderCode(code), {
+      ...event(body),
+      lines: body.lines.map((l) => ({ orderItemId: l.orderItemId, reason: l.reason, unitPrice: l.unitPrice ?? null })),
+    });
   }
 
   /** POST /api/v1/courier/trip/:code/ready — "Ya está listo" (H08.5). */
@@ -120,5 +131,41 @@ export class CustomerDeliveryController {
   @RequirePermissions(P.REPORT_INCIDENT)
   notReceived(@CurrentPrincipal() principal: Principal, @Param('code') code: string) {
     return this.deliveries.reportNotReceived(principal, customerOrderCode(code));
+  }
+}
+
+/** H09.3: el cliente responde la consulta del domiciliario sobre su pedido (por el código Y por quien pregunta). */
+@Controller('orders/:code/adjustments/:adjustmentId')
+@Roles(ROLES.CUSTOMER)
+export class CustomerAdjustmentController {
+  constructor(
+    private readonly adjustments: CustomerAdjustmentsUseCase,
+    private readonly presenter: FulfillmentPresenter,
+  ) {}
+
+  /** GET /api/v1/orders/:code/adjustments/:adjustmentId/substitutes — sugerencias para "Cambiar por". */
+  @Get('substitutes')
+  @RequirePermissions(P.DECIDE_ADJUSTMENT)
+  async substitutes(
+    @CurrentPrincipal() principal: Principal,
+    @Param('code') code: string,
+    @Param('adjustmentId', ParseUUIDPipe) adjustmentId: string,
+    @Query() query: TripQueryDto,
+  ) {
+    const items = await this.adjustments.substitutes(principal, customerOrderCode(code), adjustmentId, contentLanguage(query.lang));
+    return { items: items.map((c) => this.presenter.substitute(c)) };
+  }
+
+  /** POST /api/v1/orders/:code/adjustments/:adjustmentId/decision — cambiar, quitar, aceptar el precio o cancelar. */
+  @Post('decision')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermissions(P.DECIDE_ADJUSTMENT)
+  decide(
+    @CurrentPrincipal() principal: Principal,
+    @Param('code') code: string,
+    @Param('adjustmentId', ParseUUIDPipe) adjustmentId: string,
+    @Body() body: DecideAdjustmentDto,
+  ) {
+    return this.adjustments.decide(principal, customerOrderCode(code), adjustmentId, { decision: body.decision, productVersionId: body.productVersionId });
   }
 }

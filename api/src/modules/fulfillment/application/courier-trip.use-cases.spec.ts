@@ -1,8 +1,17 @@
 import { Notifier } from '../../notifications/application/notifier';
 import { DomainError } from '../../../shared/domain/domain.error';
-import { courier, MemoryCourierTrips, MemoryCustomerDeliveries, SpyPreparationSignal } from '../../../../test/fulfillment/fakes';
+import {
+  courier,
+  MemoryAdjustmentReader,
+  MemoryCourierTrips,
+  MemoryCustomerDeliveries,
+  MemoryOrderAdjustments,
+  SpyPreparationSignal,
+} from '../../../../test/fulfillment/fakes';
 import { GeofenceProbe } from '../domain/ports/courier-trips';
-import { CourierTripUseCase, CustomerDeliveryUseCase, GeofenceUseCase } from './courier-trip.use-cases';
+import { CourierTripUseCase, CustomerAdjustmentsUseCase, CustomerDeliveryUseCase, GeofenceUseCase } from './courier-trip.use-cases';
+import { DecideFailure } from '../domain/ports/adjustments';
+import { Trip } from '../domain/ports/courier-trips';
 
 const codeOf = async (work: Promise<unknown>) => ((await work.then(() => null, (e: DomainError) => e)) as DomainError | null)?.code;
 const now = new Date('2026-10-21T12:10:00Z');
@@ -12,7 +21,9 @@ function setup() {
   const trips = new MemoryCourierTrips();
   const notifier = { kick: jest.fn() };
   const signal = new SpyPreparationSignal();
-  return { trips, notifier, signal, useCase: new CourierTripUseCase(trips, notifier as unknown as Notifier, signal) };
+  const adjustments = new MemoryOrderAdjustments();
+  const reader = new MemoryAdjustmentReader();
+  return { trips, notifier, signal, adjustments, reader, useCase: new CourierTripUseCase(trips, notifier as unknown as Notifier, signal, adjustments, reader) };
 }
 
 describe('CourierTripUseCase', () => {
@@ -144,5 +155,100 @@ describe('GeofenceUseCase', () => {
     expect(await useCase.evaluate('d-1')).toEqual({ orderCode: 'RC-7K3M', status: 'ARRIVING' });
     expect(await useCase.evaluate('d-1')).toBeNull();
     expect(notifier.kick).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Producto faltante: el domiciliario consulta (H09.2)', () => {
+  it('abre una sola consulta con todas las líneas: pasa a AWAITING_CUSTOMER, avisa y despierta el reloj', async () => {
+    const { trips, notifier, signal, useCase } = setup();
+    const lines = [
+      { orderItemId: 'linea-1', reason: 'UNAVAILABLE' as const },
+      { orderItemId: 'linea-2', reason: 'PRICE_CHANGED' as const, unitPrice: '4000' },
+    ];
+    // Aunque la app diga que salió de la cola sin señal, la consulta corre con la hora del servidor.
+    const result = await useCase.reportAdjustment(courier, 'RC-7K3M', { clientEventId: EVENT, queued: true, occurredAt: new Date('2026-10-21T12:05:00Z'), lines }, now);
+    expect(result).toEqual({ orderCode: 'RC-7K3M', status: 'AWAITING_CUSTOMER', replayed: false });
+    expect(trips.commands[0]).toMatchObject({ kind: 'adjustment', lines, occurredAt: now, offline: false });
+    expect(notifier.kick).toHaveBeenCalledTimes(1);
+    expect(signal.calls).toBe(1);
+  });
+
+  it('rechaza antes de tocar la base lo que no es una consulta válida', async () => {
+    const { trips, useCase } = setup();
+    const report = (lines: { orderItemId: string; reason: 'UNAVAILABLE' | 'PRICE_CHANGED'; unitPrice?: string }[]) =>
+      codeOf(useCase.reportAdjustment(courier, 'RC-7K3M', { clientEventId: EVENT, queued: false, lines }, now));
+    expect(await report([])).toBe('ADJUSTMENT_REPORT_INVALID');
+    expect(await report([{ orderItemId: 'linea-2', reason: 'PRICE_CHANGED' }])).toBe('ADJUSTMENT_REPORT_INVALID');
+    expect(await report([{ orderItemId: 'linea-2', reason: 'PRICE_CHANGED', unitPrice: '3500' }])).toBe('ADJUSTMENT_REPORT_INVALID');
+    expect(await report([{ orderItemId: 'linea-1', reason: 'UNAVAILABLE', unitPrice: '100' }])).toBe('ADJUSTMENT_REPORT_INVALID');
+    expect(trips.commands).toHaveLength(0);
+  });
+
+  it('solo en el local, y traduce el rechazo de una línea que ya no está', async () => {
+    const { trips, useCase } = setup();
+    const lines = [{ orderItemId: 'linea-1', reason: 'UNAVAILABLE' as const }];
+    trips.result = { ok: false, reason: 'LINES', status: 'AT_ESTABLISHMENT' };
+    expect(await codeOf(useCase.reportAdjustment(courier, 'RC-7K3M', { clientEventId: EVENT, queued: false, lines }, now))).toBe('ADJUSTMENT_LINES_INVALID');
+    trips.current = { ...trips.current!, status: 'PREPARING' };
+    expect(await codeOf(useCase.reportAdjustment(courier, 'RC-7K3M', { clientEventId: EVENT, queued: false, lines }, now))).toBe('TRIP_STEP_NOT_ALLOWED');
+  });
+
+  it('en el local, el pedido en curso trae la última consulta (cuenta regresiva o decisión)', async () => {
+    const { trips, reader, useCase } = setup();
+    const request = { id: 'consulta-1', reportedAt: now, expiresAt: new Date(now.getTime() + 180_000), open: true, lines: [] };
+    reader.requests = [request];
+    trips.trip = { orderId: 'pedido-1', code: 'RC-7K3M', status: 'AWAITING_CUSTOMER' } as Trip;
+    expect(await useCase.active(courier, 'es')).toMatchObject({ adjustment: request });
+    trips.trip = { orderId: 'pedido-1', code: 'RC-7K3M', status: 'PREPARING' } as Trip;
+    expect((await useCase.active(courier, 'es'))?.adjustment).toBeUndefined();
+  });
+});
+
+describe('Producto faltante: el cliente decide (H09.3)', () => {
+  const customer = { ...courier, userId: 'cliente-1', role: 'CUSTOMER' as const };
+  function customerSetup() {
+    const adjustments = new MemoryOrderAdjustments();
+    const notifier = { kick: jest.fn() };
+    const signal = new SpyPreparationSignal();
+    return { adjustments, notifier, signal, useCase: new CustomerAdjustmentsUseCase(adjustments, notifier as unknown as Notifier, signal) };
+  }
+
+  it('con la última decisión el pedido sigue: avisa al domiciliario y despierta el reloj', async () => {
+    const { adjustments, notifier, signal, useCase } = customerSetup();
+    expect(await useCase.decide(customer, 'RC-7K3M', 'ajuste-1', { decision: 'REMOVE_ITEM' })).toEqual({ orderCode: 'RC-7K3M', status: 'AWAITING_CUSTOMER', resolved: false });
+    expect(notifier.kick).not.toHaveBeenCalled();
+    adjustments.result = { ok: true, status: 'AT_ESTABLISHMENT', resolved: true };
+    await useCase.decide(customer, 'RC-7K3M', 'ajuste-2', { decision: 'SUBSTITUTE', productVersionId: 'version-9' });
+    expect(adjustments.decisions[1]).toEqual({ customerUserId: 'cliente-1', orderCode: 'RC-7K3M', adjustmentId: 'ajuste-2', decision: 'SUBSTITUTE', productVersionId: 'version-9' });
+    expect(notifier.kick).toHaveBeenCalledTimes(1);
+    expect(signal.calls).toBe(1);
+  });
+
+  it('traduce cada rechazo a un código que la web y la app entienden', async () => {
+    const { adjustments, useCase } = customerSetup();
+    const cases: [DecideFailure, string][] = [
+      ['NOT_FOUND', 'ORDER_NOT_FOUND'],
+      ['STEP', 'ADJUSTMENT_CLOSED'],
+      ['DECIDED', 'ADJUSTMENT_CLOSED'],
+      ['OPTION', 'ADJUSTMENT_OPTION_INVALID'],
+      ['SUBSTITUTE', 'SUBSTITUTE_UNAVAILABLE'],
+    ];
+    for (const [reason, code] of cases) {
+      adjustments.result = { ok: false, reason, status: 'AT_ESTABLISHMENT' };
+      expect(await codeOf(useCase.decide(customer, 'RC-7K3M', 'ajuste-1', { decision: 'ACCEPT_PRICE' }))).toBe(code);
+    }
+  });
+
+  it('las sugerencias salen ordenadas: misma sección y precio parecido primero, sin lo que ya está en el pedido', async () => {
+    const { adjustments, useCase } = customerSetup();
+    const item = (productId: string, section: string, price: string) => ({ productId, productVersionId: `v-${productId}`, menuSectionId: section, name: productId, price, imageFileId: null });
+    adjustments.menu = {
+      original: { productId: 'gaseosa', menuSectionId: 'bebidas', unitPrice: '3500.00' },
+      inOrder: new Set(['jugo']),
+      candidates: [item('gaseosa', 'bebidas', '3500'), item('agua', 'bebidas', '2000'), item('jugo', 'bebidas', '3600'), item('te', 'bebidas', '3800'), item('papas', 'snacks', '3500')],
+    };
+    expect((await useCase.substitutes(customer, 'RC-7K3M', 'ajuste-1', 'es')).map((c) => c.productId)).toEqual(['te', 'agua', 'papas']);
+    adjustments.menu = null;
+    expect(await codeOf(useCase.substitutes(customer, 'RC-7K3M', 'ajuste-1', 'es'))).toBe('ADJUSTMENT_CLOSED');
   });
 });
