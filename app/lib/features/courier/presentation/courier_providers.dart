@@ -166,6 +166,19 @@ class PendingStepsController extends Notifier<PendingState> {
 
   void dismissRejection() => state = state.copyWith(clearRejected: true);
 
+  /// El código de entrega se revisa en el servidor, así que no se encola: primero sale lo pendiente (un "Llegué"
+  /// sin señal) y luego el código. Un código equivocado se lanza como [Failure] con los intentos que quedan.
+  Future<void> deliverWithCode(String orderCode, String deliveryCode) async {
+    await flush();
+    final event = TripStepEvent(clientEventId: uuidV4(), occurredAt: DateTime.now(), queued: false);
+    try {
+      await _repository.deliver(orderCode, event, deliveryCode: deliveryCode);
+    } finally {
+      ref.invalidate(courierTripProvider);
+      ref.invalidate(courierStatusProvider);
+    }
+  }
+
   Future<void> flush() async {
     if (state.sending || state.steps.isEmpty) return;
     state = state.copyWith(sending: true);
@@ -201,20 +214,28 @@ class PendingStepsController extends Notifier<PendingState> {
     );
     switch (step.kind) {
       case StepKind.purchase:
-        var current = step;
-        if (current.receiptFileId == null) {
-          final photo = await _store.readReceipt(current);
-          if (photo == null) throw const Failure('', code: 'RECEIPT_INVALID');
-          current = current.withReceipt(await _repository.uploadReceipt(photo));
-          // Ya subida: si lo que sigue falla, el reintento no la vuelve a subir.
-          await _persist([for (final s in state.steps) s.id == current.id ? current : s]);
-        }
+        final current = await _uploaded(step, 'RECEIPT_INVALID', _repository.uploadReceipt);
         await _repository.purchase(current.orderCode, event, amount: current.amount!, receiptFileId: current.receiptFileId!);
       case StepKind.ready:
         await _repository.ready(step.orderCode, event);
       case StepKind.delay:
         await _repository.delay(step.orderCode, event);
+      case StepKind.arrived:
+        await _repository.arrived(step.orderCode, event);
+      case StepKind.proof:
+        final current = await _uploaded(step, 'DELIVERY_PROOF_INVALID', _repository.uploadDeliveryProof);
+        await _repository.proof(current.orderCode, event, fileId: current.receiptFileId!);
     }
+  }
+
+  /// Sube la foto del paso si aún no se subió. Ya subida: si lo que sigue falla, el reintento no la vuelve a subir.
+  Future<PendingStep> _uploaded(PendingStep step, String missingCode, Future<String> Function(ReceiptPhoto) upload) async {
+    if (step.receiptFileId != null) return step;
+    final photo = await _store.readReceipt(step);
+    if (photo == null) throw Failure('', code: missingCode);
+    final current = step.withReceipt(await upload(photo));
+    await _persist([for (final s in state.steps) s.id == current.id ? current : s]);
+    return current;
   }
 
   Future<void> _finish(PendingStep step) async {

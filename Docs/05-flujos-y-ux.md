@@ -148,15 +148,18 @@ La decisión tiene un tiempo límite visible de **3 minutos** porque el domicili
 
 ## Entrega y confirmación
 
-1. Al llegar el pedido a `ARRIVING`, el cliente recibe una notificación y, si tiene la app abierta, se muestra una **pantalla de entrega** con el total a pagar y el botón **Recibí mi pedido**.
-2. Esa pantalla no se puede cerrar hasta que el cliente marque **Recibí mi pedido** o **No lo recibí**.
-3. El cliente paga al domiciliario: efectivo, o Nequi, Daviplata o transferencia escaneando el QR de la **cuenta personal del domiciliario** (así funciona en el MVP). El domiciliario marca en la app con qué medio cobró.
-4. **No lo recibí:** se crea una incidencia, el pedido pasa a `DISPUTED`, el operador recibe una alerta prioritaria y el domiciliario es notificado. El operador decide (entregado o cancelado) y ambos reciben la resolución.
-5. **El cliente no confirma** (no abre la app, sin batería): pasado el tiempo definido en `ARRIVING` (propuesta: 10 minutos), la app del domiciliario habilita **Entregar con foto**. La foto se toma con la cámara dentro de la app (no se puede subir una de la galería), queda con fecha, hora y ubicación como evidencia, y el pedido pasa a `PENDING_REVIEW`. El operador la revisa y marca entregado o abre una incidencia.
+La entrega no depende de que el cliente se acuerde de marcar nada. Funciona como el PIN de DiDi Food o el código de Rappi, adaptado a cobro contra entrega y a celulares sin datos:
+
+1. **Código de entrega.** Cuando el domiciliario sale del local (`ON_THE_WAY`), el pedido recibe un código de 4 dígitos. El cliente lo ve en un pase amarillo en el detalle del pedido (web y app) y en la notificación. Si recibe otra persona, el cliente se lo envía por WhatsApp con un toque.
+2. **Llegué.** La geocerca pasa el pedido a `ARRIVING`; si no lo detecta, el domiciliario toca **Llegué** (funciona sin señal: queda en la cola y se envía al volver la conexión).
+3. **Entregar con el código.** El cliente paga (efectivo, o Nequi, Daviplata o transferencia al QR personal del domiciliario) y le dicta el código. El domiciliario lo escribe y el pedido queda `DELIVERED`: el domiciliario queda libre de inmediato. El código se valida solo en el servidor; tras 5 intentos fallidos se bloquea y se habilita la foto.
+4. **Ya lo recibí.** El cliente también puede cerrar la entrega desde su pantalla (en camino, llegando o tras una entrega con foto). Libera al domiciliario igual que el código.
+5. **Sin código (nadie abre, el cliente no tiene datos).** Pasados `delivery.proof_after_seconds` en `ARRIVING` (5 minutos), o de una vez si se agotaron los intentos, el domiciliario puede **Entregar con foto**: la toma con la cámara dentro de la app y queda con fecha, hora y la última ubicación conocida. El pedido pasa a `PENDING_REVIEW` y **el domiciliario queda libre**; ya no se queda atascado en el mapa.
+6. **Después de la foto.** El cliente ve la foto y responde **Sí, lo recibí** (`DELIVERED`) o **No lo recibí** (`DISPUTED`, lo revisa el operador). Si no responde en `delivery.review_auto_close_seconds` (2 horas), el sistema lo da por entregado.
 
 ## Flujo del domiciliario
 
-Activa "Disponible" → recibe notificación → **Tomar pedido** → va al local (la app detecta la llegada) → compra o reporta un problema → paga en el local y registra el total → espera la preparación (responde los avisos) → **Ya está listo** → va al cliente → muestra el QR o recibe efectivo → el cliente confirma.
+Activa "Disponible" → recibe notificación → **Tomar pedido** → va al local (la app detecta la llegada) → compra o reporta un problema → paga en el local y registra el total → espera la preparación (responde los avisos) → **Ya está listo** → va al cliente → **Llegué** (o la geocerca) → cobra (QR o efectivo) → escribe el **código de entrega** que le dicta el cliente → queda libre. Sin código, espera unos minutos y entrega con foto.
 
 El domiciliario puede cambiar a **modo cliente** desde su menú para hacer pedidos propios. Esa opción solo existe para usuarios con rol domiciliario; los clientes nunca ven la opción de ser domiciliario.
 

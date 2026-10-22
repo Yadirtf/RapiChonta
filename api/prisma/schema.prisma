@@ -142,6 +142,7 @@ model File {
   establishmentLogos    Establishment[]
   productImages         ProductImage[]
   purchaseReceipts      OrderPurchase[]
+  deliveryProofs        OrderDeliveryProof[]
   content               FileContent?
 
   @@index([purposeId, sha256])
@@ -322,6 +323,7 @@ model User {
   assignmentsReleased    OrderAssignment[]            @relation("OrderAssignmentReleasedBy")
   cashMovementsCreated   CashMovement[]
   preparationDelays      OrderPreparationDelay[]
+  deliveryCodeAttempts   DeliveryCodeAttempt[]
 
   @@index([statusId])
   @@map("users")
@@ -1380,6 +1382,9 @@ model Order {
   cashMovements     CashMovement[]
   purchase          OrderPurchase?
   preparationDelays OrderPreparationDelay[]
+  deliveryCode      OrderDeliveryCode?
+  deliveryAttempts  DeliveryCodeAttempt[]
+  deliveryProof     OrderDeliveryProof?
 
   @@index([customerUserId, createdAt(sort: Desc)])
   @@index([customerUserId, statusId])
@@ -1763,4 +1768,39 @@ model OrderPreparationDelay {
 
   @@index([orderId, reportedAt])
   @@map("order_preparation_delays")
+}
+
+// ─────────────── Cierre de la entrega (E10 con código de entrega) ───────────────
+
+/// Código de 4 dígitos que el cliente le dice al domiciliario al recibir. Nace cuando el pedido sale del local.
+model OrderDeliveryCode {
+  orderId   String   @id @map("order_id") @db.Uuid
+  code      String   @db.Char(4)
+  createdAt DateTime @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(6)
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@map("order_delivery_codes")
+}
+
+/// Cada código equivocado que escribió el domiciliario. Al quinto se bloquea y queda la entrega con foto.
+model DeliveryCodeAttempt {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId       String   @map("order_id") @db.Uuid
+  courierUserId String   @map("courier_user_id") @db.Uuid
+  attemptedAt   DateTime @default(dbgenerated("clock_timestamp()")) @map("attempted_at") @db.Timestamptz(6)
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  courier       User     @relation(fields: [courierUserId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@map("delivery_code_attempts")
+}
+
+/// H10.4: foto de la entrega cuando el cliente no dio el código. Quién y cuándo: files.uploaded_by_user_id y captured_at.
+model OrderDeliveryProof {
+  orderId String @id @map("order_id") @db.Uuid
+  fileId  String @unique @map("file_id") @db.Uuid
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  file    File   @relation(fields: [fileId], references: [id], onDelete: Restrict)
+
+  @@map("order_delivery_proofs")
 }

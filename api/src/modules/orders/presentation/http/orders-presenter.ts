@@ -61,6 +61,11 @@ export class OrdersPresenter {
       journey: o.journey,
       preparation: o.preparation ? { estimatedReadyAt: o.preparation.estimatedReadyAt.toISOString(), delayed: o.preparation.delayed } : null,
       purchase: o.purchase ? { amount: o.purchase.amount, receiptUrl: this.urls.url(o.purchase.receiptFileId) } : null,
+      delivery: {
+        code: o.delivery.code,
+        proofUrl: this.urls.url(o.delivery.proofFileId),
+        reviewClosesAt: o.delivery.reviewClosesAt?.toISOString() ?? null,
+      },
     };
   }
 

@@ -114,6 +114,20 @@ class TripPreparation extends Equatable {
   List<Object?> get props => [startedAt, estimatedReadyAt, delayCount, nextCheckAt];
 }
 
+/// Donde el cliente: cuándo llegó, desde cuándo puede entregar con foto y cuántos códigos le quedan.
+class TripDelivery extends Equatable {
+  const TripDelivery({this.arrivedAt, this.proofAvailableAt, this.codeAttemptsLeft = 5});
+
+  final DateTime? arrivedAt;
+
+  /// Sin código, la foto se habilita a esta hora (antes, si se acabaron los intentos del código).
+  final DateTime? proofAvailableAt;
+  final int codeAttemptsLeft;
+
+  @override
+  List<Object?> get props => [arrivedAt, proofAvailableAt, codeAttemptsLeft];
+}
+
 /// El pedido en curso del domiciliario (GET /courier/trip).
 class Trip extends Equatable {
   const Trip({
@@ -136,6 +150,7 @@ class Trip extends Equatable {
     this.destination,
     this.preparation,
     this.purchase,
+    this.delivery,
   });
 
   final String code;
@@ -161,9 +176,10 @@ class Trip extends Equatable {
   final TripDestination? destination;
   final TripPreparation? preparation;
   final ({int amountCents, String? receiptUrl})? purchase;
+  final TripDelivery? delivery;
 
   @override
-  List<Object?> get props => [code, status, statusAt, destination, preparation, purchase];
+  List<Object?> get props => [code, status, statusAt, destination, preparation, purchase, delivery];
 }
 
 /// Una lectura del GPS tal como la entrega el teléfono.
@@ -187,7 +203,7 @@ class LocationReading {
 /// Respuesta de un paso del pedido: `replayed` si la API ya lo tenía (reenvío de la cola sin señal).
 typedef StepOutcome = ({String? status, bool replayed});
 
-/// Foto de la factura lista para subir: bytes JPEG/PNG/WebP con su tipo.
+/// Foto (de la factura o de la entrega) lista para subir: bytes JPEG/PNG/WebP con su tipo.
 class ReceiptPhoto {
   const ReceiptPhoto({required this.bytes, required this.mimeType});
 
@@ -214,9 +230,21 @@ abstract interface class CourierRepository {
   /// Sube la factura (tres pasos de /files/uploads) y devuelve el id del archivo.
   Future<String> uploadReceipt(ReceiptPhoto photo);
 
+  /// Igual, para la foto de la entrega (propósito DELIVERY_PROOF).
+  Future<String> uploadDeliveryProof(ReceiptPhoto photo);
+
   Future<StepOutcome> purchase(String code, TripStepEvent event, {required String amount, required String receiptFileId});
   Future<StepOutcome> ready(String code, TripStepEvent event);
   Future<StepOutcome> delay(String code, TripStepEvent event);
+
+  /// "Llegué" (si la geocerca no lo detectó).
+  Future<StepOutcome> arrived(String code, TripStepEvent event);
+
+  /// Entrega con el código del cliente. Necesita señal: el servidor lo compara.
+  Future<StepOutcome> deliver(String code, TripStepEvent event, {required String deliveryCode});
+
+  /// Entrega con foto cuando el cliente no dio el código.
+  Future<StepOutcome> proof(String code, TripStepEvent event, {required String fileId});
 }
 
 /// Id del paso (para no repetirlo si se reenvía) y, desde la cola sin señal, la hora en que ocurrió.

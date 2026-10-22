@@ -10,6 +10,9 @@ final jpeg = bytesOf([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46
 
 typedef SentStep = ({String kind, String code, bool queued, String? receipt});
 
+/// El código de entrega del pedido de prueba.
+const fakeDeliveryCode = '4821';
+
 /// La API del domiciliario en memoria: registra lo enviado y simula red caída o rechazos.
 class FakeCourierRepository implements CourierRepository {
   FakeCourierRepository({this.currentStatus = const CourierStatus(verified: true, locationConsentPending: false, availableSince: null), this.currentTrip, this.currentOffers = const []});
@@ -28,6 +31,7 @@ class FakeCourierRepository implements CourierRepository {
   String? rejectNext;
 
   int uploads = 0;
+  int codeAttemptsLeft = 5;
   final steps = <SentStep>[];
   final availability = <bool>[];
 
@@ -77,6 +81,13 @@ class FakeCourierRepository implements CourierRepository {
     return 'file-$uploads';
   }
 
+  @override
+  Future<String> uploadDeliveryProof(ReceiptPhoto photo) async {
+    _online();
+    uploads++;
+    return 'proof-$uploads';
+  }
+
   Future<StepOutcome> _record(String kind, String code, TripStepEvent event, [String? receipt]) async {
     _online();
     if (offlineSteps) throw _network;
@@ -97,9 +108,26 @@ class FakeCourierRepository implements CourierRepository {
 
   @override
   Future<StepOutcome> delay(String code, TripStepEvent event) => _record('delay', code, event);
+
+  @override
+  Future<StepOutcome> arrived(String code, TripStepEvent event) => _record('arrived', code, event);
+
+  @override
+  Future<StepOutcome> deliver(String code, TripStepEvent event, {required String deliveryCode}) async {
+    _online();
+    if (offlineSteps) throw _network;
+    if (deliveryCode != fakeDeliveryCode) {
+      codeAttemptsLeft--;
+      throw Failure('', code: 'DELIVERY_CODE_WRONG', details: {'attemptsLeft': codeAttemptsLeft});
+    }
+    return _record('deliver', code, event);
+  }
+
+  @override
+  Future<StepOutcome> proof(String code, TripStepEvent event, {required String fileId}) => _record('proof', code, event, fileId);
 }
 
-Map<String, dynamic> tripJson({required String status, bool revealed = false, bool prepared = false}) => {
+Map<String, dynamic> tripJson({required String status, bool revealed = false, bool prepared = false, Map<String, dynamic>? delivery}) => {
       'code': 'RC-7K3M',
       'status': status,
       'statusAt': '2026-10-21T20:30:00.000Z',
@@ -142,6 +170,7 @@ Map<String, dynamic> tripJson({required String status, bool revealed = false, bo
           ? {'startedAt': '2026-10-21T20:30:00.000Z', 'estimatedReadyAt': '2026-10-21T20:45:00.000Z', 'delayCount': 1, 'nextCheckAt': '2026-10-21T20:50:00.000Z'}
           : null,
       'purchase': prepared ? {'amount': '39000.00', 'receiptUrl': null} : null,
+      'delivery': delivery,
     };
 
 Map<String, dynamic> offerJson({DateTime? expiresAt}) => {

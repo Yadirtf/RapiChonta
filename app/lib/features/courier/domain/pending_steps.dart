@@ -14,6 +14,12 @@ enum StepKind {
 
   /// "Sigue en preparación": se queda en PREPARING.
   delay,
+
+  /// "Llegué": ON_THE_WAY → ARRIVING.
+  arrived,
+
+  /// Entrega con foto (sin código): ARRIVING → PENDING_REVIEW. La foto espera en el teléfono como la factura.
+  proof,
 }
 
 class PendingStep extends Equatable {
@@ -37,7 +43,7 @@ class PendingStep extends Equatable {
   /// Pesos en texto decimal ("38500"), solo en la compra.
   final String? amount;
 
-  /// La foto guardada en el teléfono hasta que se suba.
+  /// La foto (factura o entrega) guardada en el teléfono hasta que se suba.
   final String? receiptPath;
   final String? receiptMime;
 
@@ -73,7 +79,9 @@ class PendingStep extends Equatable {
     final occurredAt = DateTime.tryParse(json['occurredAt']?.toString() ?? '');
     final id = json['id'], code = json['orderCode'];
     if (kind == null || occurredAt == null || id is! String || code is! String) return null;
-    if (kind == StepKind.purchase && (json['amount'] is! String || (json['receiptPath'] is! String && json['receiptFileId'] is! String))) return null;
+    final hasPhoto = json['receiptPath'] is String || json['receiptFileId'] is String;
+    if (kind == StepKind.purchase && (json['amount'] is! String || !hasPhoto)) return null;
+    if (kind == StepKind.proof && !hasPhoto) return null;
     return PendingStep(
       id: id,
       orderCode: code,
@@ -106,6 +114,8 @@ abstract final class PendingRules {
       status = switch ((status, step.kind)) {
         ('AT_ESTABLISHMENT', StepKind.purchase) => 'PREPARING',
         ('PREPARING', StepKind.ready) => 'ON_THE_WAY',
+        ('ON_THE_WAY', StepKind.arrived) => 'ARRIVING',
+        ('ARRIVING', StepKind.proof) => 'PENDING_REVIEW',
         _ => status,
       };
     }

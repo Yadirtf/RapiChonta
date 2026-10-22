@@ -24,6 +24,8 @@ void main() {
       expect(PendingRules.effectiveStatus('PREPARING', [step(StepKind.delay)]), 'PREPARING');
       // Un paso que ya no aplica (el servidor avanzó por otro lado) no mueve nada.
       expect(PendingRules.effectiveStatus('ON_THE_WAY', [step(StepKind.purchase)]), 'ON_THE_WAY');
+      // "Llegué" y la entrega con foto sin señal.
+      expect(PendingRules.effectiveStatus('ON_THE_WAY', [step(StepKind.arrived), step(StepKind.proof)]), 'PENDING_REVIEW');
     });
 
     test('sin respuesta o con el servidor caído se reintenta; un rechazo de la API no', () {

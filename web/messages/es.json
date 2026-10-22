@@ -168,7 +168,12 @@
     "COURIER_HAS_ACTIVE_ORDER": "Termina el pedido en curso antes de cambiar a modo cliente.",
     "MUNICIPALITY_OUT_OF_SCOPE": "Solo puedes asignar tu propio municipio.",
     "COURIER_ON_ACTIVE_ORDER": "El domiciliario tiene un pedido en curso. Cambia su municipio cuando lo termine.",
-    "COURIER_MUNICIPALITY_NOT_OPERATING": "El municipio del domiciliario todavía no opera."
+    "COURIER_MUNICIPALITY_NOT_OPERATING": "El municipio del domiciliario todavía no opera.",
+    "DELIVERY_CODE_WRONG": "Ese no es el código de entrega.",
+    "DELIVERY_CODE_LOCKED": "Se acabaron los intentos del código. Entrega con foto.",
+    "DELIVERY_PROOF_TOO_EARLY": "Todavía no puedes entregar con foto. Espera unos minutos en el punto.",
+    "DELIVERY_PROOF_INVALID": "La foto de la entrega no es válida. Tómala de nuevo.",
+    "DELIVERY_STEP_NOT_ALLOWED": "El pedido ya cambió de estado. Actualiza para ver cómo va."
   },
   "auth": {
     "signInTitle": "Entra con tu celular",
@@ -1030,8 +1035,12 @@
         "help": "A cuántos metros del cliente se le avisa que el domiciliario está llegando."
       },
       "delivery_proof_after_seconds": {
-        "label": "Espera antes de pedir prueba",
-        "help": "Si el cliente no confirma la entrega en este tiempo, el domiciliario puede subir una prueba."
+        "label": "Espera antes de entregar con foto",
+        "help": "Minutos en el punto de entrega sin código antes de que el domiciliario pueda entregar con foto."
+      },
+      "delivery_review_auto_close_seconds": {
+        "label": "Cierre automático tras la foto",
+        "help": "Si el cliente no reclama en este tiempo después de la entrega con foto, el pedido queda entregado."
       },
       "geofence_consecutive_readings": {
         "label": "Lecturas para confirmar llegada",
@@ -1218,11 +1227,11 @@
     },
     "ARRIVING": {
       "label": "Llegando",
-      "body": "El domiciliario está a pocos metros. Ten listo el pago."
+      "body": "El domiciliario está llegando. Ten listo el pago y tu código de entrega."
     },
     "PENDING_REVIEW": {
       "label": "Entrega en revisión",
-      "body": "El domiciliario reportó la entrega con foto; RapiChonta la está revisando."
+      "body": "El domiciliario dejó tu pedido con una foto. Cuéntanos si lo recibiste."
     },
     "DISPUTED": {
       "label": "Lo estamos revisando",
@@ -1283,7 +1292,26 @@
     "receiptTitle": "Factura del pedido {code}",
     "receiptAlt": "Foto de la factura del pedido {code}",
     "receiptOpen": "Abrir en tamaño completo",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "codeTitle": "Tu código de entrega",
+    "codeBody": "Dáselo al domiciliario cuando tengas el pedido en la mano. Con él queda entregado: no tienes que hacer nada más.",
+    "codeForRecipient": "Lo recibe {name}: envíale el código.",
+    "codeShare": "Compartir por WhatsApp",
+    "codeSendTo": "Enviar a {name}",
+    "codeShareText": "Tu pedido de RapiChonta {order} va en camino. Cuando te lo entreguen, dale al domiciliario este código: {code}",
+    "receivedButton": "Ya lo recibí",
+    "receivedConfirmTitle": "¿Ya tienes tu pedido?",
+    "receivedConfirmBody": "Lo marcamos como entregado y el domiciliario queda libre.",
+    "receivedConfirm": "Sí, lo recibí",
+    "leftTitle": "Tu domiciliario dejó el pedido",
+    "leftBody": "No recibió el código, así que lo dejó en tu dirección y tomó esta foto.",
+    "leftPhotoAlt": "Foto de la entrega del pedido {code}",
+    "leftAutoClose": "Si no nos dices nada, a las {time} lo damos por entregado.",
+    "notReceivedButton": "No lo recibí",
+    "notReceivedConfirmTitle": "¿No te llegó el pedido?",
+    "notReceivedConfirmBody": "Abrimos un caso y RapiChonta revisa la entrega con el domiciliario.",
+    "notReceivedConfirm": "Sí, no lo recibí",
+    "cancel": "Cancelar"
   },
   "coverage": {
     "title": "Cobertura",

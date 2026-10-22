@@ -10,6 +10,18 @@ export const FulfillmentErrors = {
   purchaseAmountInvalid: () => new DomainError('Escribe el total que pagaste en el local', 'PURCHASE_AMOUNT_INVALID'),
   /** La foto no es una factura que este domiciliario haya subido, o ya se usó en otra compra. */
   receiptInvalid: () => new DomainError('Toma la foto de la factura otra vez', 'RECEIPT_INVALID'),
+  /** El código de entrega no coincide. `attemptsLeft`: cuántos más puede probar antes del bloqueo. */
+  deliveryCodeWrong: (attemptsLeft: number) => new DomainError('Ese no es el código del pedido', 'DELIVERY_CODE_WRONG', { attemptsLeft }),
+  /** Se acabaron los intentos: entrega con foto. */
+  deliveryCodeLocked: () => new DomainError('Se acabaron los intentos del código: entrega con foto', 'DELIVERY_CODE_LOCKED'),
+  /** La foto se habilita después de un rato en el punto (delivery.proof_after_seconds). */
+  proofTooEarly: (availableAt: Date) => new DomainError('Aún no puedes entregar con foto', 'DELIVERY_PROOF_TOO_EARLY', { availableAt: availableAt.toISOString() }),
+  /** La foto no es una foto de entrega que este domiciliario haya subido, o ya se usó. */
+  proofInvalid: () => new DomainError('Toma la foto de la entrega otra vez', 'DELIVERY_PROOF_INVALID'),
+  /** El cliente no tiene ese pedido (404, sin revelar nada). */
+  orderNotFound: () => new NotFoundError('ORDER_NOT_FOUND', 'Pedido no encontrado'),
+  /** El pedido no está en un paso donde el cliente pueda confirmar o reclamar. */
+  deliveryStepNotAllowed: (status: string) => new DomainError('Tu pedido no está en ese paso', 'DELIVERY_STEP_NOT_ALLOWED', { status }),
   /** El mismo evento de la cola sin señal ya se aplicó a otro pedido (no debería pasar: id generado en el teléfono). */
   eventConflict: () => new ConflictError('CLIENT_EVENT_CONFLICT', 'Ese cambio ya se registró en otro pedido'),
 };

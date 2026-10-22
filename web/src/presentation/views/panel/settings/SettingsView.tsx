@@ -20,7 +20,7 @@ import { usePanelMunicipality } from "../PanelMunicipality";
 /** Grupos del panel: por lo que vive cada persona del equipo, no por cómo se llaman las claves. */
 const GROUPS: { id: string; icon: ReactNode; keys: string[] }[] = [
   { id: "orders", icon: <ShoppingBasket className="size-4.5" />, keys: ["orders.new_customer_max_cop", "offers.timeout_seconds", "adjustments.timeout_seconds"] },
-  { id: "delivery", icon: <Bike className="size-4.5" />, keys: ["delivery.arriving_meters", "delivery.proof_after_seconds", "geofence.consecutive_readings", "preparation.recheck_seconds"] },
+  { id: "delivery", icon: <Bike className="size-4.5" />, keys: ["delivery.arriving_meters", "delivery.proof_after_seconds", "delivery.review_auto_close_seconds", "geofence.consecutive_readings", "preparation.recheck_seconds"] },
   { id: "security", icon: <ShieldCheck className="size-4.5" />, keys: ["otp.ttl_seconds", "otp.max_attempts", "otp.max_sends_per_hour", "location.retention_days", "security.auth_log_retention_days"] },
 ];
 

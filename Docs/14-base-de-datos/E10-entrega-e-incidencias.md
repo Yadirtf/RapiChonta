@@ -8,6 +8,9 @@ Historias: H10.1 a H10.5. El cobro contra entrega (H10.2) se registra en la caja
 
 ```mermaid
 erDiagram
+  orders ||--o| order_delivery_codes : "código de entrega"
+  orders ||--o{ delivery_code_attempts : "intentos fallidos"
+  users ||--o{ delivery_code_attempts : "domiciliario"
   orders ||--o| order_delivery_proofs : "foto de entrega"
   files ||--o| order_delivery_proofs : ""
   orders ||--o{ incidents : ""
@@ -19,6 +22,17 @@ erDiagram
   orders ||--o| order_cancellations : "motivo"
   cancellation_reasons ||--o{ order_cancellations : ""
 
+  order_delivery_codes {
+    uuid order_id PK,FK
+    char code
+    timestamptz created_at
+  }
+  delivery_code_attempts {
+    uuid id PK
+    uuid order_id FK
+    uuid courier_user_id FK
+    timestamptz attempted_at
+  }
   order_delivery_proofs {
     uuid order_id PK,FK
     uuid file_id FK,UK
@@ -41,9 +55,19 @@ erDiagram
   }
 ```
 
+## Código de entrega (RF-60)
+
+`order_delivery_codes` (1:1 con el pedido, inmutable): `code` de 4 dígitos (`CHECK ^[0-9]{4}$`) creado al pasar a `ON_THE_WAY`. El cliente lo ve en el detalle del pedido solo mientras está en `ON_THE_WAY` o `ARRIVING`; el domiciliario nunca lo recibe de la API.
+
+`delivery_code_attempts` (inmutable): una fila por código equivocado, con el domiciliario asignado (disparador). Con 5 intentos (`DELIVERY_CODE_MAX_ATTEMPTS`) el código se bloquea y la foto se habilita de una vez. Los aciertos no se guardan aquí: son la fila `→ DELIVERED` del historial con rol `COURIER`.
+
+**Llegué:** `ON_THE_WAY → ARRIVING` también con rol `COURIER` (respaldo manual de la geocerca).
+
 ## Confirmación del cliente (H10.1, RF-60)
 
-No crea filas propias: "Recibí mi pedido" es el cambio `ARRIVING → DELIVERED` (o desde `ON_THE_WAY`) con rol activo `CUSTOMER`. La pantalla que no se cierra se muestra mientras el pedido esté en `ARRIVING` y se calcula del estado.
+No crea filas propias: "Ya lo recibí" es el cambio a `DELIVERED` con rol activo `CUSTOMER`, desde `ON_THE_WAY`, `ARRIVING` o `PENDING_REVIEW`. "No lo recibí" es `PENDING_REVIEW → DISPUTED` con rol `CUSTOMER`. Ninguna pantalla es bloqueante: el código ya cierra la entrega sin que el cliente haga nada en la app.
+
+Cerrar la entrega (código, cliente o foto) libera la asignación con el motivo `ORDER_COMPLETED`: `PENDING_REVIEW` y `DISPUTED` tienen `requires_courier = false`, así que el domiciliario queda disponible mientras se revisa.
 
 ## Entrega con foto (H10.4, RF-63)
 
@@ -52,11 +76,11 @@ No crea filas propias: "Recibí mi pedido" es el cambio `ARRIVING → DELIVERED`
 | Columna | Tipo | Nulo | Regla |
 | --- | --- | --- | --- |
 | `order_id` | FK `orders` | no | PK |
-| `file_id` | FK `files` | no | `UNIQUE`. Propósito `DELIVERY_PROOF` (`requires_camera`); `files.captured_at` y `captured_location` son obligatorios para este propósito (disparador) |
+| `file_id` | FK `files` | no | `UNIQUE`. Propósito `DELIVERY_PROOF` (`requires_camera`), subido por el domiciliario asignado (disparador). Al entregar se llenan `files.captured_at` y, si hay ping reciente, `captured_location` |
 
-Quién la tomó es `files.uploaded_by_user_id` (debe ser el domiciliario asignado) y cuándo, `files.captured_at`; no se repiten. Solo se permite si pasaron `delivery.proof_after_seconds` desde que el pedido entró a `ARRIVING` (caso de uso).
+Quién la tomó es `files.uploaded_by_user_id` (debe ser el domiciliario asignado, disparador) y cuándo, `files.captured_at`; no se repiten. `captured_location` se toma del último ping del domiciliario (si es de los últimos 10 minutos). Solo se permite si pasaron `delivery.proof_after_seconds` (300 s) desde que el pedido entró a `ARRIVING`, o si el código quedó bloqueado (caso de uso).
 
-En la misma transacción: la foto y el historial `ARRIVING → PENDING_REVIEW`. El operador revisa y deja el pedido en `DELIVERED` o `DISPUTED` (H10.5); su decisión es esa fila del historial, con su nota.
+En la misma transacción: la foto, el historial `ARRIVING → PENDING_REVIEW` y la liberación del domiciliario. El cliente ve la foto y confirma o reporta; el operador también puede cerrar o abrir disputa (H10.5). Si nadie responde en `delivery.review_auto_close_seconds` (7200 s), el reloj de la API pasa el pedido a `DELIVERED` con origen `TIMER`.
 
 ## Incidencias (H10.3, H10.5, RF-62)
 

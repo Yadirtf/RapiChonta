@@ -168,7 +168,12 @@
     "COURIER_HAS_ACTIVE_ORDER": "Finish your current order before switching to customer mode.",
     "MUNICIPALITY_OUT_OF_SCOPE": "You can only assign your own municipality.",
     "COURIER_ON_ACTIVE_ORDER": "The courier has an order in progress. Change their municipality once they finish.",
-    "COURIER_MUNICIPALITY_NOT_OPERATING": "The courier's municipality isn't operating yet."
+    "COURIER_MUNICIPALITY_NOT_OPERATING": "The courier's municipality isn't operating yet.",
+    "DELIVERY_CODE_WRONG": "That's not the delivery code.",
+    "DELIVERY_CODE_LOCKED": "No code attempts left. Deliver with a photo.",
+    "DELIVERY_PROOF_TOO_EARLY": "You can't deliver with a photo yet. Wait a few minutes at the spot.",
+    "DELIVERY_PROOF_INVALID": "The delivery photo is not valid. Take it again.",
+    "DELIVERY_STEP_NOT_ALLOWED": "The order already changed. Refresh to see where it is."
   },
   "auth": {
     "signInTitle": "Sign in with your phone",
@@ -1030,8 +1035,12 @@
         "help": "How many meters from the customer they're told the courier is arriving."
       },
       "delivery_proof_after_seconds": {
-        "label": "Wait before asking for proof",
-        "help": "If the customer doesn't confirm delivery within this time, the courier can upload proof."
+        "label": "Wait before photo delivery",
+        "help": "Time at the drop-off without the code before the courier can deliver with a photo."
+      },
+      "delivery_review_auto_close_seconds": {
+        "label": "Auto-close after photo",
+        "help": "If the customer doesn't report a problem within this time after a photo delivery, the order is marked delivered."
       },
       "geofence_consecutive_readings": {
         "label": "Readings to confirm arrival",
@@ -1218,11 +1227,11 @@
     },
     "ARRIVING": {
       "label": "Arriving",
-      "body": "The courier is a few meters away. Have your payment ready."
+      "body": "The courier is almost there. Have your payment and delivery code ready."
     },
     "PENDING_REVIEW": {
       "label": "Delivery under review",
-      "body": "The courier reported the delivery with a photo; RapiChonta is reviewing it."
+      "body": "The courier left your order with a photo. Tell us if you got it."
     },
     "DISPUTED": {
       "label": "We're looking into it",
@@ -1283,7 +1292,26 @@
     "receiptTitle": "Receipt for order {code}",
     "receiptAlt": "Photo of the receipt for order {code}",
     "receiptOpen": "Open full size",
-    "close": "Close"
+    "close": "Close",
+    "codeTitle": "Your delivery code",
+    "codeBody": "Give it to the courier once the order is in your hands. That marks it delivered: nothing else to do.",
+    "codeForRecipient": "{name} is receiving it: send them the code.",
+    "codeShare": "Share on WhatsApp",
+    "codeSendTo": "Send to {name}",
+    "codeShareText": "Your RapiChonta order {order} is on its way. When it arrives, give the courier this code: {code}",
+    "receivedButton": "I got it",
+    "receivedConfirmTitle": "Do you have your order?",
+    "receivedConfirmBody": "We'll mark it delivered and the courier is free to go.",
+    "receivedConfirm": "Yes, I got it",
+    "leftTitle": "Your courier left the order",
+    "leftBody": "They didn't get the code, so they left it at your address and took this photo.",
+    "leftPhotoAlt": "Delivery photo for order {code}",
+    "leftAutoClose": "If we don't hear from you, it counts as delivered at {time}.",
+    "notReceivedButton": "I didn't get it",
+    "notReceivedConfirmTitle": "Didn't get your order?",
+    "notReceivedConfirmBody": "We'll open a case and RapiChonta will review the delivery with the courier.",
+    "notReceivedConfirm": "Yes, I didn't get it",
+    "cancel": "Cancel"
   },
   "coverage": {
     "title": "Coverage",

@@ -80,6 +80,12 @@ class OrderRepositoryImpl implements OrderRepository {
       });
 
   @override
+  Future<void> confirmReceived(String code) => _call(() => _authed.post<void>('/orders/${Uri.encodeComponent(code)}/received'));
+
+  @override
+  Future<void> reportNotReceived(String code) => _call(() => _authed.post<void>('/orders/${Uri.encodeComponent(code)}/not-received'));
+
+  @override
   Future<List<SavedAddress>> addresses() => _call(() async {
         final response = await _authed.get<List<dynamic>>('/me/addresses');
         return [for (final a in (response.data ?? const []).cast<Map<String, dynamic>>()) addressFromJson(a)];
@@ -141,6 +147,7 @@ OrderDetail detailFromJson(Map<String, dynamic> json) {
   final recipient = json['recipient'] as Map<String, dynamic>?;
   final preparation = json['preparation'] as Map<String, dynamic>?;
   final purchase = json['purchase'] as Map<String, dynamic>?;
+  final delivery = json['delivery'] as Map<String, dynamic>? ?? const {};
   return OrderDetail(
     code: s.code,
     establishmentId: s.establishmentId,
@@ -178,5 +185,10 @@ OrderDetail detailFromJson(Map<String, dynamic> json) {
         ? null
         : (estimatedReadyAt: DateTime.parse(preparation['estimatedReadyAt'] as String), delayed: preparation['delayed'] as bool? ?? false),
     purchase: purchase == null ? null : (amountCents: _cents(purchase['amount']), receiptUrl: Env.resolveAsset(purchase['receiptUrl'] as String?)),
+    delivery: OrderDelivery(
+      code: delivery['code'] as String?,
+      proofUrl: Env.resolveAsset(delivery['proofUrl'] as String?),
+      reviewClosesAt: delivery['reviewClosesAt'] is String ? DateTime.parse(delivery['reviewClosesAt'] as String) : null,
+    ),
   );
 }

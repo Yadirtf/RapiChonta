@@ -33,3 +33,15 @@ export class TripQueryDto {
   @MaxLength(5)
   lang?: string;
 }
+
+export class DeliverDto extends TripEventDto {
+  /** Los 4 dígitos que le dice el cliente. */
+  @Matches(/^\d{4}$/)
+  deliveryCode: string;
+}
+
+export class DeliveryProofDto extends TripEventDto {
+  /** La foto de la entrega, subida antes con el propósito DELIVERY_PROOF. */
+  @IsUUID()
+  fileId: string;
+}

@@ -49,6 +49,13 @@ export class FulfillmentPresenter {
           }
         : null,
       purchase: t.purchase ? { amount: t.purchase.amount, receiptUrl: this.urls.url(t.purchase.receiptFileId) } : null,
+      delivery: t.delivery
+        ? {
+            arrivedAt: t.delivery.arrivedAt?.toISOString() ?? null,
+            proofAvailableAt: t.delivery.proofAvailableAt?.toISOString() ?? null,
+            codeAttemptsLeft: t.delivery.codeAttemptsLeft,
+          }
+        : null,
     };
   }
 }

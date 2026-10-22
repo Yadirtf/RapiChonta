@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme.dart';
+import '../../../../core/error/failure.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../auth/presentation/widgets/error_text.dart';
 import '../../../auth/presentation/widgets/phone_field.dart' show formatPhone;
@@ -146,7 +147,7 @@ class _TripView extends ConsumerWidget {
                     'ACCEPTED' => [_ToStoreStage(trip: trip)],
                     'AT_ESTABLISHMENT' => [_BuyStage(trip: trip)],
                     'PREPARING' => [_PrepStage(trip: trip, purchaseQueued: trip.status != 'PREPARING')],
-                    'ON_THE_WAY' || 'ARRIVING' => [_DeliverStage(trip: trip, arriving: status == 'ARRIVING')],
+                    'ON_THE_WAY' || 'ARRIVING' => [_DeliverStage(trip: trip, arriving: status == 'ARRIVING', arrivalQueued: trip.status == 'ON_THE_WAY')],
                     _ => [_OtherStage(status: status)],
                   },
                 ]),
@@ -486,6 +487,8 @@ class _BuyStageState extends ConsumerState<_BuyStage> {
     final pesos = _pesos;
     final diff = pesos == null ? 0 : pesos * 100 - trip.itemsCents;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _BillTicket(trip: trip, language: language),
+      const SizedBox(height: 16),
       StepCard(
         number: 1,
         title: l10n.tripShoppingList,
@@ -706,11 +709,72 @@ class _PrepStageState extends ConsumerState<_PrepStage> {
           ],
         ]),
       ),
+      const SizedBox(height: 16),
+      _BillTicket(trip: widget.trip, language: language),
       if (purchase != null) ...[
         const SizedBox(height: 16),
         _PaidCard(amountCents: purchase.amountCents, receiptUrl: purchase.receiptUrl, language: language),
       ],
     ]);
+  }
+}
+
+/// La cuenta del pedido antes de salir del local: lo que valen los productos, el domicilio y lo que se cobra al
+/// entregar. Así el domiciliario sabe desde la compra cuánto va a recibir y con qué medio.
+class _BillTicket extends StatelessWidget {
+  const _BillTicket({required this.trip, required this.language});
+
+  final Trip trip;
+  final String language;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    Widget row(String term, int cents) => Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Row(children: [
+            Expanded(child: Text(term, style: const TextStyle(color: Colors.white70, fontSize: 14))),
+            Text(formatPesos(cents, language), style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()])),
+          ]),
+        );
+    return ClipPath(
+      clipper: const TicketClipper(notchAt: 0.5),
+      child: Container(
+        color: AppColors.ink,
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Eyebrow(l10n.tripBillTitle, color: AppColors.brand),
+          const SizedBox(height: 2),
+          row(l10n.tripBillItems, trip.itemsCents),
+          row(l10n.tripBillFee, trip.feeCents),
+          // La línea de corte cae en las muescas del tiquete.
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(children: List.generate(
+              24,
+              (i) => Expanded(child: Container(height: 1.5, margin: const EdgeInsets.symmetric(horizontal: 2), color: Colors.white24)),
+            )),
+          ),
+          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(l10n.tripCollect, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 4),
+                Row(children: [
+                  Icon(paymentIcon(trip.paymentMethod), color: AppColors.brand, size: 16),
+                  const SizedBox(width: 6),
+                  Flexible(child: Text(paymentLabel(l10n, trip.paymentMethod), style: const TextStyle(color: Colors.white70, fontSize: 12))),
+                ]),
+              ]),
+            ),
+            Text(
+              formatPesos(trip.customerTotalCents, language),
+              style: const TextStyle(color: AppColors.brand, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.8),
+            ),
+          ]),
+        ]),
+      ),
+    );
   }
 }
 
@@ -749,19 +813,87 @@ class _PaidCard extends StatelessWidget {
   }
 }
 
-// ── ON_THE_WAY / ARRIVING: el destino, quién recibe y cuánto cobrar (H08.6) ──
+// ── ON_THE_WAY / ARRIVING: el destino, quién recibe, cuánto cobrar y el cierre con código (H08.6, E10) ──
 
 class _DeliverStage extends StatelessWidget {
-  const _DeliverStage({required this.trip, required this.arriving});
+  const _DeliverStage({required this.trip, required this.arriving, required this.arrivalQueued});
 
   final Trip trip;
   final bool arriving;
+
+  /// "Llegué" marcado sin señal: se ve como llegado, pero el servidor aún no lo sabe.
+  final bool arrivalQueued;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final language = Localizations.localeOf(context).languageCode;
     final destination = trip.destination;
+    final collect = ClipPath(
+      // Lo que se cobra, en tiquete de tinta: es lo último que no se puede olvidar.
+      clipper: const TicketClipper(notchAt: 0.62),
+      child: Container(
+        color: AppColors.ink,
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Eyebrow(l10n.tripCollect, color: AppColors.brand),
+          const SizedBox(height: 4),
+          Text(formatPesos(trip.customerTotalCents, language), style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w900, letterSpacing: -1)),
+          const SizedBox(height: 18),
+          Row(children: [
+            Icon(paymentIcon(trip.paymentMethod), color: AppColors.brand, size: 18),
+            const SizedBox(width: 8),
+            Expanded(child: Text(paymentLabel(l10n, trip.paymentMethod), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800))),
+          ]),
+          const SizedBox(height: 4),
+          Text(l10n.tripCollectBreakdown(formatPesos(trip.itemsCents, language), formatPesos(trip.feeCents, language)), style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        ]),
+      ),
+    );
+    final whereTo = DutyCard(
+      child: destination == null
+          ? Row(children: [
+              const Icon(Icons.cloud_off_rounded, color: AppColors.chonta),
+              const SizedBox(width: 10),
+              Expanded(child: Text(l10n.tripDestinationOffline, style: const TextStyle(fontWeight: FontWeight.w700))),
+            ])
+          : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Eyebrow(l10n.tripTakeTo),
+              const SizedBox(height: 4),
+              Text(
+                destination.label ?? destination.reference ?? destination.line ?? '',
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+              ),
+              for (final extra in [if (destination.label != null) destination.reference, destination.line].whereType<String>())
+                Text(extra, style: TextStyle(color: AppColors.ink.withValues(alpha: 0.65))),
+              const SizedBox(height: 14),
+              Row(children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(color: AppColors.cream, borderRadius: BorderRadius.circular(13)),
+                  child: const Icon(Icons.person_rounded, color: AppColors.chonta),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(l10n.tripRecipient.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1, color: AppColors.ink.withValues(alpha: 0.45))),
+                    Text(destination.recipientName, style: const TextStyle(fontWeight: FontWeight.w800)),
+                    if (destination.recipientPhone != null) Text(formatPhone(destination.recipientPhone), style: TextStyle(fontSize: 12, color: AppColors.ink.withValues(alpha: 0.6))),
+                  ]),
+                ),
+                if (destination.recipientPhone != null) _RoundAction(icon: Icons.call_rounded, label: l10n.tripCall, onTap: () => callPhone(destination.recipientPhone!)),
+              ]),
+              const SizedBox(height: 14),
+              FilledButton.icon(
+                onPressed: () => openDirections(destination.location, destination.label ?? trip.code),
+                icon: const Icon(Icons.directions_rounded),
+                label: Text(l10n.tripDirections),
+              ),
+              if (!arriving) ...[const SizedBox(height: 12), _AutoNote(text: l10n.tripAutoArriving), const SizedBox(height: 10), _ArrivedButton(trip: trip)],
+            ]),
+    );
+
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (arriving) ...[
         Semantics(
@@ -782,78 +914,329 @@ class _DeliverStage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
+        // Donde el cliente el orden es el de la entrega: cobrar, pedir el código, y (si no aparece) llamar.
+        collect,
+        const SizedBox(height: 16),
+        _HandoverCard(trip: trip, arrivalQueued: arrivalQueued),
+        const SizedBox(height: 16),
+        whereTo,
+      ] else ...[
+        whereTo,
+        const SizedBox(height: 16),
+        collect,
       ],
-      DutyCard(
-        child: destination == null
-            ? Row(children: [
-                const Icon(Icons.cloud_off_rounded, color: AppColors.chonta),
-                const SizedBox(width: 10),
-                Expanded(child: Text(l10n.tripDestinationOffline, style: const TextStyle(fontWeight: FontWeight.w700))),
-              ])
-            : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Eyebrow(l10n.tripTakeTo),
-                const SizedBox(height: 4),
-                Text(
-                  destination.label ?? destination.reference ?? destination.line ?? '',
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5),
-                ),
-                for (final extra in [if (destination.label != null) destination.reference, destination.line].whereType<String>())
-                  Text(extra, style: TextStyle(color: AppColors.ink.withValues(alpha: 0.65))),
-                const SizedBox(height: 14),
-                Row(children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(color: AppColors.cream, borderRadius: BorderRadius.circular(13)),
-                    child: const Icon(Icons.person_rounded, color: AppColors.chonta),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(l10n.tripRecipient.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1, color: AppColors.ink.withValues(alpha: 0.45))),
-                      Text(destination.recipientName, style: const TextStyle(fontWeight: FontWeight.w800)),
-                      if (destination.recipientPhone != null) Text(formatPhone(destination.recipientPhone), style: TextStyle(fontSize: 12, color: AppColors.ink.withValues(alpha: 0.6))),
-                    ]),
-                  ),
-                  if (destination.recipientPhone != null) _RoundAction(icon: Icons.call_rounded, label: l10n.tripCall, onTap: () => callPhone(destination.recipientPhone!)),
-                ]),
-                const SizedBox(height: 14),
-                FilledButton.icon(
-                  onPressed: () => openDirections(destination.location, destination.label ?? trip.code),
-                  icon: const Icon(Icons.directions_rounded),
-                  label: Text(l10n.tripDirections),
-                ),
-                if (!arriving) ...[const SizedBox(height: 12), _AutoNote(text: l10n.tripAutoArriving)],
-              ]),
-      ),
-      const SizedBox(height: 16),
-      // Lo que se cobra, en tiquete de tinta: es lo último que no se puede olvidar.
-      ClipPath(
-        clipper: const TicketClipper(notchAt: 0.62),
-        child: Container(
-          color: AppColors.ink,
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Eyebrow(l10n.tripCollect, color: AppColors.brand),
-            const SizedBox(height: 4),
-            Text(formatPesos(trip.customerTotalCents, language), style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w900, letterSpacing: -1)),
-            const SizedBox(height: 18),
-            Row(children: [
-              Icon(paymentIcon(trip.paymentMethod), color: AppColors.brand, size: 18),
-              const SizedBox(width: 8),
-              Expanded(child: Text(paymentLabel(l10n, trip.paymentMethod), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800))),
-            ]),
-            const SizedBox(height: 4),
-            Text(l10n.tripCollectBreakdown(formatPesos(trip.itemsCents, language), formatPesos(trip.feeCents, language)), style: const TextStyle(color: Colors.white54, fontSize: 12)),
-          ]),
-        ),
-      ),
       if (trip.purchase != null) ...[
         const SizedBox(height: 16),
         _PaidCard(amountCents: trip.purchase!.amountCents, receiptUrl: trip.purchase!.receiptUrl, language: language),
       ],
     ]);
   }
+}
+
+/// "Llegué": por si la geocerca no lo detecta (GPS impreciso, edificio). Se encola como los demás pasos.
+class _ArrivedButton extends ConsumerStatefulWidget {
+  const _ArrivedButton({required this.trip});
+
+  final Trip trip;
+
+  @override
+  ConsumerState<_ArrivedButton> createState() => _ArrivedButtonState();
+}
+
+class _ArrivedButtonState extends ConsumerState<_ArrivedButton> {
+  bool _busy = false;
+  String? _error;
+
+  Future<void> _mark() async {
+    final l10n = AppLocalizations.of(context);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final sent = await ref.read(pendingStepsProvider.notifier).submit(orderCode: widget.trip.code, kind: StepKind.arrived);
+      if (!sent && mounted) _queuedNotice(context);
+    } catch (error) {
+      if (mounted) setState(() => _error = errorText(l10n, error));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Text(l10n.tripArrivedHint, style: TextStyle(fontSize: 12, color: AppColors.ink.withValues(alpha: 0.6))),
+      const SizedBox(height: 8),
+      OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52), side: const BorderSide(color: AppColors.ink, width: 2)),
+        onPressed: _busy ? null : _mark,
+        icon: _busy ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2.5)) : const Icon(Icons.where_to_vote_rounded),
+        label: Text(l10n.tripArrivedButton),
+      ),
+      if (_error != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_error!, style: const TextStyle(color: AppColors.chontaStrong, fontWeight: FontWeight.w700))),
+    ]);
+  }
+}
+
+/// Sin dato del servidor (el "Llegué" salió sin señal), la foto se habilita a los 5 minutos de la llegada local.
+const _proofAfterFallback = Duration(minutes: 5);
+
+/// El cierre: el código de 4 dígitos que dice el cliente. Si no lo da, la entrega con foto tras unos minutos en el
+/// punto (o enseguida si se acabaron los intentos). Las dos dejan al domiciliario libre.
+class _HandoverCard extends ConsumerStatefulWidget {
+  const _HandoverCard({required this.trip, required this.arrivalQueued});
+
+  final Trip trip;
+  final bool arrivalQueued;
+
+  @override
+  ConsumerState<_HandoverCard> createState() => _HandoverCardState();
+}
+
+class _HandoverCardState extends ConsumerState<_HandoverCard> {
+  final _code = TextEditingController();
+  final _focus = FocusNode();
+  Timer? _tick;
+  ReceiptPhoto? _photo;
+  bool _busy = false;
+  String? _error;
+  int? _attemptsLeft;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && _proofAt != null && DateTime.now().isBefore(_proofAt!.add(const Duration(seconds: 1)))) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    _code.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  int get _left => _attemptsLeft ?? widget.trip.delivery?.codeAttemptsLeft ?? 5;
+
+  DateTime? get _proofAt {
+    final fromServer = widget.trip.delivery?.proofAvailableAt;
+    if (fromServer != null && !widget.arrivalQueued) return _left <= 0 ? DateTime.now() : fromServer;
+    final local = ref.read(pendingStepsProvider).of(widget.trip.code).where((s) => s.kind == StepKind.arrived).firstOrNull?.occurredAt;
+    return (local ?? widget.trip.delivery?.arrivedAt ?? DateTime.now()).add(_proofAfterFallback);
+  }
+
+  Future<void> _deliver() async {
+    final l10n = AppLocalizations.of(context);
+    if (_code.text.length != 4) {
+      _focus.requestFocus();
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref.read(pendingStepsProvider.notifier).deliverWithCode(widget.trip.code, _code.text);
+      if (mounted) _deliveredNotice(context);
+    } catch (error) {
+      if (!mounted) return;
+      final failure = error is Failure ? error : null;
+      setState(() {
+        if (failure?.code == 'DELIVERY_CODE_WRONG') _attemptsLeft = (failure!.details['attemptsLeft'] as num?)?.toInt();
+        if (failure?.code == 'DELIVERY_CODE_LOCKED') _attemptsLeft = 0;
+        _error = failure != null && !PendingRules.retryable(failure) ? errorText(l10n, error) : l10n.tripCodeNeedsSignal;
+        _code.clear();
+      });
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _capture() async {
+    final photo = await captureReceipt();
+    if (photo != null && mounted) setState(() => _photo = photo);
+  }
+
+  Future<void> _sendProof() async {
+    final l10n = AppLocalizations.of(context);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final sent = await ref.read(pendingStepsProvider.notifier).submit(orderCode: widget.trip.code, kind: StepKind.proof, receipt: _photo);
+      if (mounted) sent ? _deliveredNotice(context) : _queuedNotice(context);
+    } catch (error) {
+      if (mounted) setState(() => _error = errorText(l10n, error));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final locked = _left <= 0;
+    final proofAt = _proofAt;
+    final wait = proofAt?.difference(DateTime.now());
+    final proofReady = locked || wait == null || wait <= Duration.zero;
+    return DutyCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(color: AppColors.leaf, borderRadius: BorderRadius.circular(13)),
+            child: const Icon(Icons.pin_rounded, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(l10n.tripHandoverTitle, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, letterSpacing: -0.3)),
+              Text(l10n.tripHandoverHint, style: TextStyle(fontSize: 12, color: AppColors.ink.withValues(alpha: 0.6))),
+            ]),
+          ),
+        ]),
+        if (!locked) ...[
+          const SizedBox(height: 16),
+          _CodeBoxes(controller: _code, focusNode: _focus, error: _error != null && _attemptsLeft != null, onComplete: _busy ? null : _deliver),
+          const SizedBox(height: 8),
+          Text(
+            l10n.tripCodeAttempts(_left),
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _left <= 2 ? AppColors.chontaStrong : AppColors.ink.withValues(alpha: 0.5)),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(58), backgroundColor: AppColors.leaf, foregroundColor: Colors.white),
+            onPressed: _busy ? null : _deliver,
+            icon: _busy && _photo == null
+                ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                : const Icon(Icons.verified_rounded),
+            label: Text(l10n.tripDeliver),
+          ),
+        ],
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Semantics(liveRegion: true, child: Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.chontaStrong, fontWeight: FontWeight.w800))),
+          ),
+        const SizedBox(height: 18),
+        // Perforación del tiquete: arriba lo normal, abajo la salida cuando el cliente no aparece.
+        Row(children: List.generate(28, (i) => Expanded(child: Container(height: 1.5, margin: const EdgeInsets.symmetric(horizontal: 2), color: AppColors.ink.withValues(alpha: 0.15))))),
+        const SizedBox(height: 14),
+        Text(l10n.tripNoCodeTitle, style: const TextStyle(fontWeight: FontWeight.w900)),
+        const SizedBox(height: 2),
+        Text(l10n.tripNoCodeBody, style: TextStyle(fontSize: 12, color: AppColors.ink.withValues(alpha: 0.6))),
+        const SizedBox(height: 12),
+        if (_photo != null) ...[
+          SizedBox(height: 170, child: ReceiptTile(photo: _photo, onCapture: _capture)),
+          const SizedBox(height: 10),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54), backgroundColor: AppColors.ink, foregroundColor: AppColors.brand),
+            onPressed: _busy ? null : _sendProof,
+            icon: _busy ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.brand)) : const Icon(Icons.task_alt_rounded),
+            label: Text(l10n.tripProofSend),
+          ),
+        ] else
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+            onPressed: proofReady && !_busy ? _capture : null,
+            icon: Icon(proofReady ? Icons.photo_camera_rounded : Icons.timer_outlined),
+            label: Text(proofReady ? l10n.tripProofTake : l10n.tripProofIn(_clock(wait))),
+          ),
+        if (_photo == null && proofReady)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(l10n.tripProofHint, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: AppColors.ink.withValues(alpha: 0.5))),
+          ),
+      ]),
+    );
+  }
+}
+
+/// "4:05": minutos y segundos que faltan.
+String _clock(Duration left) {
+  final seconds = left.inSeconds.clamp(0, 99 * 60);
+  return '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}';
+}
+
+/// Cuatro casillas grandes, como las de un tiquete. Debajo hay un campo invisible que recibe el teclado numérico.
+class _CodeBoxes extends StatelessWidget {
+  const _CodeBoxes({required this.controller, required this.focusNode, required this.error, this.onComplete});
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final bool error;
+  final VoidCallback? onComplete;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Semantics(
+      label: l10n.tripHandoverTitle,
+      textField: true,
+      child: Stack(children: [
+        ListenableBuilder(
+          listenable: Listenable.merge([controller, focusNode]),
+          builder: (context, _) {
+            final text = controller.text;
+            return Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              for (var i = 0; i < 4; i++)
+                Container(
+                  width: 62,
+                  height: 72,
+                  margin: const EdgeInsets.symmetric(horizontal: 5),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: i < text.length ? AppColors.cream : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      width: 2.5,
+                      color: error && text.isEmpty
+                          ? AppColors.chontaStrong
+                          : focusNode.hasFocus && i == text.length
+                              ? AppColors.chonta
+                              : AppColors.ink.withValues(alpha: i < text.length ? 0.85 : 0.18),
+                    ),
+                  ),
+                  child: Text(i < text.length ? text[i] : '', style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w900)),
+                ),
+            ]);
+          },
+        ),
+        Positioned.fill(
+          child: Opacity(
+            opacity: 0,
+            child: TextField(
+              controller: controller,
+              focusNode: focusNode,
+              keyboardType: TextInputType.number,
+              autofillHints: const [AutofillHints.oneTimeCode],
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(4)],
+              showCursor: false,
+              enableInteractiveSelection: false,
+              decoration: const InputDecoration(border: InputBorder.none, filled: false, counterText: ''),
+              onChanged: (value) {
+                if (value.length == 4) onComplete?.call();
+              },
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+void _deliveredNotice(BuildContext context) {
+  final l10n = AppLocalizations.of(context);
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(behavior: SnackBarBehavior.floating, backgroundColor: AppColors.leaf, content: Text(l10n.tripDeliveredToast)));
 }
 
 /// Estados que llegan en E09–E10 (decisión del cliente, revisión, novedad): su texto de la ruta del cliente.

@@ -276,8 +276,9 @@ export const CATALOGS: CatalogSeed[] = [
           ['PREPARING', true, true, false, false, false, true],
           ['ON_THE_WAY', true, true, true, false, true, true],
           ['ARRIVING', true, true, true, false, true, true],
-          ['PENDING_REVIEW', true, false, true, false, false, true],
-          ['DISPUTED', true, false, true, false, false, true],
+          // Entregado con foto: el domiciliario queda libre y el cliente recibe aviso para confirmar o reclamar.
+          ['PENDING_REVIEW', true, false, true, false, true, false],
+          ['DISPUTED', true, false, true, false, false, false],
           ['DELIVERED', true, true, false, true, true, false],
           ['CANCELLED', true, false, false, false, true, false],
         ] as const
@@ -449,14 +450,17 @@ export const ORDER_TRANSITIONS: { from: string; to: string; roles: string[]; sys
   { from: 'AWAITING_CUSTOMER', to: 'AT_ESTABLISHMENT', roles: ['CUSTOMER'], system: true },
   { from: 'AWAITING_CUSTOMER', to: 'CANCELLED', roles: ['CUSTOMER'], system: true },
   { from: 'PREPARING', to: 'ON_THE_WAY', roles: ['COURIER'] },
-  { from: 'ON_THE_WAY', to: 'ARRIVING', roles: [], system: true },
-  { from: 'ON_THE_WAY', to: 'DELIVERED', roles: ['CUSTOMER'] },
+  // La geocerca, o el domiciliario con "Llegué" si el GPS no la dispara.
+  { from: 'ON_THE_WAY', to: 'ARRIVING', roles: ['COURIER'], system: true },
+  // El cliente con "Recibí mi pedido", o el domiciliario con el código de entrega que le dice el cliente.
+  { from: 'ON_THE_WAY', to: 'DELIVERED', roles: ['CUSTOMER', 'COURIER'] },
   { from: 'ON_THE_WAY', to: 'DISPUTED', roles: ['CUSTOMER'] },
-  { from: 'ARRIVING', to: 'DELIVERED', roles: ['CUSTOMER'] },
+  { from: 'ARRIVING', to: 'DELIVERED', roles: ['CUSTOMER', 'COURIER'] },
   { from: 'ARRIVING', to: 'DISPUTED', roles: ['CUSTOMER'] },
   { from: 'ARRIVING', to: 'PENDING_REVIEW', roles: ['COURIER'] },
-  { from: 'PENDING_REVIEW', to: 'DELIVERED', roles: ['OPERATOR', 'ADMIN'] },
-  { from: 'PENDING_REVIEW', to: 'DISPUTED', roles: ['OPERATOR', 'ADMIN'] },
+  // Entregado con foto: el cliente confirma o reclama; si nadie reclama, se cierra solo (delivery.review_auto_close_seconds).
+  { from: 'PENDING_REVIEW', to: 'DELIVERED', roles: ['CUSTOMER', 'OPERATOR', 'ADMIN'], system: true },
+  { from: 'PENDING_REVIEW', to: 'DISPUTED', roles: ['CUSTOMER', 'OPERATOR', 'ADMIN'] },
   { from: 'DISPUTED', to: 'DELIVERED', roles: ['OPERATOR', 'ADMIN'] },
   { from: 'DISPUTED', to: 'CANCELLED', roles: ['OPERATOR', 'ADMIN'] },
 ];
@@ -550,7 +554,8 @@ export const SETTINGS: {
   { key: 'offers.timeout_seconds', type: 'SECONDS', value: 60, min: 15, max: 600, scoped: true },
   { key: 'adjustments.timeout_seconds', type: 'SECONDS', value: 180, min: 30, max: 1800, scoped: true },
   { key: 'delivery.arriving_meters', type: 'METERS', value: 80, min: 10, max: 1000, scoped: true },
-  { key: 'delivery.proof_after_seconds', type: 'SECONDS', value: 600, min: 60, max: 3600, scoped: true },
+  { key: 'delivery.proof_after_seconds', type: 'SECONDS', value: 300, min: 60, max: 3600, scoped: true },
+  { key: 'delivery.review_auto_close_seconds', type: 'SECONDS', value: 7200, min: 600, max: 86400, scoped: true },
   { key: 'geofence.consecutive_readings', type: 'INTEGER', value: 2, min: 1, max: 10, scoped: false },
   { key: 'preparation.recheck_seconds', type: 'SECONDS', value: 300, min: 60, max: 3600, scoped: false },
   { key: 'location.retention_days', type: 'DAYS', value: 30, min: 1, max: 365, scoped: false },

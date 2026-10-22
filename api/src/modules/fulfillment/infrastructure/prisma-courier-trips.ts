@@ -1,10 +1,22 @@
 import { Injectable } from '@nestjs/common';
+import { randomInt } from 'node:crypto';
 import { Prisma } from '../../../generated/prisma/client';
 import { GeoPoint } from '../../catalog/domain/value-objects/geo-point';
 import { ROLES } from '../../identity/domain/identity.codes';
 import { CatalogIds } from '../../../shared/infrastructure/prisma/catalog-ids';
 import { PrismaService } from '../../../shared/infrastructure/prisma/prisma.service';
-import { PURCHASE_MOVEMENT, RECEIPT_PURPOSE, TRIP_SOURCES, TRIP_STATUSES, TripStatusCode } from '../domain/fulfillment.codes';
+import {
+  COMPLETED_RELEASE,
+  DEFAULT_PROOF_AFTER_SECONDS,
+  DELIVERY_CODE_MAX_ATTEMPTS,
+  FULFILLMENT_SETTINGS,
+  PROOF_PURPOSE,
+  PURCHASE_MOVEMENT,
+  RECEIPT_PURPOSE,
+  TRIP_SOURCES,
+  TRIP_STATUSES,
+  TripStatusCode,
+} from '../domain/fulfillment.codes';
 import { CourierTrips, Trip, TripCommand, TripFailure, TripRef, TripResult } from '../domain/ports/courier-trips';
 
 type Tx = Prisma.TransactionClient;
@@ -14,10 +26,29 @@ class Refused extends Error {
   constructor(
     readonly reason: TripFailure,
     readonly status: string,
+    readonly availableAt?: Date,
   ) {
     super(reason);
   }
 }
+
+/** Código de entrega: 4 dígitos al azar (con ceros a la izquierda). */
+const newDeliveryCode = () => String(randomInt(10_000)).padStart(4, '0');
+
+/** Donde el cliente: lo que hace falta para decidir sobre el código y la foto, leído con el pedido bloqueado. */
+interface DeliveryState {
+  arrived_at: Date | null;
+  proof_after: number;
+  failed: number;
+  code: string | null;
+}
+
+/** Desde cuándo puede entregar con foto: al cumplir delivery.proof_after_seconds en el punto, o ya si se bloqueó el código. */
+const proofAvailableAt = (d: DeliveryState): Date | null => {
+  if (!d.arrived_at) return null;
+  if (d.failed >= DELIVERY_CODE_MAX_ATTEMPTS) return d.arrived_at;
+  return new Date(d.arrived_at.getTime() + d.proof_after * 1000);
+};
 
 const point = (lat: number, lng: number) => GeoPoint.create(lat, lng);
 
@@ -69,6 +100,9 @@ export class PrismaCourierTrips extends CourierTrips {
         next_check_at: Date | null;
         purchase_amount: string | null;
         receipt_file_id: string | null;
+        arrived_at: Date | null;
+        proof_after: number | null;
+        failed_attempts: number;
       }[]
     >`
       SELECT o.id AS order_id, o.code, s.code AS status, s.reveals_delivery_details AS reveals,
@@ -86,7 +120,12 @@ export class PrismaCourierTrips extends CourierTrips {
              COALESCE(r.full_name, concat_ws(' ', cp.given_names, cp.family_names)) AS recipient_name,
              COALESCE(r.phone_e164, cph.phone_e164) AS recipient_phone,
              pr.started_at, pr.estimated_ready_at, pr.delay_count, pr.next_check_at,
-             mv.amount::text AS purchase_amount, op.receipt_file_id
+             mv.amount::text AS purchase_amount, op.receipt_file_id,
+             (SELECT max(h.occurred_at) FROM order_status_history h JOIN order_statuses ts ON ts.id = h.to_status_id
+              WHERE h.order_id = o.id AND ts.code = ${TRIP_STATUSES.ARRIVING}) AS arrived_at,
+             (SELECT value::float8 FROM v_current_settings
+              WHERE key = ${FULFILLMENT_SETTINGS.PROOF_AFTER_SECONDS} AND municipality_id = e.municipality_id) AS proof_after,
+             (SELECT count(*)::int FROM delivery_code_attempts d WHERE d.order_id = o.id) AS failed_attempts
       FROM order_assignments a
       JOIN orders o ON o.id = a.order_id
       JOIN order_statuses s ON s.id = o.status_id
@@ -154,6 +193,17 @@ export class PrismaCourierTrips extends CourierTrips {
           ? { startedAt: row.started_at, estimatedReadyAt: row.estimated_ready_at, delayCount: row.delay_count ?? 0, nextCheckAt: row.next_check_at }
           : null,
       purchase: row.purchase_amount && row.receipt_file_id ? { amount: row.purchase_amount, receiptFileId: row.receipt_file_id } : null,
+      delivery:
+        row.status === TRIP_STATUSES.ON_THE_WAY || row.status === TRIP_STATUSES.ARRIVING
+          ? {
+              arrivedAt: row.status === TRIP_STATUSES.ARRIVING ? row.arrived_at : null,
+              proofAvailableAt:
+                row.status === TRIP_STATUSES.ARRIVING && row.arrived_at
+                  ? proofAvailableAt({ arrived_at: row.arrived_at, proof_after: row.proof_after ?? DEFAULT_PROOF_AFTER_SECONDS, failed: row.failed_attempts, code: null })
+                  : null,
+              codeAttemptsLeft: Math.max(0, DELIVERY_CODE_MAX_ATTEMPTS - row.failed_attempts),
+            }
+          : null,
     };
   }
 
@@ -179,7 +229,7 @@ export class PrismaCourierTrips extends CourierTrips {
 
   async registerPurchase(command: TripCommand & { amount: string; receiptFileId: string }): Promise<TripResult> {
     const purchase = await this.ids.of('cash_movement_types', PURCHASE_MOVEMENT);
-    return this.step(command, TRIP_STATUSES.AT_ESTABLISHMENT, async (tx) => {
+    return this.step(command, [TRIP_STATUSES.AT_ESTABLISHMENT], async (tx) => {
       const [receipt] = await tx.$queryRaw<{ usable: boolean }[]>`
         SELECT EXISTS (
           SELECT 1 FROM files f JOIN file_purposes p ON p.id = f.purpose_id AND p.code = ${RECEIPT_PURPOSE}
@@ -212,12 +262,70 @@ export class PrismaCourierTrips extends CourierTrips {
     });
   }
 
+  /** Sale del local: nace el código de entrega que el cliente ve en su pedido. */
   async markReady(command: TripCommand): Promise<TripResult> {
-    return this.step(command, TRIP_STATUSES.PREPARING, (tx) => this.history(tx, command, TRIP_STATUSES.PREPARING, TRIP_STATUSES.ON_THE_WAY));
+    return this.step(command, [TRIP_STATUSES.PREPARING], async (tx) => {
+      await this.history(tx, command, TRIP_STATUSES.PREPARING, TRIP_STATUSES.ON_THE_WAY);
+      await tx.$executeRaw`
+        INSERT INTO order_delivery_codes (order_id, code) VALUES (${command.trip.orderId}::uuid, ${newDeliveryCode()})
+        ON CONFLICT (order_id) DO NOTHING`;
+    });
+  }
+
+  async markArrived(command: TripCommand): Promise<TripResult> {
+    return this.step(command, [TRIP_STATUSES.ON_THE_WAY], (tx) => this.history(tx, command, TRIP_STATUSES.ON_THE_WAY, TRIP_STATUSES.ARRIVING));
+  }
+
+  /**
+   * El código se compara con el pedido bloqueado. Uno equivocado se guarda (y se confirma) aunque el paso falle:
+   * así no se puede probar las 10.000 combinaciones. Con DELIVERY_CODE_MAX_ATTEMPTS fallidos ya no se acepta.
+   */
+  async deliverWithCode(command: TripCommand & { deliveryCode: string }): Promise<TripResult> {
+    return this.step(command, [TRIP_STATUSES.ON_THE_WAY, TRIP_STATUSES.ARRIVING], async (tx, status) => {
+      const state = await this.deliveryState(tx, command.trip.orderId);
+      if (!state.code || state.failed >= DELIVERY_CODE_MAX_ATTEMPTS) throw new Refused('CODE_LOCKED', status);
+      if (state.code !== command.deliveryCode) {
+        await tx.$executeRaw`
+          INSERT INTO delivery_code_attempts (order_id, courier_user_id, attempted_at)
+          VALUES (${command.trip.orderId}::uuid, ${command.courierUserId}::uuid, ${command.occurredAt}::timestamptz)`;
+        return { ok: false, reason: 'CODE', status, attemptsLeft: DELIVERY_CODE_MAX_ATTEMPTS - state.failed - 1 };
+      }
+      await this.history(tx, command, status as TripStatusCode, TRIP_STATUSES.DELIVERED);
+      await this.release(tx, command);
+    });
+  }
+
+  /**
+   * Sin código: la foto con la cámara de la app. Queda como prueba con la hora y la última ubicación del domiciliario,
+   * el pedido pasa a revisión y el domiciliario queda libre para otro pedido.
+   */
+  async deliverWithProof(command: TripCommand & { fileId: string }): Promise<TripResult> {
+    return this.step(command, [TRIP_STATUSES.ARRIVING], async (tx, status) => {
+      const state = await this.deliveryState(tx, command.trip.orderId);
+      const availableAt = proofAvailableAt(state);
+      if (!availableAt || availableAt.getTime() > command.occurredAt.getTime()) throw new Refused('PROOF_EARLY', status, availableAt ?? undefined);
+      const [photo] = await tx.$queryRaw<{ usable: boolean }[]>`
+        SELECT EXISTS (
+          SELECT 1 FROM files f JOIN file_purposes p ON p.id = f.purpose_id AND p.code = ${PROOF_PURPOSE}
+          WHERE f.id = ${command.fileId}::uuid AND f.uploaded_by_user_id = ${command.courierUserId}::uuid
+            AND NOT EXISTS (SELECT 1 FROM order_delivery_proofs dp WHERE dp.file_id = f.id)) AS usable`;
+      if (!photo.usable) throw new Refused('PROOF', status);
+      await tx.$executeRaw`INSERT INTO order_delivery_proofs (order_id, file_id) VALUES (${command.trip.orderId}::uuid, ${command.fileId}::uuid)`;
+      // Cuándo y dónde: la hora del paso y la última lectura del domiciliario (de los últimos 10 minutos).
+      await tx.$executeRaw`
+        UPDATE files SET captured_at = ${command.occurredAt}::timestamptz,
+          captured_location = (SELECT p.location FROM courier_location_pings p
+                               WHERE p.courier_user_id = ${command.courierUserId}::uuid
+                                 AND p.recorded_at > ${command.occurredAt}::timestamptz - interval '10 minutes'
+                               ORDER BY p.recorded_at DESC LIMIT 1)
+        WHERE id = ${command.fileId}::uuid`;
+      await this.history(tx, command, TRIP_STATUSES.ARRIVING, TRIP_STATUSES.PENDING_REVIEW);
+      await this.release(tx, command);
+    });
   }
 
   async reportDelay(command: TripCommand): Promise<TripResult> {
-    return this.step(command, TRIP_STATUSES.PREPARING, async (tx) => {
+    return this.step(command, [TRIP_STATUSES.PREPARING], async (tx) => {
       await tx.$executeRaw`
         INSERT INTO order_preparation_delays (order_id, reported_by_user_id, reported_at, client_event_id)
         VALUES (${command.trip.orderId}::uuid, ${command.courierUserId}::uuid,
@@ -230,9 +338,13 @@ export class PrismaCourierTrips extends CourierTrips {
    * Bloquea el pedido, confirma que sigue en el paso esperado y que sigue siendo de este domiciliario, y corre
    * `work`. Un reenvío simultáneo del mismo evento choca con el UNIQUE de client_event_id: se responde como hecho.
    */
-  private async step(command: TripCommand, expected: TripStatusCode, work: (tx: Tx) => Promise<void>): Promise<TripResult> {
+  private async step(
+    command: TripCommand,
+    expected: readonly TripStatusCode[],
+    work: (tx: Tx, status: string) => Promise<TripResult | void>,
+  ): Promise<TripResult> {
     try {
-      await this.prisma.$transaction(async (tx) => {
+      return await this.prisma.$transaction(async (tx) => {
         const [current] = await tx.$queryRaw<{ status: string; mine: boolean }[]>`
           SELECT s.code AS status,
                  EXISTS (SELECT 1 FROM order_assignments a WHERE a.order_id = o.id AND a.courier_user_id = ${command.courierUserId}::uuid
@@ -240,15 +352,37 @@ export class PrismaCourierTrips extends CourierTrips {
           FROM orders o JOIN order_statuses s ON s.id = o.status_id
           WHERE o.id = ${command.trip.orderId}::uuid
           FOR UPDATE OF o`;
-        if (!current?.mine || current.status !== expected) throw new Refused('STEP', current?.status ?? 'UNKNOWN');
-        await work(tx);
+        if (!current?.mine || !(expected as readonly string[]).includes(current.status)) throw new Refused('STEP', current?.status ?? 'UNKNOWN');
+        return (await work(tx, current.status)) ?? { ok: true };
       });
-      return { ok: true };
     } catch (error) {
-      if (error instanceof Refused) return { ok: false, reason: error.reason, status: error.status };
+      if (error instanceof Refused) return { ok: false, reason: error.reason, status: error.status, ...(error.availableAt && { availableAt: error.availableAt }) };
       if (isClientEventReplay(error)) return { ok: true };
       throw error;
     }
+  }
+
+  /** Código, intentos fallidos y llegada al punto (con el pedido ya bloqueado por `step`). */
+  private async deliveryState(tx: Tx, orderId: string): Promise<DeliveryState> {
+    const [state] = await tx.$queryRaw<DeliveryState[]>`
+      SELECT (SELECT max(h.occurred_at) FROM order_status_history h JOIN order_statuses ts ON ts.id = h.to_status_id
+              WHERE h.order_id = o.id AND ts.code = ${TRIP_STATUSES.ARRIVING}) AS arrived_at,
+             coalesce((SELECT value::float8 FROM v_current_settings
+                       WHERE key = ${FULFILLMENT_SETTINGS.PROOF_AFTER_SECONDS} AND municipality_id = e.municipality_id),
+                      ${DEFAULT_PROOF_AFTER_SECONDS}) AS proof_after,
+             (SELECT count(*)::int FROM delivery_code_attempts d WHERE d.order_id = o.id) AS failed,
+             (SELECT c.code FROM order_delivery_codes c WHERE c.order_id = o.id) AS code
+      FROM orders o JOIN establishments e ON e.id = o.establishment_id
+      WHERE o.id = ${orderId}::uuid`;
+    return state;
+  }
+
+  /** Terminó su parte: la asignación se libera (y el domiciliario puede recibir otro pedido). */
+  private async release(tx: Tx, command: TripCommand): Promise<void> {
+    const reason = await this.ids.of('assignment_release_reasons', COMPLETED_RELEASE);
+    await tx.$executeRaw`
+      UPDATE order_assignments SET released_at = clock_timestamp(), release_reason_id = ${reason}, released_by_user_id = ${command.courierUserId}::uuid
+      WHERE order_id = ${command.trip.orderId}::uuid AND courier_user_id = ${command.courierUserId}::uuid AND released_at IS NULL`;
   }
 
   private async history(tx: Tx, command: TripCommand, from: TripStatusCode, to: TripStatusCode): Promise<void> {

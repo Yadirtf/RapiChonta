@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../app/theme.dart';
 import '../../../../core/error/failure.dart';
@@ -13,6 +14,7 @@ import '../../../establishments/presentation/providers/establishments_providers.
 import '../../../establishments/presentation/widgets/storefront.dart';
 import '../../../notifications/presentation/push_controller.dart';
 import '../../domain/entities/order.dart';
+import '../../domain/repositories/order_repository.dart';
 import '../providers/orders_providers.dart';
 import '../widgets/delivery_pin_map.dart';
 import '../widgets/order_route.dart';
@@ -91,6 +93,8 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                       if (widget.placed) _PlacedBanner(code: order.code),
                       _StatusTicket(order: order),
                       if (order.active && (order.preparation?.delayed ?? false)) ...[const SizedBox(height: 12), _HighDemand(order: order)],
+                      if (order.delivery.code != null) ...[const SizedBox(height: 16), _DeliveryCodePass(order: order, detailKey: key)],
+                      if (order.status == 'PENDING_REVIEW') ...[const SizedBox(height: 16), _LeftWithPhoto(order: order, detailKey: key)],
                       const SizedBox(height: 16),
                       _Card(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -122,6 +126,190 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// "Recibí" / "No lo recibí": confirma con un diálogo, avisa a la API y vuelve a pedir el pedido.
+Future<void> _closeDelivery(
+  BuildContext context,
+  WidgetRef ref, {
+  required (String, String) detailKey,
+  required String title,
+  required String body,
+  required String confirm,
+  required Future<void> Function(OrderRepository repository) action,
+}) async {
+  final l10n = AppLocalizations.of(context);
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+      content: Text(body),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.ordersNotYet)),
+        FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(confirm)),
+      ],
+    ),
+  );
+  if (ok != true || !context.mounted) return;
+  try {
+    await action(ref.read(orderRepositoryProvider));
+  } catch (error) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(behavior: SnackBarBehavior.floating, content: Text(errorText(l10n, error))));
+    }
+  }
+  ref.invalidate(orderDetailProvider(detailKey));
+  ref.invalidate(myOrdersProvider);
+}
+
+/// El código de entrega como un pase: cuatro casillas de tinta, las mismas que llena el domiciliario en su app.
+class _DeliveryCodePass extends ConsumerWidget {
+  const _DeliveryCodePass({required this.order, required this.detailKey});
+
+  final OrderDetail order;
+  final (String, String) detailKey;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final code = order.delivery.code!;
+    final recipient = order.recipient;
+    final text = l10n.ordersCodeShareText(order.code, code);
+    // Si recibe otra persona con teléfono, el mensaje le llega directo a ella.
+    final phone = recipient?.phone?.replaceAll(RegExp(r'\D'), '');
+    final whatsapp = Uri.https('wa.me', phone == null || phone.isEmpty ? '/' : '/$phone', {'text': text});
+    return Semantics(
+      container: true,
+      label: '${l10n.ordersCodeTitle}: ${code.split('').join(' ')}',
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 10),
+        decoration: BoxDecoration(color: AppColors.brand, borderRadius: BorderRadius.circular(26)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            const Icon(Icons.pin_rounded, color: AppColors.chontaStrong, size: 20),
+            const SizedBox(width: 8),
+            Text(l10n.ordersCodeTitle.toUpperCase(), style: const TextStyle(color: AppColors.chontaStrong, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 2)),
+          ]),
+          const SizedBox(height: 14),
+          ExcludeSemantics(
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              for (final digit in code.split(''))
+                Container(
+                  width: 62,
+                  height: 74,
+                  margin: const EdgeInsets.symmetric(horizontal: 5),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(16)),
+                  child: Text(digit, style: const TextStyle(color: AppColors.brand, fontSize: 38, fontWeight: FontWeight.w900)),
+                ),
+            ]),
+          ),
+          const SizedBox(height: 14),
+          Text(l10n.ordersCodeBody, style: TextStyle(color: AppColors.ink.withValues(alpha: 0.8), fontWeight: FontWeight.w600)),
+          if (recipient != null) ...[
+            const SizedBox(height: 6),
+            Text(l10n.ordersCodeForRecipient(recipient.fullName), style: const TextStyle(fontWeight: FontWeight.w800)),
+          ],
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50), backgroundColor: AppColors.ink, foregroundColor: Colors.white),
+            onPressed: () => launchUrl(whatsapp, mode: LaunchMode.externalApplication),
+            icon: const Icon(Icons.send_rounded, size: 18),
+            label: Text(recipient != null && phone != null && phone.isNotEmpty ? l10n.ordersCodeSendTo(recipient.fullName) : l10n.ordersCodeShare),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: AppColors.ink),
+            onPressed: () => _closeDelivery(
+              context,
+              ref,
+              detailKey: detailKey,
+              title: l10n.ordersReceivedConfirmTitle,
+              body: l10n.ordersReceivedConfirmBody,
+              confirm: l10n.ordersReceivedConfirm,
+              action: (repository) => repository.confirmReceived(order.code),
+            ),
+            child: Text(l10n.ordersReceivedButton, style: const TextStyle(fontWeight: FontWeight.w800, decoration: TextDecoration.underline)),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Entregado con foto: el cliente ve la foto, confirma o reclama; si no dice nada, se cierra solo a la hora indicada.
+class _LeftWithPhoto extends ConsumerWidget {
+  const _LeftWithPhoto({required this.order, required this.detailKey});
+
+  final OrderDetail order;
+  final (String, String) detailKey;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final language = Localizations.localeOf(context).languageCode;
+    final photo = order.delivery.proofUrl;
+    final closes = order.delivery.reviewClosesAt;
+    return _Card(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(color: AppColors.chonta, borderRadius: BorderRadius.circular(13)),
+            child: const Icon(Icons.door_front_door_rounded, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Text(l10n.ordersLeftTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
+        ]),
+        const SizedBox(height: 8),
+        Text(l10n.ordersLeftBody, style: TextStyle(color: AppColors.ink.withValues(alpha: 0.7))),
+        if (photo != null) ...[
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: () => _showReceipt(context, photo),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: Image.network(photo, height: 190, fit: BoxFit.cover, semanticLabel: l10n.ordersProofAlt, errorBuilder: (_, _, _) => const SizedBox(height: 0)),
+            ),
+          ),
+        ],
+        if (closes != null) ...[
+          const SizedBox(height: 10),
+          Text(l10n.ordersLeftAutoClose(orderTime(closes, language)), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.ink.withValues(alpha: 0.55))),
+        ],
+        const SizedBox(height: 14),
+        FilledButton.icon(
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52), backgroundColor: AppColors.leaf),
+          onPressed: () => _closeDelivery(
+            context,
+            ref,
+            detailKey: detailKey,
+            title: l10n.ordersReceivedConfirmTitle,
+            body: l10n.ordersReceivedConfirmBody,
+            confirm: l10n.ordersReceivedConfirm,
+            action: (repository) => repository.confirmReceived(order.code),
+          ),
+          icon: const Icon(Icons.check_circle_rounded),
+          label: Text(l10n.ordersReceivedConfirm),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50), foregroundColor: AppColors.chontaStrong),
+          onPressed: () => _closeDelivery(
+            context,
+            ref,
+            detailKey: detailKey,
+            title: l10n.ordersNotReceivedConfirmTitle,
+            body: l10n.ordersNotReceivedConfirmBody,
+            confirm: l10n.ordersNotReceivedConfirm,
+            action: (repository) => repository.reportNotReceived(order.code),
+          ),
+          icon: const Icon(Icons.report_rounded),
+          label: Text(l10n.ordersNotReceivedButton),
+        ),
+      ]),
     );
   }
 }
