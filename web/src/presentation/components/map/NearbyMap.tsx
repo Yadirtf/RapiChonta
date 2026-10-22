@@ -32,6 +32,8 @@ export function NearbyMap({ center, establishments, selectedId, onSelect, covera
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef<PlaceMarker[]>([]);
   const userMarkerRef = useRef<Marker | null>(null);
+  /** Ubicación para la que ya se encuadró el local más cercano (una vez, para no pelear con el usuario). */
+  const framedForRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -86,6 +88,18 @@ export function NearbyMap({ center, establishments, selectedId, onSelect, covera
       const marker = new maplibregl.Marker({ element, anchor: "bottom" }).setLngLat([e.location.lng, e.location.lat]).addTo(map);
       return { id: e.id, marker, root, element };
     });
+    // A las afueras, el local más cercano puede quedar fuera de la vista con zoom 15: se encuadra junto con
+    // el cliente para que no parezca que no hay locales.
+    const nearest = establishments[0];
+    const key = `${center.lat},${center.lng}`;
+    if (nearest && framedForRef.current !== key) {
+      framedForRef.current = key;
+      const point: [number, number] = [nearest.location.lng, nearest.location.lat];
+      if (!map.getBounds().contains(point)) {
+        const bounds = new maplibregl.LngLatBounds([center.lng, center.lat], [center.lng, center.lat]).extend(point);
+        map.fitBounds(bounds, { padding: { top: 140, bottom: 80, left: 60, right: 60 }, maxZoom: 15 });
+      }
+    }
     // Desmontar fuera del render en curso evita la advertencia de React por desmontaje síncrono.
     queueMicrotask(() =>
       previous.forEach(({ marker, root }) => {
@@ -93,7 +107,7 @@ export function NearbyMap({ center, establishments, selectedId, onSelect, covera
         root.unmount();
       }),
     );
-  }, [establishments, onSelect]);
+  }, [establishments, onSelect]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     markersRef.current.forEach(({ id, element }) => element.setAttribute("aria-pressed", String(id === selectedId)));

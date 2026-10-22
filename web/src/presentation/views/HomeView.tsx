@@ -34,10 +34,10 @@ export function HomeView() {
   const { cart } = useCart();
   const [active, setActive] = useState<string[]>([]);
   const [selected, setSelected] = useState<Establishment | null>(null);
-  const { position, status, device } = useGeolocation();
+  const { position, status, device, home } = useGeolocation();
   const coverage = useCoverage();
   const reach = useCoverageCheck(device);
-  const { data, error, loading } = useNearbyEstablishments(position, active, status !== "loading");
+  const { data, error, loading } = useNearbyEstablishments(position, active, status !== "loading", home);
   const names = useMemo(() => new Map((categories ?? []).map((c) => [c.code, localized(c.names, locale)])), [categories, locale]);
 
   const toggle = (code: string) => setActive((prev) => (prev.includes(code) ? prev.filter((x) => x !== code) : [...prev, code]));

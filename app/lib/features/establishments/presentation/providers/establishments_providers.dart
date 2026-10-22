@@ -56,16 +56,29 @@ final deviceLocationProvider = FutureProvider<GeoPoint?>((ref) async {
 
 double _meters(GeoPoint a, GeoPoint b) => Geolocator.distanceBetween(a.lat, a.lng, b.lat, b.lng);
 
+/// Radio de búsqueda base: Villagarzón cabe entero en 3 km desde casi cualquier punto del casco urbano.
+const homeRadiusMeters = 3000;
+
+/// Centro del municipio abierto más cercano a [from] (o el de Villagarzón si aún no hay cobertura publicada).
+GeoPoint nearestHome(GeoPoint from, List<CoverageArea> areas) {
+  var home = areas.isEmpty ? defaultCenter : areas.first.center;
+  for (final area in areas) {
+    if (_meters(from, area.center) < _meters(from, home)) home = area.center;
+  }
+  return home;
+}
+
+/// Radio para buscar locales desde [origin]: si el cliente está a las afueras (más de 3 km del centro, dentro
+/// del alcance), crece hasta cubrir el casco urbano; con 3 km fijos el mapa quedaba sin locales.
+int nearbyRadiusMeters(GeoPoint origin, GeoPoint home) =>
+    (_meters(origin, home).ceil() + homeRadiusMeters).clamp(homeRadiusMeters, serviceRadiusMeters.toInt());
+
 /// Dónde arranca el mapa. Con varios municipios abiertos (H03.5) se compara con todos: si el cliente está
 /// cerca de alguno, en su ubicación; si no (o sin permiso), en el centro del municipio abierto más cercano.
 final userLocationProvider = FutureProvider<GeoPoint>((ref) async {
   final device = await ref.watch(deviceLocationProvider.future);
   final areas = await ref.watch(coverageProvider.future);
-  final from = device ?? defaultCenter;
-  var home = areas.isEmpty ? defaultCenter : areas.first.center;
-  for (final area in areas) {
-    if (_meters(from, area.center) < _meters(from, home)) home = area.center;
-  }
+  final home = nearestHome(device ?? defaultCenter, areas);
   return device != null && _meters(device, home) <= serviceRadiusMeters ? device : home;
 });
 
@@ -82,8 +95,10 @@ final deviceCoverageProvider = FutureProvider<CoverageCheck?>((ref) async {
 
 final nearbyEstablishmentsProvider = FutureProvider<List<Establishment>>((ref) async {
   final origin = await ref.watch(userLocationProvider.future);
+  final areas = await ref.watch(coverageProvider.future);
   final categories = ref.watch(selectedCategoriesProvider);
-  return ref.watch(getNearbyEstablishmentsProvider)(origin, categories);
+  final radius = nearbyRadiusMeters(origin, nearestHome(origin, areas));
+  return ref.watch(getNearbyEstablishmentsProvider)(origin, categories, radiusMeters: radius);
 });
 
 /// Menú de un local en un idioma: (id, idioma).
