@@ -5,7 +5,7 @@ import { maplibregl } from "@/presentation/components/map/maplibre";
 import { type GeoJSONSource, type Map as MapLibreMap, type Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
-import type { DispatchCourier, DispatchOrder } from "@/core/domain/entities/dispatch";
+import type { DispatchOrder, LocatedCourier } from "@/core/domain/entities/dispatch";
 import { needsAttention } from "@/core/domain/entities/dispatch";
 import type { GeoPoint } from "@/core/domain/entities/establishment";
 import { createBrandMap } from "../../../components/map/mapStyle";
@@ -17,7 +17,7 @@ const HOME = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" vie
 interface Props {
   center: GeoPoint;
   orders: DispatchOrder[];
-  couriers: DispatchCourier[];
+  couriers: LocatedCourier[];
   selectedOrder: DispatchOrder | null;
   selectedCourierId: string | null;
   onSelectOrder: (code: string) => void;

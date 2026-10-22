@@ -90,6 +90,11 @@ export class LocationBatchDto {
   @ValidateNested({ each: true })
   @Type(() => LocationReadingDto)
   readings: LocationReadingDto[];
+
+  /** Hora del teléfono al enviar: corrige un reloj mal puesto (las apps anteriores no la mandan). */
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  sentAt?: string;
 }
 
 export class AuditQueryDto {

@@ -20,6 +20,7 @@ import '../../data/location_tracker.dart';
 import '../../domain/courier.dart';
 import '../courier_providers.dart';
 import '../widgets/duty_widgets.dart';
+import '../widgets/location_signal.dart';
 import '../widgets/offer_card.dart';
 import '../widgets/pending_ribbon.dart';
 
@@ -184,7 +185,8 @@ class _CourierHomePageState extends ConsumerState<CourierHomePage> with WidgetsB
       final offers = ref.watch(courierOffersProvider(language));
       final list = offers.value ?? const <CourierOffer>[];
       return [
-        if (access != null && access != LocationAccess.granted) ...[_LocationLost(access: access, onFix: () => _ensureLocation()), const SizedBox(height: 14)],
+        if (access != null && access != LocationAccess.granted) ...[_LocationLost(access: access, onFix: () => _ensureLocation()), const SizedBox(height: 14)]
+        else LocationSignalBanner(status: status),
         if (list.isEmpty)
           _Searching()
         else

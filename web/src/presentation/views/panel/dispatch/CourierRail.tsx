@@ -1,9 +1,9 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Bike, Hourglass, Megaphone, Phone, Send, Signal, ThumbsDown } from "lucide-react";
+import { Bike, Hourglass, Megaphone, Phone, Send, Signal, SignalZero, ThumbsDown } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { DispatchCourier, DispatchOrder } from "@/core/domain/entities/dispatch";
+import type { DispatchCourier, DispatchOrder, LocatedCourier } from "@/core/domain/entities/dispatch";
 import { elapsed } from "@/core/domain/entities/dispatch";
 import { Button } from "../../../components/ui/Button";
 import { formatPhone, initials } from "../../../format";
@@ -11,7 +11,9 @@ import { useCatalogFormat } from "../../../hooks/useCatalogFormat";
 
 interface Props {
   order: DispatchOrder | null;
-  couriers: DispatchCourier[];
+  couriers: LocatedCourier[];
+  /** En turno pero sin ubicación reciente: no se les puede ofrecer. */
+  silent: DispatchCourier[];
   freshSeconds: number;
   now: number;
   canAssign: boolean;
@@ -25,9 +27,10 @@ interface Props {
 /**
  * Los domiciliarios en la calle (H07.2): verificados, con Disponible activo y vistos en los últimos 2 minutos,
  * del más cerca al más lejos del local del pedido elegido. Cada uno es una placa con su moto; desde aquí se
- * envía a uno o se llama a todos (H07.3).
+ * envía a uno o se llama a todos (H07.3). Debajo, los que activaron Disponible pero su teléfono no reporta
+ * ubicación: no se les ofrece, pero el operador ve que están en turno y puede llamarlos.
  */
-export function CourierRail({ order, couriers, freshSeconds, now, canAssign, selectedCourierId, sending, onSelectCourier, onSendOne, onSendAll }: Props) {
+export function CourierRail({ order, couriers, silent, freshSeconds, now, canAssign, selectedCourierId, sending, onSelectCourier, onSendOne, onSendAll }: Props) {
   const t = useTranslations("dispatch");
   const { distance } = useCatalogFormat();
   const dispatchable = !!order?.needsCourier && canAssign;
@@ -134,6 +137,49 @@ export function CourierRail({ order, couriers, freshSeconds, now, canAssign, sel
           </AnimatePresence>
         </ul>
       )}
+
+      {silent.length > 0 && <SilentCouriers couriers={silent} now={now} />}
     </section>
+  );
+}
+
+function SilentCouriers({ couriers, now }: { couriers: DispatchCourier[]; now: number }) {
+  const t = useTranslations("dispatch");
+  return (
+    <div className="flex flex-col gap-2.5 rounded-3xl border-2 border-dashed border-chonta/30 bg-chonta-soft/40 p-4">
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-white text-chonta-strong">
+          <SignalZero className="size-5" aria-hidden />
+        </span>
+        <div>
+          <p className="font-bold">{t("silentTitle", { count: couriers.length })}</p>
+          <p className="text-sm text-ink/60">{t("silentBody")}</p>
+        </div>
+      </div>
+      <ul className="grid gap-2 sm:grid-cols-2 2xl:grid-cols-3">
+        {couriers.map((c) => (
+          <li key={c.userId} className="flex items-center gap-3 rounded-2xl bg-white/80 p-2.5 ring-1 ring-ink/8">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-cream font-display text-xs font-extrabold text-ink/60">
+              {initials(c.givenNames, c.familyNames)}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-bold">
+                {c.givenNames} {c.familyNames ?? ""}
+              </span>
+              <span className="block text-xs text-ink/55">
+                {c.lastSeenAt
+                  ? t("lastLocationAgo", { time: elapsed((now - new Date(c.lastSeenAt).getTime()) / 1000) })
+                  : t("neverLocated")}
+              </span>
+            </span>
+            {c.phone && (
+              <a href={`tel:${c.phone}`} className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold text-ink/60 hover:bg-ink/5" title={formatPhone(c.phone)}>
+                <Phone className="size-3.5" aria-hidden /> {t("call")}
+              </a>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

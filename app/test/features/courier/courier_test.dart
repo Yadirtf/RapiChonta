@@ -2,10 +2,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rapichonta/core/error/failure.dart';
 import 'package:rapichonta/features/courier/data/courier_repository_impl.dart';
+import 'package:rapichonta/features/courier/data/location_tracker.dart';
 import 'package:rapichonta/features/courier/data/pending_steps_store.dart';
 import 'package:rapichonta/features/courier/domain/courier.dart';
 import 'package:rapichonta/features/courier/domain/pending_steps.dart';
 import 'package:rapichonta/features/courier/presentation/courier_providers.dart';
+import 'package:rapichonta/features/courier/presentation/widgets/location_signal.dart';
 import 'package:rapichonta/features/courier/presentation/widgets/receipt_capture.dart';
 import 'package:rapichonta/features/establishments/domain/entities/establishment.dart';
 
@@ -75,6 +77,34 @@ void main() {
       final status = statusFromJson({'verified': true, 'locationConsentPending': false, 'available': false, 'availableSince': null, 'activeOrder': {'code': 'RC-7K3M', 'status': 'PREPARING'}});
       expect(status.available, isFalse);
       expect(status.tracking, isTrue, reason: 'con pedido sigue reportando aunque no esté disponible');
+      expect(status.locationFresh, isFalse, reason: 'una API anterior no lo manda: sin dato no se da por visto');
+      final seen = statusFromJson({'verified': true, 'availableSince': '2026-10-21T15:00:00Z', 'lastLocationAt': '2026-10-21T15:01:00Z', 'locationFresh': true});
+      expect(seen.lastLocationAt, DateTime.utc(2026, 10, 21, 15, 1));
+      expect(seen.locationFresh, isTrue);
+    });
+
+    group('aviso cuando el panel no recibe la ubicación', () {
+      final now = DateTime(2026, 10, 21, 15, 10);
+      final unseen = CourierStatus(verified: true, locationConsentPending: false, availableSince: DateTime.utc(2026, 10, 21, 20));
+      TrackerHealth health({int started = 300, int? fix, int? delivered, int? accepted}) {
+        DateTime? ago(int? seconds) => seconds == null ? null : now.subtract(Duration(seconds: seconds));
+        return TrackerHealth(startedAt: ago(started), lastFixAt: ago(fix), lastDeliveredAt: ago(delivered), lastAcceptedAt: ago(accepted));
+      }
+
+      test('si la API lo ve, o recién empezó el turno, no hay aviso', () {
+        final seen = CourierStatus(verified: true, locationConsentPending: false, availableSince: DateTime.utc(2026, 10, 21, 20), locationFresh: true);
+        expect(locationProblem(seen, health(), now), isNull);
+        expect(locationProblem(unseen, health(started: 10), now), isNull);
+        expect(locationProblem(const CourierStatus(verified: true, locationConsentPending: false, availableSince: null), health(), now), isNull);
+      });
+
+      test('dice en qué paso se quedó: GPS, envío o la API la descarta', () {
+        expect(locationProblem(unseen, health(), now), LocationProblem.noFix);
+        expect(locationProblem(unseen, health(fix: 200), now), LocationProblem.noFix);
+        expect(locationProblem(unseen, health(fix: 3), now), LocationProblem.notDelivered);
+        expect(locationProblem(unseen, health(fix: 3, delivered: 8), now), LocationProblem.rejected);
+        expect(locationProblem(unseen, health(fix: 3, delivered: 8, accepted: 8), now), isNull, reason: 'ya llega: la API se pone al día');
+      });
     });
 
     test('la lectura del GPS va en UTC y marca la ubicación simulada', () {

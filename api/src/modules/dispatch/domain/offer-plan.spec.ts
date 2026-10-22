@@ -1,7 +1,7 @@
 import { DomainError } from '../../../shared/domain/domain.error';
 import { nextSweepDelay, OfferCandidate, planRecipients, responseError } from './offer-plan';
 
-const candidate = (userId: string, extra: Partial<OfferCandidate> = {}): OfferCandidate => ({ userId, hasPendingOffer: false, declined: false, ...extra });
+const candidate = (userId: string, extra: Partial<OfferCandidate> = {}): OfferCandidate => ({ userId, hasPendingOffer: false, declined: false, locationFresh: true, ...extra });
 const code = (work: () => unknown) => {
   try {
     work();
@@ -12,7 +12,12 @@ const code = (work: () => unknown) => {
 };
 
 describe('planRecipients', () => {
-  const pool = [candidate('ana'), candidate('beto', { declined: true }), candidate('caro', { hasPendingOffer: true })];
+  const pool = [
+    candidate('ana'),
+    candidate('beto', { declined: true }),
+    candidate('caro', { hasPendingOffer: true }),
+    candidate('dora', { locationFresh: false }),
+  ];
 
   it('a uno: el elegido, aunque haya rechazado antes', () => {
     expect(planRecipients('SPECIFIC', pool, 'beto')).toEqual(['beto']);
@@ -24,13 +29,18 @@ describe('planRecipients', () => {
     expect(code(() => planRecipients('SPECIFIC', pool, 'caro'))).toBe('OFFER_ALREADY_PENDING');
   });
 
-  it('a todos: deja fuera a quien ya lo tiene o lo rechazó', () => {
+  it('a uno: en turno pero sin ubicación reciente no se le ofrece', () => {
+    expect(code(() => planRecipients('SPECIFIC', pool, 'dora'))).toBe('COURIER_LOCATION_STALE');
+  });
+
+  it('a todos: deja fuera a quien ya lo tiene, lo rechazó o no reporta ubicación', () => {
     expect(planRecipients('BROADCAST', pool)).toEqual(['ana']);
   });
 
   it('a todos sin nadie libre: no hay domiciliarios', () => {
     expect(code(() => planRecipients('BROADCAST', []))).toBe('NO_COURIERS_AVAILABLE');
     expect(code(() => planRecipients('BROADCAST', [candidate('beto', { declined: true })]))).toBe('NO_COURIERS_AVAILABLE');
+    expect(code(() => planRecipients('BROADCAST', [candidate('dora', { locationFresh: false })]))).toBe('NO_COURIERS_AVAILABLE');
   });
 });
 

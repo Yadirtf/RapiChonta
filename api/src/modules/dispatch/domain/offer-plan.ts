@@ -8,23 +8,26 @@ export interface OfferCandidate {
   hasPendingOffer: boolean;
   /** Ya dijo "No puedo" a este pedido. */
   declined: boolean;
+  /** Su ubicación llegó hace poco. Sin ella no se le ofrece: no se sabe dónde está ni si la app sigue viva. */
+  locationFresh: boolean;
 }
 
 /**
- * A quién va un envío (H07.3). Los candidatos ya son solo los despachables: verificados, con Disponible activo,
- * vistos hace poco y libres (Docs/14 E07, "Domiciliarios cercanos").
+ * A quién va un envío (H07.3). Los candidatos son los domiciliarios en turno y libres; solo se ofrece a los
+ * vistos hace poco (Docs/14 E07, "Domiciliarios cercanos").
  * - SPECIFIC: el elegido, aunque antes haya dicho que no (el operador pudo llamarlo); nunca dos veces a la vez.
- * - BROADCAST: todos los que no lo tienen ya en pantalla ni lo rechazaron.
+ * - BROADCAST: todos los vistos hace poco que no lo tienen ya en pantalla ni lo rechazaron.
  */
 export function planRecipients(mode: OfferModeCode, candidates: OfferCandidate[], courierUserId?: string): string[] {
   if (mode === OFFER_MODES.SPECIFIC) {
     if (!courierUserId) throw DispatchErrors.courierRequired();
     const chosen = candidates.find((c) => c.userId === courierUserId);
     if (!chosen) throw DispatchErrors.courierNotAvailable();
+    if (!chosen.locationFresh) throw DispatchErrors.courierLocationStale();
     if (chosen.hasPendingOffer) throw DispatchErrors.offerAlreadyPending();
     return [chosen.userId];
   }
-  const recipients = candidates.filter((c) => !c.hasPendingOffer && !c.declined).map((c) => c.userId);
+  const recipients = candidates.filter((c) => c.locationFresh && !c.hasPendingOffer && !c.declined).map((c) => c.userId);
   if (!recipients.length) throw DispatchErrors.noCouriersAvailable();
   return recipients;
 }

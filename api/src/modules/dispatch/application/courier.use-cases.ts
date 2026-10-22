@@ -3,13 +3,13 @@ import { GeoPoint } from '../../catalog/domain/value-objects/geo-point';
 import { Principal } from '../../identity/domain/principal';
 import { Notifier } from '../../notifications/application/notifier';
 import { GeofenceUseCase } from '../../fulfillment/application/courier-trip.use-cases';
-import { AVAILABILITY_END_REASONS } from '../domain/dispatch.codes';
+import { AVAILABILITY_END_REASONS, COURIER_FRESH_SECONDS } from '../domain/dispatch.codes';
 import { DispatchErrors } from '../domain/dispatch.errors';
 import { plausibleReadings } from '../domain/location-plausibility';
 import { responseError } from '../domain/offer-plan';
 import { CourierDesk, LocationReading } from '../domain/ports/courier-desk';
 
-/** Lecturas con hora del teléfono más de 2 minutos en el futuro se descartan (reloj mal puesto o GPS simulado). */
+/** Lecturas más de 2 minutos en el futuro se descartan (reloj mal puesto sin `sentAt`, o GPS simulado). */
 const MAX_CLOCK_SKEW_MS = 120_000;
 
 export interface ReportedReading {
@@ -29,10 +29,12 @@ export class CourierAvailabilityUseCase {
     private readonly geofence: GeofenceUseCase,
   ) {}
 
-  async status(principal: Principal) {
+  async status(principal: Principal, now = new Date()) {
     const status = await this.desk.status(principal.userId);
     if (!status) throw DispatchErrors.notVerified();
-    return status;
+    // Lo mismo que mira el panel para listarlo como ofrecible (COURIER_FRESH_SECONDS).
+    const locationFresh = status.lastLocationAt !== null && now.getTime() - status.lastLocationAt.getTime() < COURIER_FRESH_SECONDS * 1000;
+    return { ...status, locationFresh };
   }
 
   async setAvailable(principal: Principal, available: boolean) {
@@ -50,10 +52,16 @@ export class CourierAvailabilityUseCase {
   /**
    * Guarda solo con Disponible activo o un pedido en curso (RNF-06). Descarta lecturas simuladas, del futuro y
    * con saltos imposibles (H08.3), y después revisa en el servidor si llegó al local o donde el cliente.
+   *
+   * `sentAt` es la hora del teléfono al enviar el lote: la diferencia con la del servidor corrige la de cada
+   * lectura. Así un reloj mal puesto (hora manual, zona horaria equivocada) no deja las lecturas "viejas" para el
+   * panel ni "del futuro" para la API, y las lecturas en cola conservan cuánto tiempo pasó entre ellas.
    */
-  async reportLocations(principal: Principal, readings: ReportedReading[], now = new Date()) {
+  async reportLocations(principal: Principal, readings: ReportedReading[], now = new Date(), sentAt?: Date) {
     if (!(await this.desk.expectsLocation(principal.userId))) throw DispatchErrors.locationNotExpected();
+    const skewMs = sentAt ? now.getTime() - sentAt.getTime() : 0;
     const candidates: LocationReading[] = readings
+      .map((r) => ({ ...r, recordedAt: new Date(r.recordedAt.getTime() + skewMs) }))
       .filter((r) => !r.mocked && r.recordedAt.getTime() <= now.getTime() + MAX_CLOCK_SKEW_MS)
       .map((r) => ({ location: GeoPoint.create(r.latitude, r.longitude), accuracyM: r.accuracyM ?? null, recordedAt: r.recordedAt }));
     const accepted = candidates.length ? plausibleReadings(await this.desk.lastReading(principal.userId), candidates) : [];

@@ -5,7 +5,7 @@ import { Bell, BellOff, ClipboardList, Flame, Hourglass, Inbox, Loader2, Navigat
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { can, fullName, PERMISSIONS } from "@/core/domain/entities/account";
-import { alertKey, DISPATCH_POLL_MS, elapsed, needsAttention, type DispatchCourier, type DispatchOrder } from "@/core/domain/entities/dispatch";
+import { alertKey, DISPATCH_POLL_MS, elapsed, isLocated, needsAttention, type DispatchCourier, type DispatchOrder } from "@/core/domain/entities/dispatch";
 import { container } from "@/infrastructure/di/container";
 import { useAuth } from "../../../auth/AuthProvider";
 import { ReceiptButton } from "../../../components/orders/PurchaseReceipt";
@@ -48,7 +48,10 @@ export function DispatchView() {
   const selected = waiting.find((o) => o.code === selectedCode) ?? waiting[0] ?? null;
   const [selectedCourierId, setSelectedCourierId] = useState<string | null>(null);
   const couriers = usePolling(() => container.dispatch.couriers({ municipalityId, order: selected?.code }), [municipalityId, selected?.code], DISPATCH_POLL_MS);
-  const courierList = couriers.data?.couriers ?? [];
+  const courierList = useMemo(() => couriers.data?.couriers ?? [], [couriers.data]);
+  // En turno pero sin ubicación reciente: se muestran aparte, sin mapa ni envío, para saber que su app no reporta.
+  const located = useMemo(() => courierList.filter(isLocated), [courierList]);
+  const silent = useMemo(() => courierList.filter((c) => !isLocated(c)), [courierList]);
 
   const [sending, setSending] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
@@ -171,7 +174,7 @@ export function DispatchView() {
             <DispatchMap
               center={PILOT_CENTER}
               orders={orders}
-              couriers={courierList}
+              couriers={located}
               selectedOrder={selected}
               selectedCourierId={selectedCourierId}
               onSelectOrder={setSelectedCode}
@@ -192,7 +195,8 @@ export function DispatchView() {
           {couriers.error ? <Alert>{errorMessage(couriers.error)}</Alert> : null}
           <CourierRail
             order={selected}
-            couriers={courierList}
+            couriers={located}
+            silent={silent}
             freshSeconds={couriers.data?.freshSeconds ?? 120}
             now={now}
             canAssign={canAssign}

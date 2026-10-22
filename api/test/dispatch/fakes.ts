@@ -31,6 +31,7 @@ export const availableCourier = (userId: string, extra: Partial<AvailableCourier
   location: GeoPoint.create(1.03, -76.61),
   accuracyM: 10,
   lastSeenAt: new Date(),
+  locationFresh: true,
   availableSince: new Date(),
   distanceMeters: 300,
   hasPendingOffer: false,
@@ -66,7 +67,7 @@ export class MemoryDispatchBoard extends DispatchBoard {
 }
 
 export class MemoryCourierDesk extends CourierDesk {
-  current: CourierStatus | null = { verified: true, locationConsentPending: false, availableSince: null, activeOrder: null };
+  current: CourierStatus | null = { verified: true, locationConsentPending: false, availableSince: null, activeOrder: null, lastLocationAt: null };
   expecting = true;
   recorded: LocationReading[] = [];
   closedWith: string | null = null;

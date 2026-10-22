@@ -43,15 +43,22 @@ export interface BoardOrder {
   preparation: { estimatedReadyAt: Date; delayed: boolean } | null;
 }
 
-/** Domiciliario despachable ahora: verificado, Disponible, visto hace poco y sin pedido en curso. */
+/**
+ * Domiciliario en turno: verificado, con Disponible activo y sin pedido en curso. Solo se le ofrece si su
+ * ubicación es reciente (`locationFresh`); sin ella igual aparece en el panel, para que el operador vea que está
+ * en turno pero su teléfono no reporta (GPS apagado, sin señal, ahorro de batería).
+ */
 export interface AvailableCourier {
   userId: string;
   name: PersonName;
   phoneE164: string | null;
   vehicle: { type: string; plate: string | null } | null;
-  location: GeoPoint;
+  /** La última lectura guardada (puede ser de un turno anterior); nula si nunca llegó ninguna. */
+  location: GeoPoint | null;
   accuracyM: number | null;
-  lastSeenAt: Date;
+  lastSeenAt: Date | null;
+  /** La última lectura es de los últimos `freshSeconds`: se le puede ofrecer y se sabe dónde está. */
+  locationFresh: boolean;
   availableSince: Date;
   /** Al local del pedido elegido; nulo si no se eligió pedido. */
   distanceMeters: number | null;
@@ -83,7 +90,10 @@ export abstract class DispatchBoard {
   /** Pedidos no terminados del municipio: los que buscan domiciliario primero, del que más espera al que menos. */
   abstract activeOrders(municipalityId: number): Promise<BoardOrder[]>;
   abstract findOrder(code: string): Promise<DispatchTarget | null>;
-  /** Despachables del municipio vistos en los últimos `freshSeconds`; con pedido, ordenados por distancia a su local. */
+  /**
+   * Los domiciliarios en turno del municipio: primero los vistos en los últimos `freshSeconds` (con pedido, por
+   * distancia a su local), después los que no reportan ubicación.
+   */
   abstract couriers(municipalityId: number, freshSeconds: number, orderId?: string): Promise<AvailableCourier[]>;
   /** Crea la oferta (y pasa el pedido a OFFERED si estaba esperando) en una transacción. Vence según offers.timeout_seconds. */
   abstract createOffer(offer: NewOffer): Promise<{ offerId: string; expiresAt: Date }>;
