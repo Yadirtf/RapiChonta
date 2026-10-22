@@ -66,6 +66,35 @@ El `render.yaml` anterior creaba `rapichonta-db`, `rapichonta-api` y `rapichonta
 
 Cada merge a `develop` que toque `api/`, `web/`, `Dockerfile` o `start.sh` reconstruye la imagen y despliega (`buildFilter`). Los cambios solo en `app/` o `Docs/` no despliegan.
 
+## App de iPhone
+
+El flujo **App iOS** (`.github/workflows/app-ios.yml`) compila la app en macOS igual que **App Android**: apunta a `https://rapichonta.onrender.com/api/v1` (o a la variable `API_URL`), deja el IPA como artefacto en cada PR que toque `app/` y, en cada push a `develop`, lo publica en la pre-release **app-ios-develop**. A mano: Actions → App iOS → Run workflow.
+
+Apple no deja instalar apps sin firma, así que hay dos caminos:
+
+**Sin cuenta de pago (por defecto).** El IPA sale sin firmar (`rapichonta-N-sin-firmar.ipa`) y se firma en el computador con un Apple ID gratuito:
+
+1. Instalar [Sideloadly](https://sideloadly.io) (Windows o Mac) e iTunes/Finder para que reconozca el iPhone.
+2. Descargar el IPA de la pre-release `app-ios-develop`, conectar el iPhone por cable, arrastrar el IPA a Sideloadly, poner el Apple ID y dar *Start*.
+3. En el iPhone: Ajustes → General → VPN y gestión de dispositivos → confiar en el Apple ID. En iOS 16+ activar también Ajustes → Privacidad y seguridad → Modo de desarrollador.
+
+Límites: la app caduca a los 7 días (se reinstala igual), máximo 3 apps por Apple ID y **no recibe notificaciones push** (un Apple ID gratuito no puede firmar ese permiso). Mapa, pedidos y modo domiciliario funcionan.
+
+**Con cuenta Apple Developer (USD 99/año).** Se cargan estos secrets del repositorio (Settings → Secrets and variables → Actions → Secrets) y el flujo firma solo:
+
+| Secret | Qué es |
+| --- | --- |
+| `IOS_CERTIFICATE_P12_BASE64` | Certificado *Apple Distribution* exportado como `.p12` desde Llaveros, en base64 (`base64 -i cert.p12`) |
+| `IOS_CERTIFICATE_PASSWORD` | Contraseña con que se exportó el `.p12` |
+| `IOS_PROVISIONING_PROFILE_BASE64` | Perfil `.mobileprovision` en base64, creado en developer.apple.com para el App ID `com.rapichonta.rapichonta` con *Push Notifications* activo |
+
+El identificador, el equipo y el tipo de exportación salen del perfil:
+
+- Perfil **Ad Hoc**: el IPA se instala directo (por ejemplo abriendo el enlace con [Diawi](https://www.diawi.com)) en los iPhone cuyo UDID esté registrado en el perfil, hasta 100 por año. Dura lo que el perfil (un año).
+- Perfil **App Store**: el IPA se sube a **TestFlight** si además existen `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID` y `APP_STORE_CONNECT_KEY_P8` (clave de API de App Store Connect con rol *App Manager*; el contenido del `.p8`). Los probadores instalan desde la app TestFlight, sin cables ni UDID.
+
+Para las notificaciones push en iPhone falta además subir la llave APNs (`.p8`) a Firebase (Configuración del proyecto → Cloud Messaging → app de Apple), registrar la app iOS en Firebase y copiar su ID a la variable `FIREBASE_IOS_APP_ID`.
+
 ## Límites del plan gratuito
 
 - El servicio se duerme tras 15 minutos sin tráfico; la primera petición tarda 30–60 s en despertar. Neon también se suspende y despierta en la primera consulta.

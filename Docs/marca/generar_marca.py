@@ -60,6 +60,16 @@ def adaptive_foreground(em: Image.Image, size: int = 432) -> Image.Image:
     return out
 
 
+def ios_icon(em: Image.Image, size: int = 1024) -> Image.Image:
+    """Ícono de iOS: cuadrado opaco (sin alfa, iOS recorta las esquinas) con la cara a sangre sobre crema."""
+    cx, cy, r = HEAD
+    r = r * 1.12
+    crop = em.crop((round(cx - r), round(cy - r), round(cx + r), round(cy + r))).resize((size, size), Image.LANCZOS)
+    out = Image.new("RGBA", (size, size), CREAM)
+    out.alpha_composite(crop)
+    return out.convert("RGB")
+
+
 def scene() -> Image.Image:
     src = np.asarray(SRC).astype(np.float32)
     w = 296
@@ -107,6 +117,11 @@ def main() -> None:
         folder.mkdir(parents=True, exist_ok=True)
         mk.resize((px, px), Image.LANCZOS).save(folder / "ic_launcher.png", optimize=True)
         fg.resize((px * 9 // 4, px * 9 // 4), Image.LANCZOS).save(folder / "ic_launcher_foreground.webp", quality=88, method=6)
+
+    # Ícono de iOS (ios/ se genera en CI; ver .github/workflows/app-ios.yml): un solo PNG de 1024 px.
+    ios = APP / "branding/ios"
+    ios.mkdir(parents=True, exist_ok=True)
+    ios_icon(em).save(ios / "AppIcon-1024.png", optimize=True)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,268 @@
+# Compila la app Flutter (app/) para iPhone, igual que App Android (app-android.yml) pero en macOS.
+# - Sin firma (por defecto): un IPA sin firmar que se instala con Sideloadly o AltStore y un Apple ID
+#   gratuito (Apple lo deja vivo 7 días; se reinstala). Sin notificaciones push: un Apple ID gratuito no
+#   puede firmar con el permiso aps-environment.
+# - Con firma: si existen los secrets IOS_CERTIFICATE_P12_BASE64, IOS_CERTIFICATE_PASSWORD e
+#   IOS_PROVISIONING_PROFILE_BASE64 (cuenta Apple Developer), firma con ese certificado y perfil. El
+#   identificador de la app, el equipo y el tipo de exportación salen del perfil: perfil Ad Hoc = se instala
+#   en los iPhone registrados en él; perfil App Store = se sube a TestFlight si además están los secrets
+#   APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID y APP_STORE_CONNECT_KEY_P8.
+# En cada PR que toca app/ queda como artefacto del run; en cada push a develop (y a mano) además se publica
+# en la pre-release "app-ios-develop" (aparte de "app-develop", que el workflow de Android borra y recrea).
+# Guía: "App de iPhone" en Docs/08-despliegue-render.md.
+name: App iOS
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - "app/**"
+      - ".github/workflows/app-ios.yml"
+  pull_request:
+    paths:
+      - "app/**"
+      - ".github/workflows/app-ios.yml"
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: "URL de la API (vacío = entorno de prueba en Render)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: app-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DEFAULT_API_URL: https://rapichonta.onrender.com/api/v1
+  # Firebase iOS SDK (firebase_messaging) exige iOS 15.
+  IOS_MIN: "15.0"
+
+jobs:
+  ipa:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: URL de la API
+        id: api
+        env:
+          INPUT_URL: ${{ inputs.api_url }}
+          REPO_URL: ${{ vars.API_URL }}
+        run: |
+          url="${INPUT_URL:-${REPO_URL:-$DEFAULT_API_URL}}"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "API_URL=$url" >> "$GITHUB_STEP_SUMMARY"
+
+      # ios/ no se versiona todavía (ver app/README.md): se genera en cada build.
+      - name: Generar plataforma iOS
+        run: |
+          flutter create . --org com.rapichonta --project-name rapichonta --platforms=ios
+          sed -i '' -E "s/^#? *platform :ios, '[0-9.]+'/platform :ios, '$IOS_MIN'/" ios/Podfile
+          grep -q "^platform :ios, '$IOS_MIN'" ios/Podfile
+
+      # Un solo PNG de 1024 px (Xcode 14+ genera los demás tamaños). Lo produce Docs/marca/generar_marca.py.
+      - name: Ícono de la app
+        run: |
+          icons=ios/Runner/Assets.xcassets/AppIcon.appiconset
+          rm -f "$icons"/*.png
+          cp branding/ios/AppIcon-1024.png "$icons/AppIcon-1024.png"
+          cat > "$icons/Contents.json" <<'JSON'
+          {
+            "images": [{ "filename": "AppIcon-1024.png", "idiom": "universal", "platform": "ios", "size": "1024x1024" }],
+            "info": { "author": "xcode", "version": 1 }
+          }
+          JSON
+
+      # Textos de los permisos (iOS cierra la app si se piden sin ellos), nombre visible y modos en segundo
+      # plano: ubicación del domiciliario en turno (E08, geolocator) y avisos push (E06, firebase_messaging).
+      - name: Info.plist
+        run: |
+          plist=ios/Runner/Info.plist
+          set_key() { /usr/libexec/PlistBuddy -c "Delete :$1" "$plist" 2>/dev/null || true; /usr/libexec/PlistBuddy -c "Add :$1 $2 $3" "$plist"; }
+          set_key CFBundleDisplayName string "RapiChonta"
+          set_key NSLocationWhenInUseUsageDescription string "RapiChonta usa tu ubicación para mostrarte los establecimientos cercanos y la dirección de entrega."
+          set_key NSLocationAlwaysAndWhenInUseUsageDescription string "En turno de domiciliario, RapiChonta comparte tu ubicación con la central para asignarte pedidos cercanos, también con la app en segundo plano."
+          set_key NSCameraUsageDescription string "RapiChonta usa la cámara para fotografiar la factura de la compra y la entrega."
+          set_key NSPhotoLibraryUsageDescription string "RapiChonta usa tus fotos para adjuntar la factura de la compra."
+          /usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" "$plist" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$plist"
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string location" "$plist"
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:1 string remote-notification" "$plist"
+          plutil -lint "$plist"
+
+      # Firma opcional: sin los secrets el build sigue sin firmar.
+      - name: Certificado y perfil de Apple
+        id: sign
+        env:
+          P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          if [ -z "$P12_BASE64" ] || [ -z "$PROFILE_BASE64" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "IOS_FIRMA=sin firmar (instalar con Sideloadly/AltStore)" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          keychain="$RUNNER_TEMP/firma.keychain-db"
+          keychain_pass="$(uuidgen)"
+          echo "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$keychain_pass" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_pass" "$keychain"
+          security import "$RUNNER_TEMP/cert.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$keychain"
+          security set-key-partition-list -S apple-tool:,apple: -k "$keychain_pass" "$keychain"
+          security list-keychain -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          echo "keychain=$keychain" >> "$GITHUB_OUTPUT"
+
+          echo "$PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/perfil.mobileprovision"
+          security cms -D -i "$RUNNER_TEMP/perfil.mobileprovision" > "$RUNNER_TEMP/perfil.plist"
+          pb() { /usr/libexec/PlistBuddy -c "Print :$1" "$RUNNER_TEMP/perfil.plist" 2>/dev/null; }
+          uuid="$(pb UUID)"
+          team="$(pb TeamIdentifier:0)"
+          app_id="$(pb Entitlements:application-identifier)"
+          bundle_id="${app_id#"$team".}"
+          aps="$(pb Entitlements:aps-environment || true)"
+          if pb ProvisionedDevices >/dev/null; then method=release-testing; else method=app-store-connect; fi
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp "$RUNNER_TEMP/perfil.mobileprovision" ~/Library/MobileDevice/Provisioning\ Profiles/"$uuid".mobileprovision
+          {
+            echo "enabled=true"
+            echo "uuid=$uuid"
+            echo "team=$team"
+            echo "bundle_id=$bundle_id"
+            echo "aps=$aps"
+            echo "method=$method"
+          } >> "$GITHUB_OUTPUT"
+          echo "IOS_FIRMA=$method ($bundle_id, push: ${aps:-no})" >> "$GITHUB_STEP_SUMMARY"
+
+      # Solo el target Runner lleva la firma manual: pasarla a xcodebuild por línea de comandos también la
+      # aplicaría a los Pods, que no aceptan perfiles. El gem xcodeproj viene con CocoaPods en el runner.
+      - name: Configurar proyecto de Xcode
+        env:
+          SIGN: ${{ steps.sign.outputs.enabled }}
+          TEAM: ${{ steps.sign.outputs.team }}
+          PROFILE_UUID: ${{ steps.sign.outputs.uuid }}
+          BUNDLE_ID: ${{ steps.sign.outputs.bundle_id }}
+          APS: ${{ steps.sign.outputs.aps }}
+        run: |
+          if [ "$SIGN" = "true" ] && [ -n "$APS" ]; then
+            cat > ios/Runner/Runner.entitlements <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict><key>aps-environment</key><string>$APS</string></dict></plist>
+          PLIST
+          fi
+          ruby <<'RUBY'
+          require 'xcodeproj'
+          project = Xcodeproj::Project.open('ios/Runner.xcodeproj')
+          runner = project.targets.find { |t| t.name == 'Runner' }
+          runner.build_configurations.each do |config|
+            s = config.build_settings
+            s['IPHONEOS_DEPLOYMENT_TARGET'] = ENV['IOS_MIN']
+            next unless ENV['SIGN'] == 'true'
+            s['PRODUCT_BUNDLE_IDENTIFIER'] = ENV['BUNDLE_ID']
+            s['DEVELOPMENT_TEAM'] = ENV['TEAM']
+            s['CODE_SIGN_STYLE'] = 'Manual'
+            s['CODE_SIGN_IDENTITY'] = 'Apple Distribution'
+            s['PROVISIONING_PROFILE_SPECIFIER'] = ENV['PROFILE_UUID']
+            s['CODE_SIGN_ENTITLEMENTS'] = 'Runner/Runner.entitlements' unless ENV['APS'].to_s.empty?
+          end
+          project.save
+          RUBY
+
+      - run: flutter pub get
+
+      - name: Compilar
+        env:
+          SIGN: ${{ steps.sign.outputs.enabled }}
+          METHOD: ${{ steps.sign.outputs.method }}
+          TEAM: ${{ steps.sign.outputs.team }}
+          PROFILE_UUID: ${{ steps.sign.outputs.uuid }}
+          BUNDLE_ID: ${{ steps.sign.outputs.bundle_id }}
+        run: |
+          defines=(
+            --build-number=${{ github.run_number }}
+            --dart-define=API_URL=${{ steps.api.outputs.url }}
+            --dart-define=SENTRY_DSN=${{ vars.SENTRY_DSN_APP }}
+            --dart-define=SENTRY_ENVIRONMENT=pruebas
+            --dart-define=FIREBASE_API_KEY=${{ vars.FIREBASE_API_KEY }}
+            --dart-define=FIREBASE_PROJECT_ID=${{ vars.FIREBASE_PROJECT_ID }}
+            --dart-define=FIREBASE_MESSAGING_SENDER_ID=${{ vars.FIREBASE_MESSAGING_SENDER_ID }}
+            --dart-define=FIREBASE_IOS_APP_ID=${{ vars.FIREBASE_IOS_APP_ID }}
+          )
+          mkdir -p ../dist
+          if [ "$SIGN" = "true" ]; then
+            cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>$METHOD</string>
+            <key>teamID</key><string>$TEAM</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>signingCertificate</key><string>Apple Distribution</string>
+            <key>provisioningProfiles</key><dict><key>$BUNDLE_ID</key><string>$PROFILE_UUID</string></dict>
+          </dict></plist>
+          PLIST
+            flutter build ipa --release --export-options-plist="$RUNNER_TEMP/ExportOptions.plist" "${defines[@]}"
+            cp build/ios/ipa/*.ipa ../dist/rapichonta-${{ github.run_number }}.ipa
+          else
+            flutter build ios --release --no-codesign "${defines[@]}"
+            payload="$RUNNER_TEMP/ipa"
+            mkdir -p "$payload/Payload"
+            cp -R build/ios/iphoneos/Runner.app "$payload/Payload/"
+            (cd "$payload" && zip -qry "$GITHUB_WORKSPACE/dist/rapichonta-${{ github.run_number }}-sin-firmar.ipa" Payload)
+          fi
+          ls -la ../dist
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: rapichonta-ipa-${{ github.run_number }}
+          path: dist/*.ipa
+          retention-days: 14
+
+      - name: Subir a TestFlight
+        if: steps.sign.outputs.method == 'app-store-connect' && github.event_name != 'pull_request'
+        working-directory: .
+        env:
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY_P8 }}
+        run: |
+          if [ -z "$KEY_ID" ] || [ -z "$ISSUER_ID" ] || [ -z "$KEY_P8" ]; then
+            echo "Sin la clave de App Store Connect: el IPA queda en el run, no se sube a TestFlight."
+            exit 0
+          fi
+          mkdir -p ~/.appstoreconnect/private_keys
+          printf '%s' "$KEY_P8" > ~/.appstoreconnect/private_keys/AuthKey_"$KEY_ID".p8
+          xcrun altool --upload-app --type ios --file dist/*.ipa --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID"
+
+      - name: Publicar en la pre-release app-ios-develop
+        if: github.ref == 'refs/heads/develop' && github.event_name != 'pull_request'
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+          API_URL: ${{ steps.api.outputs.url }}
+          FIRMA: ${{ steps.sign.outputs.enabled == 'true' && steps.sign.outputs.method || 'sin firmar' }}
+        run: |
+          gh release delete app-ios-develop --cleanup-tag --yes || true
+          gh release create app-ios-develop dist/*.ipa \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "App de prueba iPhone (develop #${{ github.run_number }})" \
+            --notes "IPA de prueba compilado desde develop (${GITHUB_SHA::7}), firma: $FIRMA. API: $API_URL. Instalación: Docs/08-despliegue-render.md, sección \"App de iPhone\"."
+
+      - name: Limpiar llavero
+        if: always() && steps.sign.outputs.keychain != ''
+        run: security delete-keychain "${{ steps.sign.outputs.keychain }}"
