@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../../establishments/domain/entities/establishment.dart';
+import '../../orders/domain/entities/adjustment.dart';
 
 /// Modo domiciliario (E07 + E08). Montos en centavos; estados, zonas y medios de pago son códigos del
 /// catálogo de la API que la app traduce. La ubicación la decide el servidor: la app solo la reporta.
@@ -39,14 +40,19 @@ class CourierStatus extends Equatable {
 }
 
 class TripLine extends Equatable {
-  const TripLine({required this.name, required this.quantity, this.notes});
+  const TripLine({required this.name, required this.quantity, this.notes, this.id, this.unitCents = 0});
 
+  /// La línea del pedido, para reportar un faltante (solo en el pedido en curso; las ofertas no la traen).
+  final String? id;
   final String name;
   final int quantity;
   final String? notes;
 
+  /// Precio por unidad que pagó el cliente (para comparar con el que pide el local).
+  final int unitCents;
+
   @override
-  List<Object?> get props => [name, quantity, notes];
+  List<Object?> get props => [id, name, quantity, notes, unitCents];
 }
 
 /// Pedido ofrecido (H08.2): lo justo para decidir si lo toma.
@@ -151,6 +157,7 @@ class Trip extends Equatable {
     this.preparation,
     this.purchase,
     this.delivery,
+    this.adjustment,
   });
 
   final String code;
@@ -178,8 +185,11 @@ class Trip extends Equatable {
   final ({int amountCents, String? receiptUrl})? purchase;
   final TripDelivery? delivery;
 
+  /// La última pregunta al cliente en este local (E09): abierta mientras espera, o con lo que decidió.
+  final OrderAdjustment? adjustment;
+
   @override
-  List<Object?> get props => [code, status, statusAt, destination, preparation, purchase, delivery];
+  List<Object?> get props => [code, status, statusAt, lines, destination, preparation, purchase, delivery, adjustment];
 }
 
 /// Una lectura del GPS tal como la entrega el teléfono.
@@ -236,6 +246,9 @@ abstract interface class CourierRepository {
   Future<StepOutcome> purchase(String code, TripStepEvent event, {required String amount, required String receiptFileId});
   Future<StepOutcome> ready(String code, TripStepEvent event);
   Future<StepOutcome> delay(String code, TripStepEvent event);
+
+  /// "Falta algo / cambió el precio": una sola pregunta al cliente con todas las líneas marcadas (H09.2).
+  Future<StepOutcome> reportAdjustment(String code, TripStepEvent event, {required List<ReportedLine> lines});
 
   /// "Llegué" (si la geocerca no lo detectó).
   Future<StepOutcome> arrived(String code, TripStepEvent event);

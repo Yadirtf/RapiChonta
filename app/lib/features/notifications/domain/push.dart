@@ -26,16 +26,18 @@ class PushTap {
   final String? status;
 
   /// Lo que abre el aviso: las ofertas y el pedido en curso del domiciliario van al turno; los del cliente, a su
-  /// pedido; sin pedido, la bandeja de avisos.
+  /// pedido (también la pregunta del domiciliario, E09); sin pedido, la bandeja de avisos. La respuesta del cliente
+  /// y la cancelación llegan al domiciliario: van a su pedido en curso.
   String get route => switch (type) {
         'ORDER_OFFERED' || 'OFFER_WITHDRAWN' => '/turno',
-        'PREPARATION_TIME_REACHED' when orderCode != null => '/turno/pedido/$orderCode',
+        'PREPARATION_TIME_REACHED' || 'ADJUSTMENT_RESOLVED' when orderCode != null => '/turno/pedido/$orderCode',
+        'TRIP_CANCELLED' when orderCode != null => '/turno/pedido/$orderCode?cancelado=1',
         _ when orderCode != null => '/pedidos/$orderCode',
         _ => '/avisos',
       };
 
   /// Aviso del lado del domiciliario (refresca su turno, no los pedidos del cliente).
-  bool get forCourier => const {'ORDER_OFFERED', 'OFFER_WITHDRAWN', 'PREPARATION_TIME_REACHED'}.contains(type);
+  bool get forCourier => const {'ORDER_OFFERED', 'OFFER_WITHDRAWN', 'PREPARATION_TIME_REACHED', 'ADJUSTMENT_RESOLVED', 'TRIP_CANCELLED'}.contains(type);
 
   static PushTap? fromData(Map<dynamic, dynamic>? data) {
     if (data == null) return null;

@@ -22,22 +22,38 @@ import '../widgets/duty_widgets.dart';
 import '../widgets/pending_ribbon.dart';
 import '../widgets/receipt_capture.dart';
 import '../widgets/trip_actions.dart';
+import '../widgets/trip_adjustment.dart';
 import '../widgets/trip_map.dart';
 
 /// El pedido en curso (H08.3 a H08.6, H08.8), etapa por etapa. Las llegadas (al local y donde el cliente) las
 /// marca el servidor con la ubicación; aquí solo se marcan la compra y "ya está listo". Lo marcado sin señal
 /// se ve como hecho y sale solo al volver la conexión.
-class TripPage extends ConsumerWidget {
-  const TripPage({super.key, required this.code});
+class TripPage extends ConsumerStatefulWidget {
+  const TripPage({super.key, required this.code, this.cancelled = false});
 
   final String code;
 
+  /// Se abrió desde el aviso de cancelación (E09): si el pedido ya no está, se dice por qué.
+  final bool cancelled;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TripPage> createState() => _TripPageState();
+}
+
+class _TripPageState extends ConsumerState<TripPage> {
+  /// El último estado visto de este pedido: si estaba esperando al cliente y desaparece, el cliente canceló (o
+  /// se acabó el tiempo sin nada que comprar) y el domiciliario debe saberlo antes de comprar.
+  String? _lastStatus;
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final language = Localizations.localeOf(context).languageCode;
+    final code = widget.code;
     final trip = ref.watch(courierTripProvider(language));
     final pending = ref.watch(pendingStepsProvider).of(code).toList();
+    final current = trip.value;
+    if (current != null && current.code == code) _lastStatus = current.status;
 
     return Scaffold(
       body: trip.when(
@@ -53,12 +69,13 @@ class TripPage extends ConsumerWidget {
         ]),
         data: (trip) {
           if (trip == null || trip.code != code) {
+            final cancelled = widget.cancelled || _lastStatus == 'AWAITING_CUSTOMER';
             return ListView(children: [
               StoreHeader(title: code, backTo: '/turno', backLabel: l10n.tripBackToShift),
               DoorCard(
-                icon: Icons.verified_rounded,
-                title: l10n.tripDoneTitle,
-                body: l10n.tripDoneBody,
+                icon: cancelled ? Icons.remove_shopping_cart_rounded : Icons.verified_rounded,
+                title: cancelled ? l10n.tripCancelledTitle : l10n.tripDoneTitle,
+                body: cancelled ? l10n.tripCancelledBody : l10n.tripDoneBody,
                 action: FilledButton(onPressed: () => context.go('/turno'), child: Text(l10n.tripBackToShift)),
               ),
             ]);
@@ -146,6 +163,7 @@ class _TripView extends ConsumerWidget {
                   ...switch (status) {
                     'ACCEPTED' => [_ToStoreStage(trip: trip)],
                     'AT_ESTABLISHMENT' => [_BuyStage(trip: trip)],
+                    'AWAITING_CUSTOMER' => [WaitingCustomerStage(trip: trip), const SizedBox(height: 16), _BillTicket(trip: trip, language: Localizations.localeOf(context).languageCode)],
                     'PREPARING' => [_PrepStage(trip: trip, purchaseQueued: trip.status != 'PREPARING')],
                     'ON_THE_WAY' || 'ARRIVING' => [_DeliverStage(trip: trip, arriving: status == 'ARRIVING', arrivalQueued: trip.status == 'ON_THE_WAY')],
                     _ => [_OtherStage(status: status)],
@@ -486,7 +504,9 @@ class _BuyStageState extends ConsumerState<_BuyStage> {
     final trip = widget.trip;
     final pesos = _pesos;
     final diff = pesos == null ? 0 : pesos * 100 - trip.itemsCents;
+    final answered = trip.adjustment?.open == false ? trip.adjustment : null;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (answered != null) ...[CustomerDecisionCard(adjustment: answered), const SizedBox(height: 16)],
       _BillTicket(trip: trip, language: language),
       const SizedBox(height: 16),
       StepCard(
@@ -500,6 +520,8 @@ class _BuyStageState extends ConsumerState<_BuyStage> {
             checked: _checked,
             onToggle: (i) => setState(() => _checked.contains(i) ? _checked.remove(i) : _checked.add(i)),
           ),
+          // H09.2: algo se acabó o el local pide otro precio. Se le pregunta al cliente antes de pagar.
+          if (trip.lines.any((l) => l.id != null)) ...[const SizedBox(height: 10), ReportProblemButton(trip: trip)],
         ]),
       ),
       StepCard(
@@ -510,7 +532,7 @@ class _BuyStageState extends ConsumerState<_BuyStage> {
           TextField(
             controller: _amount,
             keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10), _PesosFormatter(language)],
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10), PesosFormatter(language)],
             style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.6),
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
@@ -554,21 +576,6 @@ class _BuyStageState extends ConsumerState<_BuyStage> {
       const SizedBox(height: 8),
       Text(l10n.tripPurchaseHint, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: AppColors.ink.withValues(alpha: 0.55))),
     ]);
-  }
-}
-
-/// "38.500" mientras escribe (solo dígitos; el punto o la coma de miles según el idioma).
-class _PesosFormatter extends TextInputFormatter {
-  _PesosFormatter(this.language);
-
-  final String language;
-
-  @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    final digits = newValue.text.replaceAll(RegExp(r'\D'), '').replaceFirst(RegExp(r'^0+(?=\d)'), '');
-    if (digits.isEmpty) return const TextEditingValue();
-    final grouped = digits.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => language == 'en' ? ',' : '.');
-    return TextEditingValue(text: grouped, selection: TextSelection.collapsed(offset: grouped.length));
   }
 }
 

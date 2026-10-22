@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:rapichonta/core/error/failure.dart';
 import 'package:rapichonta/features/courier/domain/courier.dart';
+import 'package:rapichonta/features/orders/domain/entities/adjustment.dart';
 
 Uint8List bytesOf(List<int> bytes) => Uint8List.fromList(bytes);
 
@@ -33,6 +34,9 @@ class FakeCourierRepository implements CourierRepository {
   int uploads = 0;
   int codeAttemptsLeft = 5;
   final steps = <SentStep>[];
+
+  /// Las líneas de cada pregunta al cliente que envió (E09).
+  final reported = <List<ReportedLine>>[];
   final availability = <bool>[];
 
   static const _network = Failure('Sin conexión', code: 'NETWORK_ERROR');
@@ -110,6 +114,13 @@ class FakeCourierRepository implements CourierRepository {
   Future<StepOutcome> delay(String code, TripStepEvent event) => _record('delay', code, event);
 
   @override
+  Future<StepOutcome> reportAdjustment(String code, TripStepEvent event, {required List<ReportedLine> lines}) async {
+    final outcome = await _record('adjustments', code, event);
+    reported.add(lines);
+    return outcome;
+  }
+
+  @override
   Future<StepOutcome> arrived(String code, TripStepEvent event) => _record('arrived', code, event);
 
   @override
@@ -127,7 +138,7 @@ class FakeCourierRepository implements CourierRepository {
   Future<StepOutcome> proof(String code, TripStepEvent event, {required String fileId}) => _record('proof', code, event, fileId);
 }
 
-Map<String, dynamic> tripJson({required String status, bool revealed = false, bool prepared = false, Map<String, dynamic>? delivery}) => {
+Map<String, dynamic> tripJson({required String status, bool revealed = false, bool prepared = false, Map<String, dynamic>? delivery, Map<String, dynamic>? adjustment}) => {
       'code': 'RC-7K3M',
       'status': status,
       'statusAt': '2026-10-21T20:30:00.000Z',
@@ -147,8 +158,8 @@ Map<String, dynamic> tripJson({required String status, bool revealed = false, bo
       },
       'zone': {'name': 'Centro', 'kind': 'URBAN'},
       'lines': [
-        {'name': 'Pollo asado entero', 'quantity': 1, 'notes': 'Bien dorado'},
-        {'name': 'Gaseosa 1.5 L', 'quantity': 2, 'notes': null},
+        {'id': 'item-pollo', 'name': 'Pollo asado entero', 'quantity': 1, 'unitPrice': '32500.00', 'notes': 'Bien dorado'},
+        {'id': 'item-gaseosa', 'name': 'Gaseosa 1.5 L', 'quantity': 2, 'unitPrice': '3000.00', 'notes': null},
       ],
       'itemsTotal': '38500.00',
       'deliveryFee': '3000.00',
@@ -171,6 +182,44 @@ Map<String, dynamic> tripJson({required String status, bool revealed = false, bo
           : null,
       'purchase': prepared ? {'amount': '39000.00', 'receiptUrl': null} : null,
       'delivery': delivery,
+      'adjustment': adjustment,
+    };
+
+/// Una pregunta al cliente (E09) sobre las dos líneas del pedido de prueba: la gaseosa se acabó y el pollo cambió
+/// de precio. [decisions] son las respuestas por línea (null: aún sin responder).
+Map<String, dynamic> adjustmentJson({required bool open, String? gaseosa, String? pollo, DateTime? expiresAt}) => {
+      'id': 'req-1',
+      'reportedAt': '2026-10-21T20:31:00.000Z',
+      'expiresAt': (expiresAt ?? DateTime.utc(2026, 10, 21, 20, 34)).toIso8601String(),
+      'open': open,
+      'lines': [
+        {
+          'id': 'adj-gaseosa',
+          'orderItemId': 'item-gaseosa',
+          'name': 'Gaseosa 1.5 L',
+          'quantity': 2,
+          'unitPrice': '3000.00',
+          'reason': 'UNAVAILABLE',
+          'reportedUnitPrice': null,
+          'decision': gaseosa,
+          'decidedAt': gaseosa == null ? null : '2026-10-21T20:32:00.000Z',
+          'substitute': gaseosa == 'SUBSTITUTE' ? {'name': 'Jugo de lulo 1 L', 'quantity': 2, 'unitPrice': '3500.00'} : null,
+          'options': gaseosa == null ? ['SUBSTITUTE', 'REMOVE_ITEM', 'CANCEL_ORDER'] : <String>[],
+        },
+        {
+          'id': 'adj-pollo',
+          'orderItemId': 'item-pollo',
+          'name': 'Pollo asado entero',
+          'quantity': 1,
+          'unitPrice': '32500.00',
+          'reason': 'PRICE_CHANGED',
+          'reportedUnitPrice': '34500.00',
+          'decision': pollo,
+          'decidedAt': pollo == null ? null : '2026-10-21T20:32:30.000Z',
+          'substitute': null,
+          'options': pollo == null ? ['ACCEPT_PRICE', 'REMOVE_ITEM', 'CANCEL_ORDER'] : <String>[],
+        },
+      ],
     };
 
 Map<String, dynamic> offerJson({DateTime? expiresAt}) => {

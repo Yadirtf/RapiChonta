@@ -74,7 +74,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/pedidos', builder: (context, state) => const MyOrdersPage()),
       GoRoute(path: '/avisos', builder: (context, state) => const NotificationsPage()),
       GoRoute(path: '/turno', builder: (context, state) => const CourierHomePage()),
-      GoRoute(path: '/turno/pedido/:code', builder: (context, state) => TripPage(code: state.pathParameters['code']!)),
+      GoRoute(
+        path: '/turno/pedido/:code',
+        builder: (context, state) => TripPage(code: state.pathParameters['code']!, cancelled: state.uri.queryParameters['cancelado'] == '1'),
+      ),
       GoRoute(
         path: '/pedidos/:code',
         builder: (context, state) => OrderDetailPage(code: state.pathParameters['code']!, placed: state.uri.queryParameters['nuevo'] == '1'),

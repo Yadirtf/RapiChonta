@@ -1,3 +1,4 @@
+import '../entities/adjustment.dart';
 import '../entities/order.dart';
 
 /// Puerto del cliente para pedir y seguir sus pedidos (E04).
@@ -22,6 +23,12 @@ abstract class OrderRepository {
 
   /// "No lo recibí" (después de una entrega con foto).
   Future<void> reportNotReceived(String code);
+
+  /// "Cambiar por": productos del local para la línea que falta, los parecidos primero (E09).
+  Future<List<SubstituteOption>> substitutes(String code, String adjustmentId, {required String language});
+
+  /// La decisión del cliente sobre una línea (con CANCEL_ORDER, sobre todo el pedido).
+  Future<void> decideAdjustment(String code, String adjustmentId, {required String decision, String? productVersionId});
   Future<List<SavedAddress>> addresses();
   Future<List<SavedRecipient>> recipients();
 }

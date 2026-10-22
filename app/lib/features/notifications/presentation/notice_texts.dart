@@ -12,6 +12,7 @@ String noticeTitle(AppLocalizations l10n, AppNotification n) {
     'PREPARATION_TIME_REACHED' => l10n.noticePreparationReached,
     'ADJUSTMENT_REQUESTED' => l10n.noticeAdjustmentRequested,
     'ADJUSTMENT_RESOLVED' => l10n.noticeAdjustmentResolved,
+    'TRIP_CANCELLED' => l10n.noticeTripCancelled,
     'INCIDENT_OPENED' => l10n.noticeIncidentOpened,
     'INCIDENT_RESOLVED' => l10n.noticeIncidentResolved,
     'DELIVERY_PROOF_PENDING' => l10n.noticeProofPending,
