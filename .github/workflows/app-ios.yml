@@ -69,8 +69,6 @@ jobs:
       - name: Generar plataforma iOS
         run: |
           flutter create . --org com.rapichonta --project-name rapichonta --platforms=ios
-          sed -i '' -E "s/^#? *platform :ios, '[0-9.]+'/platform :ios, '$IOS_MIN'/" ios/Podfile
-          grep -q "^platform :ios, '$IOS_MIN'" ios/Podfile
 
       # Un solo PNG de 1024 px (Xcode 14+ genera los demás tamaños). Lo produce Docs/marca/generar_marca.py.
       - name: Ícono de la app
@@ -183,6 +181,18 @@ jobs:
           RUBY
 
       - run: flutter pub get
+
+      # Flutter usa Swift Package Manager y solo crea el Podfile si algún plugin aún depende de CocoaPods
+      # (lo hace al configurar el build). Si existe, sube su plataforma a la mínima de Firebase.
+      - name: iOS mínimo en CocoaPods
+        run: |
+          flutter build ios --config-only --release --no-codesign
+          if [ -f ios/Podfile ]; then
+            sed -i '' -E "s/^#? *platform :ios, '[0-9.]+'/platform :ios, '$IOS_MIN'/" ios/Podfile
+            grep -q "^platform :ios, '$IOS_MIN'" ios/Podfile
+          else
+            echo "Sin Podfile: todos los plugins van por Swift Package Manager."
+          fi
 
       - name: Compilar
         env:
