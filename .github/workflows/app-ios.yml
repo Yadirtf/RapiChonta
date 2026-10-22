@@ -186,7 +186,8 @@ jobs:
       # (lo hace al configurar el build). Si existe, sube su plataforma a la mínima de Firebase.
       - name: iOS mínimo en CocoaPods
         run: |
-          flutter build ios --config-only --release --no-codesign
+          # Puede fallar en pod install justo por la plataforma baja; el build de abajo lo repite ya corregido.
+          flutter build ios --config-only --release --no-codesign || true
           if [ -f ios/Podfile ]; then
             sed -i '' -E "s/^#? *platform :ios, '[0-9.]+'/platform :ios, '$IOS_MIN'/" ios/Podfile
             grep -q "^platform :ios, '$IOS_MIN'" ios/Podfile
