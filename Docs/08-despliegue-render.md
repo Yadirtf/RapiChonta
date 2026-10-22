@@ -1,8 +1,8 @@
-# 08 · Despliegue en Render (alternativa)
+# 08 · Despliegue en Render (entorno de pruebas)
 
-> El entorno de pruebas principal está en SnapDeploy: ver [11 · Despliegue en SnapDeploy](11-despliegue-snapdeploy.md). Render es una segunda opción con la misma imagen.
+> Render con la base en Neon es el entorno de pruebas actual. SnapDeploy ([11](11-despliegue-snapdeploy.md)) quedó en desuso; esa guía se conserva porque explica Sentry, notificaciones push y la prueba local de la imagen, que valen igual aquí.
 
-El archivo [`render.yaml`](../render.yaml) en la raíz crea **un solo servicio Docker** (`rapichonta`) con el mismo [`Dockerfile`](../Dockerfile) de SnapDeploy:
+El archivo [`render.yaml`](../render.yaml) en la raíz crea **un solo servicio Docker** (`rapichonta`) construido con el [`Dockerfile`](../Dockerfile) de la raíz:
 
 | Recurso | Dónde | Detalle |
 | --- | --- | --- |
@@ -16,7 +16,7 @@ El archivo [`render.yaml`](../render.yaml) en la raíz crea **un solo servicio D
 - Al arrancar, `start.sh` aplica las migraciones (`prisma migrate deploy`, la primera hace `CREATE EXTENSION postgis`) y la semilla idempotente. No hay que entrar a ninguna *Shell*.
 - Consume ~215 MB de RAM, dentro de los 512 MB del plan gratuito.
 
-La app Flutter no se despliega en Render; para apuntarla a este servidor se compila con `API_URL=https://<servicio>.onrender.com/api/v1` (variable del repositorio o entrada del flujo `app-android.yml`).
+La app Flutter no se despliega en Render: el flujo `app-android.yml` la compila con `API_URL` apuntando a este servicio (`https://rapichonta.onrender.com/api/v1`, valor `DEFAULT_API_URL` del flujo). Si la URL del servicio cambia, actualizar ese valor o definir la variable del repositorio `API_URL`, que tiene prioridad.
 
 ## Primer despliegue
 
@@ -55,7 +55,7 @@ Variables opcionales, desde **Environment** del servicio (mismos valores y expli
 
 ### 3. Verificar
 
-- `https://<servicio>.onrender.com/api/health` responde `{"status":"ok",...}`.
+- `https://rapichonta.onrender.com/api/health` (o `https://<servicio>.onrender.com` si el nombre cambia) responde `{"status":"ok",...}`.
 - `https://<servicio>.onrender.com/` muestra el mapa; al permitir la ubicación aparecen los establecimientos de ejemplo.
 
 ### Si un blueprint anterior falló

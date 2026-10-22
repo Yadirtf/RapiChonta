@@ -1,6 +1,6 @@
-# Contenedor único con la API (NestJS) y la web (Next.js) para SnapDeploy.
+# Contenedor único con la API (NestJS) y la web (Next.js) para el entorno de pruebas (Render).
 # La web atiende el puerto público y reenvía /api/* a la API en 127.0.0.1:4000.
-# Guía: Docs/11-despliegue-snapdeploy.md
+# Guía: Docs/08-despliegue-render.md
 
 # Dos etapas en total: el plan gratuito (Small) de SnapDeploy no acepta más.
 

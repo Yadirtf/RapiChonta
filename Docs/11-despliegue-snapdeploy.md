@@ -1,6 +1,8 @@
-# 11 · Despliegue en SnapDeploy (entorno de pruebas)
+# 11 · Despliegue en SnapDeploy (en desuso)
 
-[SnapDeploy](https://snapdeploy.dev) ejecuta contenedores Docker en AWS. Reemplaza a Render como entorno de pruebas para revisar cada implementación que entra a `develop`. La configuración de Render ([08](08-despliegue-render.md) y `render.yaml`) se conserva como alternativa.
+> SnapDeploy ya no es el entorno de pruebas: el actual es Render con la base en Neon ([08](08-despliegue-render.md)), con el mismo contenedor. Esta guía se conserva porque las secciones de Sentry, notificaciones push, la prueba local de la imagen y los problemas comunes aplican igual a Render.
+
+[SnapDeploy](https://snapdeploy.dev) ejecuta contenedores Docker en AWS.
 
 ## Cómo queda
 
@@ -138,7 +140,7 @@ La app prueba FCM primero y, si el teléfono no tiene servicios de Google, Huawe
 
 ## App Flutter
 
-La app no se despliega en SnapDeploy; se compila para las tiendas y apunta a la API con `--dart-define=API_URL=https://<contenedor>.containers.snapdeploy.app/api/v1`. Los enlaces a los documentos legales abren la web; su dirección se deduce de `API_URL` y se puede cambiar con `--dart-define=WEB_URL=...`.
+La app no se despliega en el servidor; se compila para las tiendas y apunta a la API con `--dart-define=API_URL=https://<servicio>.onrender.com/api/v1` (el flujo `app-android.yml` ya usa la URL de Render). Los enlaces a los documentos legales abren la web; su dirección se deduce de `API_URL` y se puede cambiar con `--dart-define=WEB_URL=...`.
 
 ## Límites del plan gratuito que afectan las pruebas
 

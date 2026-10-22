@@ -2,7 +2,7 @@
 # Render lo detecta automáticamente con el nombre render.yaml en la raíz.
 # Guía: Docs/08-despliegue-render.md
 #
-# Un solo servicio Docker con el mismo Dockerfile de SnapDeploy: la web atiende el puerto público
+# Un solo servicio Docker con el Dockerfile de la raíz: la web atiende el puerto público
 # y reenvía /api/* a la API dentro del contenedor. Así la web y la API comparten dominio, que es lo
 # que exige la cookie de sesión (SameSite=Strict); con dos servicios *.onrender.com serían sitios distintos.
 # La base de datos va en Neon (PostgreSQL + PostGIS): Render solo permite una base gratuita por cuenta.

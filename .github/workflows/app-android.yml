@@ -7,7 +7,7 @@
 # Con la variable SENTRY_DSN_APP la app reporta sus errores a Sentry (entorno "pruebas").
 # Notificaciones push (E06): las variables FIREBASE_* activan FCM y AGCONNECT_SERVICES_JSON (el
 # agconnect-services.json de AppGallery Connect) activa Huawei Push Kit. Sin ellas la app compila igual
-# y simplemente no registra token (ver Docs/11-despliegue-snapdeploy.md).
+# y simplemente no registra token (ver "Notificaciones push" en Docs/11-despliegue-snapdeploy.md).
 name: App Android
 
 on:
@@ -23,7 +23,7 @@ on:
   workflow_dispatch:
     inputs:
       api_url:
-        description: "URL de la API (vacío = entorno de prueba en SnapDeploy)"
+        description: "URL de la API (vacío = entorno de prueba en Render)"
         required: false
         default: ""
 
@@ -35,8 +35,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # Entorno de prueba: contenedor único en SnapDeploy (la web reenvía /api/* a NestJS).
-  DEFAULT_API_URL: https://rapichonta-2bb49.containers.snapdeploy.app/api/v1
+  # Entorno de prueba: contenedor único en Render (la web reenvía /api/* a NestJS). Docs/08-despliegue-render.md
+  DEFAULT_API_URL: https://rapichonta.onrender.com/api/v1
 
 jobs:
   apk:
