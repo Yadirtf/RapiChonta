@@ -24,7 +24,17 @@ class AccountPage extends ConsumerWidget {
     void notify(String message) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), behavior: SnackBarBehavior.floating));
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.menuMyAccount, style: const TextStyle(fontWeight: FontWeight.w800)), backgroundColor: AppColors.surface),
+      appBar: AppBar(
+        // Siempre hay salida: si se llegó al ingresar (sin pantalla debajo), vuelve al inicio, que en
+        // modo domiciliario es el turno.
+        leading: IconButton(
+          tooltip: account?.activeRole == Role.courier ? l10n.tripBackToShift : MaterialLocalizations.of(context).backButtonTooltip,
+          onPressed: () => context.canPop() ? context.pop() : context.go('/'),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.ink),
+        ),
+        title: Text(l10n.menuMyAccount, style: const TextStyle(fontWeight: FontWeight.w800)),
+        backgroundColor: AppColors.surface,
+      ),
       body: account == null
           ? const Center(child: CircularProgressIndicator())
           : Center(
@@ -212,7 +222,11 @@ class _ModeCardState extends ConsumerState<_ModeCard> {
               : () async {
                   setState(() => _busy = true);
                   try {
-                    if (await switchMode(context, ref, widget.account)) widget.onSwitched(courierMode ? l10n.modeCustomerActive : l10n.modeCourierActive);
+                    if (await switchMode(context, ref, widget.account)) {
+                      widget.onSwitched(courierMode ? l10n.modeCustomerActive : l10n.modeCourierActive);
+                      // Cada modo tiene su inicio: la pila anterior es del otro modo.
+                      if (context.mounted) context.go(courierMode ? '/' : '/turno');
+                    }
                   } catch (error) {
                     if (context.mounted) widget.onSwitched(errorText(l10n, error));
                   } finally {
