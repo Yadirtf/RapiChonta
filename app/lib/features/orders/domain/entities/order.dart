@@ -200,6 +200,7 @@ class OrderDetail extends OrderSummary {
     this.notes,
     this.preparation,
     this.purchase,
+    this.delivery = const OrderDelivery(),
   });
 
   final List<OrderLine> lines;
@@ -222,8 +223,28 @@ class OrderDetail extends OrderSummary {
   /// Lo que el domiciliario pagó en el local, con la foto de la factura (H08.4).
   final ({int amountCents, String? receiptUrl})? purchase;
 
+  /// El cierre: el código para el domiciliario, la foto si entregó sin código y hasta cuándo se puede reclamar.
+  final OrderDelivery delivery;
+
   @override
-  List<Object?> get props => [...super.props, timeline, preparation, purchase];
+  List<Object?> get props => [...super.props, timeline, preparation, purchase, delivery];
+}
+
+/// El cierre de la entrega visto por el cliente.
+class OrderDelivery extends Equatable {
+  const OrderDelivery({this.code, this.proofUrl, this.reviewClosesAt});
+
+  /// 4 dígitos para decirle al domiciliario al recibir (solo mientras va en camino o llegando).
+  final String? code;
+
+  /// La foto que tomó el domiciliario si entregó sin código.
+  final String? proofUrl;
+
+  /// Si nadie reclama antes de esta hora, el pedido queda entregado.
+  final DateTime? reviewClosesAt;
+
+  @override
+  List<Object?> get props => [code, proofUrl, reviewClosesAt];
 }
 
 class OrderHistory {

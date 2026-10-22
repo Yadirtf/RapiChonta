@@ -63,10 +63,64 @@ final _delayed = OrderDetail(
   purchase: (amountCents: 1450000, receiptUrl: 'https://archivos.example/factura.jpg'),
 );
 
+/// En camino (E10): el cliente ve su código de entrega; recibe otra persona.
+final _onTheWay = OrderDetail(
+  code: 'RC-7K3M',
+  establishmentId: 'e1',
+  establishmentName: 'Burger Demo',
+  createdAt: _at,
+  status: 'ARRIVING',
+  statusAt: _at,
+  active: true,
+  itemCount: 1,
+  totalCents: 1700000,
+  lines: const [OrderLine(productId: 'p1', name: 'Hamburguesa sencilla', unitCents: 1400000, quantity: 1)],
+  itemsCents: 1400000,
+  feeCents: 300000,
+  prepMinutes: 15,
+  zoneName: 'Centro',
+  address: const SavedAddress(id: '', label: 'Casa', location: GeoPoint(1.03, -76.61)),
+  recipient: (fullName: 'Rosa Mutumbajoy', phone: '+573124567890'),
+  paymentMethod: 'CASH',
+  timeline: [TimelineEntry('PENDING_ASSIGNMENT', _at), TimelineEntry('ARRIVING', _at)],
+  journey: _journey,
+  delivery: const OrderDelivery(code: '0427'),
+);
+
+/// Entregado con foto: el cliente confirma o reclama antes del cierre automático.
+final _leftWithPhoto = OrderDetail(
+  code: 'RC-7K3M',
+  establishmentId: 'e1',
+  establishmentName: 'Burger Demo',
+  createdAt: _at,
+  status: 'PENDING_REVIEW',
+  statusAt: _at,
+  active: true,
+  itemCount: 1,
+  totalCents: 1700000,
+  lines: const [OrderLine(productId: 'p1', name: 'Hamburguesa sencilla', unitCents: 1400000, quantity: 1)],
+  itemsCents: 1400000,
+  feeCents: 300000,
+  prepMinutes: 15,
+  zoneName: 'Centro',
+  address: const SavedAddress(id: '', label: 'Casa', location: GeoPoint(1.03, -76.61)),
+  paymentMethod: 'CASH',
+  timeline: [TimelineEntry('PENDING_ASSIGNMENT', _at), TimelineEntry('PENDING_REVIEW', _at)],
+  journey: _journey,
+  delivery: OrderDelivery(reviewClosesAt: DateTime.utc(2026, 10, 21, 22, 7)),
+);
+
 class _Orders implements OrderRepository {
   _Orders({this.missing = false, this.detail});
   final bool missing;
   final OrderDetail? detail;
+  final closed = <String>[];
+
+  @override
+  Future<void> confirmReceived(String code) async => closed.add('received $code');
+
+  @override
+  Future<void> reportNotReceived(String code) async => closed.add('not-received $code');
 
   @override
   Future<OrderDetail> find(String code, {required String language}) async => missing ? throw const Failure('', code: 'ORDER_NOT_FOUND') : detail ?? _delivered;
@@ -160,6 +214,46 @@ void main() {
     expect(find.text('Listo hacia las 3:45 p. m.'), findsOneWidget);
     expect(find.text(r'Tu domiciliario pagó $ 14.500 en el local.'), findsOneWidget);
     expect(find.text('Ver factura'), findsOneWidget);
+  });
+
+  testWidgets('en camino muestra el código de entrega, cómo enviárselo a quien recibe y "Ya lo recibí"', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 2600));
+    final orders = _Orders(detail: _onTheWay);
+    await tester.pumpWidget(_app(const OrderDetailPage(code: 'RC-7K3M'), orders: orders));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('TU CÓDIGO DE ENTREGA'), findsOneWidget);
+    for (final digit in ['0', '4', '2', '7']) {
+      expect(find.text(digit), findsOneWidget);
+    }
+    expect(find.text('Lo recibe Rosa Mutumbajoy: envíale el código.'), findsOneWidget);
+    expect(find.text('Enviar a Rosa Mutumbajoy'), findsOneWidget);
+
+    await tester.tap(find.text('Ya lo recibí'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('¿Ya tienes tu pedido?'), findsOneWidget);
+    await tester.tap(find.text('Sí, lo recibí'));
+    await tester.pump();
+    expect(orders.closed, ['received RC-7K3M']);
+  });
+
+  testWidgets('entregado con foto: muestra hasta cuándo puede reclamar y "No lo recibí"', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 2600));
+    final orders = _Orders(detail: _leftWithPhoto);
+    await tester.pumpWidget(_app(const OrderDetailPage(code: 'RC-7K3M'), orders: orders));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Tu domiciliario dejó el pedido'), findsOneWidget);
+    expect(find.text('Si no nos dices nada, a las 5:07 p. m. lo damos por entregado.'), findsOneWidget);
+    await tester.tap(find.text('No lo recibí'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.text('Sí, no lo recibí'));
+    await tester.pump();
+    expect(orders.closed, ['not-received RC-7K3M']);
   });
 
   testWidgets('un código que no es del cliente muestra cómo volver a sus pedidos', (tester) async {

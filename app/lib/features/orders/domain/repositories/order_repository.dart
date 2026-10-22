@@ -16,6 +16,12 @@ abstract class OrderRepository {
   });
   Future<OrderHistory> mine({String? before});
   Future<OrderDetail> find(String code, {required String language});
+
+  /// "Recibí mi pedido".
+  Future<void> confirmReceived(String code);
+
+  /// "No lo recibí" (después de una entrega con foto).
+  Future<void> reportNotReceived(String code);
   Future<List<SavedAddress>> addresses();
   Future<List<SavedRecipient>> recipients();
 }

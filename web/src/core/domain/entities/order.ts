@@ -90,6 +90,17 @@ export interface OrderDetail extends OrderSummary {
   preparation: OrderPreparation | null;
   /** Lo que pagó el domiciliario en el local, con la factura (URL firmada, vence sola). */
   purchase: OrderPurchase | null;
+  /** Cierre de la entrega (E10): el código mientras va en camino, y la foto si el domiciliario lo dejó sin código. */
+  delivery: OrderDelivery;
+}
+
+export interface OrderDelivery {
+  /** Solo en camino o llegando: el cliente se lo dicta al domiciliario y con eso queda entregado. */
+  code: string | null;
+  /** Foto de la entrega sin código (URL firmada, vence sola). */
+  proofUrl: string | null;
+  /** Si el cliente no responde, a esta hora se da por entregado. */
+  reviewClosesAt: string | null;
 }
 
 export interface OrderPreparation {

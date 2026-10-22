@@ -4,11 +4,29 @@ import { Notifier } from '../../notifications/application/notifier';
 import { resolveOccurredAt, TripEvent } from '../domain/event-time';
 import { TRIP_STATUSES, TripStatusCode } from '../domain/fulfillment.codes';
 import { FulfillmentErrors } from '../domain/fulfillment.errors';
-import { CourierTrips, GeofenceProbe, TripCommand, TripResult } from '../domain/ports/courier-trips';
+import { CourierTrips, CustomerDeliveries, GeofenceProbe, TripCommand, TripResult } from '../domain/ports/courier-trips';
 import { PreparationSignal } from './preparation-signal';
 
 /** Pesos con hasta dos decimales; tope de 10 dígitos enteros (numeric(12,2)). */
 const AMOUNT = /^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/;
+
+/** El rechazo de la base, con el código que la app traduce. */
+function refusal(result: Extract<TripResult, { ok: false }>) {
+  switch (result.reason) {
+    case 'RECEIPT':
+      return FulfillmentErrors.receiptInvalid();
+    case 'CODE':
+      return FulfillmentErrors.deliveryCodeWrong(result.attemptsLeft ?? 0);
+    case 'CODE_LOCKED':
+      return FulfillmentErrors.deliveryCodeLocked();
+    case 'PROOF_EARLY':
+      return FulfillmentErrors.proofTooEarly(result.availableAt ?? new Date());
+    case 'PROOF':
+      return FulfillmentErrors.proofInvalid();
+    default:
+      return FulfillmentErrors.stepNotAllowed(result.status);
+  }
+}
 
 export interface TripStepResult {
   orderCode: string;
@@ -37,26 +55,45 @@ export class CourierTripUseCase {
   /** H08.4: total pagado + foto de la factura → PREPARING (empieza la cuenta de preparación). */
   async purchase(principal: Principal, code: string, event: TripEvent & { amount: string; receiptFileId: string }, now = new Date()) {
     if (!AMOUNT.test(event.amount) || Number(event.amount) <= 0) throw FulfillmentErrors.purchaseAmountInvalid();
-    return this.step(principal, code, event, TRIP_STATUSES.AT_ESTABLISHMENT, TRIP_STATUSES.PREPARING, now, (command) =>
+    return this.step(principal, code, event, [TRIP_STATUSES.AT_ESTABLISHMENT], TRIP_STATUSES.PREPARING, now, (command) =>
       this.trips.registerPurchase({ ...command, amount: event.amount, receiptFileId: event.receiptFileId }),
     );
   }
 
-  /** H08.5 "Ya está listo" → ON_THE_WAY (el cliente recibe "Tu pedido va en camino"). */
+  /** H08.5 "Ya está listo" → ON_THE_WAY (el cliente recibe "Tu pedido va en camino" y ve su código de entrega). */
   ready(principal: Principal, code: string, event: TripEvent, now = new Date()) {
-    return this.step(principal, code, event, TRIP_STATUSES.PREPARING, TRIP_STATUSES.ON_THE_WAY, now, (command) => this.trips.markReady(command));
+    return this.step(principal, code, event, [TRIP_STATUSES.PREPARING], TRIP_STATUSES.ON_THE_WAY, now, (command) => this.trips.markReady(command));
   }
 
   /** H08.5 "Sigue en preparación": el cliente ve el aviso de alta demanda y el recordatorio se repite. */
   delay(principal: Principal, code: string, event: TripEvent, now = new Date()) {
-    return this.step(principal, code, event, TRIP_STATUSES.PREPARING, TRIP_STATUSES.PREPARING, now, (command) => this.trips.reportDelay(command));
+    return this.step(principal, code, event, [TRIP_STATUSES.PREPARING], TRIP_STATUSES.PREPARING, now, (command) => this.trips.reportDelay(command));
+  }
+
+  /** "Llegué": lo mismo que la geocerca cuando el GPS no la dispara. El cliente recibe "Tu domiciliario está llegando". */
+  arrived(principal: Principal, code: string, event: TripEvent, now = new Date()) {
+    return this.step(principal, code, event, [TRIP_STATUSES.ON_THE_WAY], TRIP_STATUSES.ARRIVING, now, (command) => this.trips.markArrived(command));
+  }
+
+  /** El código que le dice el cliente → DELIVERED; el domiciliario queda libre. */
+  deliver(principal: Principal, code: string, event: TripEvent & { deliveryCode: string }, now = new Date()) {
+    return this.step(principal, code, event, [TRIP_STATUSES.ON_THE_WAY, TRIP_STATUSES.ARRIVING], TRIP_STATUSES.DELIVERED, now, (command) =>
+      this.trips.deliverWithCode({ ...command, deliveryCode: event.deliveryCode }),
+    );
+  }
+
+  /** Sin código: la foto de la entrega → PENDING_REVIEW; el domiciliario queda libre y el cliente puede reclamar. */
+  proof(principal: Principal, code: string, event: TripEvent & { fileId: string }, now = new Date()) {
+    return this.step(principal, code, event, [TRIP_STATUSES.ARRIVING], TRIP_STATUSES.PENDING_REVIEW, now, (command) =>
+      this.trips.deliverWithProof({ ...command, fileId: event.fileId }),
+    );
   }
 
   private async step(
     principal: Principal,
     code: string,
     event: TripEvent,
-    expected: TripStatusCode,
+    expected: readonly TripStatusCode[],
     next: TripStatusCode,
     now: Date,
     work: (command: TripCommand) => Promise<TripResult>,
@@ -69,12 +106,12 @@ export class CourierTripUseCase {
     }
     const trip = await this.trips.ref(principal.userId, code);
     if (!trip) throw FulfillmentErrors.tripNotFound();
-    if (trip.status !== expected) throw FulfillmentErrors.stepNotAllowed(trip.status);
+    if (!(expected as readonly string[]).includes(trip.status)) throw FulfillmentErrors.stepNotAllowed(trip.status);
 
     const { at, offline } = resolveOccurredAt(event, trip.lastChangeAt, now);
     const result = await work({ courierUserId: principal.userId, trip, clientEventId: event.clientEventId, occurredAt: at, offline });
-    if (!result.ok) throw result.reason === 'RECEIPT' ? FulfillmentErrors.receiptInvalid() : FulfillmentErrors.stepNotAllowed(result.status);
-    // El cambio de estado ya encoló el aviso al cliente (E06); la preparación cambió su próxima revisión.
+    if (!result.ok) throw refusal(result);
+    // El cambio de estado ya encoló el aviso al cliente (E06); el reloj (preparación, revisión de la foto) cambió su próxima hora.
     this.notifier.kick();
     this.preparation.reschedule();
     return { orderCode: code, status: next, replayed: false };
@@ -94,5 +131,33 @@ export class GeofenceUseCase {
     // "Tu domiciliario llegó a…" / "está llegando" ya está en la bandeja de salida: que salga ya.
     if (arrival) this.notifier.kick();
     return arrival;
+  }
+}
+
+/** El cliente cierra su pedido: "Recibí mi pedido" en cualquier momento desde que sale del local, o "No lo recibí" tras la foto. */
+@Injectable()
+export class CustomerDeliveryUseCase {
+  constructor(
+    private readonly deliveries: CustomerDeliveries,
+    private readonly notifier: Notifier,
+    private readonly clock: PreparationSignal,
+  ) {}
+
+  confirmReceived(principal: Principal, code: string) {
+    return this.apply(code, () => this.deliveries.confirmReceived(principal.userId, code));
+  }
+
+  reportNotReceived(principal: Principal, code: string) {
+    return this.apply(code, () => this.deliveries.reportNotReceived(principal.userId, code));
+  }
+
+  private async apply(code: string, change: () => ReturnType<CustomerDeliveries['confirmReceived']>) {
+    const result = await change();
+    if (!result.ok) throw result.reason === 'NOT_FOUND' ? FulfillmentErrors.orderNotFound() : FulfillmentErrors.deliveryStepNotAllowed(result.status ?? 'UNKNOWN');
+    if (result.changed) {
+      this.notifier.kick();
+      this.clock.reschedule();
+    }
+    return { orderCode: code, status: result.status };
   }
 }

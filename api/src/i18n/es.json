@@ -3,8 +3,9 @@
     "ORDER_STATUS_CHANGED": {
       "ACCEPTED": { "title": "Tu pedido ya tiene domiciliario", "body": "Va rumbo a {store} por tu pedido {code}." },
       "AT_ESTABLISHMENT": { "title": "Tu domiciliario llegó a {store}", "body": "Ya está comprando lo de tu pedido {code}." },
-      "ON_THE_WAY": { "title": "¡Tu pedido va en camino!", "body": "Salió de {store} hacia donde estás. Ten listo el pago." },
-      "ARRIVING": { "title": "Tu domiciliario está llegando", "body": "Está a pocos metros: sal a recibir tu pedido {code}." },
+      "ON_THE_WAY": { "title": "¡Tu pedido va en camino!", "body": "Salió de {store}. Ten listo el pago y tu código de entrega (está en el pedido)." },
+      "ARRIVING": { "title": "Tu domiciliario está llegando", "body": "Sal a recibir tu pedido {code} y ten a mano tu código de entrega." },
+      "PENDING_REVIEW": { "title": "Tu domiciliario dejó tu pedido {code}", "body": "Lo entregó con foto. Si no lo recibiste, avísanos desde el pedido." },
       "DELIVERED": { "title": "Pedido {code} entregado", "body": "Gracias por pedir con RapiChonta. ¡Buen provecho!" },
       "CANCELLED": { "title": "Tu pedido {code} se canceló", "body": "Toca para ver los detalles." },
       "_": { "title": "Tu pedido {code} cambió", "body": "Toca para ver en qué va." }

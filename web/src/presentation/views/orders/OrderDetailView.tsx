@@ -16,6 +16,7 @@ import { ApproxPrice } from "../../components/business/ApproxPrice";
 import { DoorCard, StorePage } from "../../components/layout/StorePage";
 import { OrderRoute } from "../../components/orders/OrderRoute";
 import { paymentIcon } from "../../components/orders/orderVisuals";
+import { DeliveryCodePass, LeftWithPhoto } from "../../components/orders/DeliveryClose";
 import { HighDemandNote, ReceiptButton } from "../../components/orders/PurchaseReceipt";
 import { StatusBadge } from "../../components/orders/StatusBadge";
 import { Alert } from "../../components/ui/Alert";
@@ -62,6 +63,7 @@ function Detail({ code, placed }: { code: string; placed: boolean }) {
   const errorMessage = useErrorMessage();
   const { cart, replace } = useCart();
   const { data: order, error, loading, reload } = useResource(() => container.orders.find(code, locale), [code, locale]);
+  const time = useOrderTime();
   const celebrated = useRef(false);
 
   // El pedido ya existe: la canasta de ese local se vacía y la URL deja de decir "nuevo" (al recargar no se repite la fiesta).
@@ -99,6 +101,8 @@ function Detail({ code, placed }: { code: string; placed: boolean }) {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
         <div className="flex min-w-0 flex-col gap-6">
           <StatusTicket order={order} />
+          {order.active && <DeliveryCodePass order={order} onClosed={() => void reload()} />}
+          {order.status === "PENDING_REVIEW" && <LeftWithPhoto order={order} time={time} onClosed={() => void reload()} />}
           {order.active && order.preparation?.delayed && <HighDemandNote store={order.establishment.name} />}
           <section className="rounded-[28px] bg-white p-5 shadow-[0_12px_32px_-20px_rgb(20_18_31/0.35)] sm:p-6" aria-labelledby="route-title">
             <h2 id="route-title" className="mb-5 font-display text-xl font-extrabold">

@@ -62,6 +62,11 @@ export interface OrderDetail extends OrderSummary {
   preparation: { estimatedReadyAt: Date; delayed: boolean } | null;
   /** H08.4: lo que el domiciliario pagó en el local y la foto de la factura. Nunca su ubicación. */
   purchase: { amount: string; receiptFileId: string } | null;
+  /**
+   * El cierre de la entrega: el código que el cliente le dice al domiciliario (solo mientras va en camino o llegando),
+   * la foto si entregó sin código, y hasta cuándo puede reclamar antes de que se cierre solo.
+   */
+  delivery: { code: string | null; proofFileId: string | null; reviewClosesAt: Date | null };
 }
 
 export abstract class OrdersRepository {

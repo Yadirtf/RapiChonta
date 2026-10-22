@@ -25,6 +25,14 @@ export class HttpOrderRepository implements OrderRepository {
     return apiRequest<OrderDetail>("GET", `/orders/${id(code)}`, { query: { lang: language } });
   }
 
+  async confirmReceived(code: string) {
+    await apiRequest<unknown>("POST", `/orders/${id(code)}/received`);
+  }
+
+  async reportNotReceived(code: string) {
+    await apiRequest<unknown>("POST", `/orders/${id(code)}/not-received`);
+  }
+
   addresses() {
     return apiRequest<SavedAddress[]>("GET", "/me/addresses");
   }

@@ -70,12 +70,17 @@ class CourierRepositoryImpl implements CourierRepository {
         return trip == null ? null : tripFromJson(trip);
       });
 
-  /// Pedir permiso (con la huella SHA-256) → PUT de los bytes a la URL firmada → confirmar.
   @override
-  Future<String> uploadReceipt(ReceiptPhoto photo) => _call(() async {
+  Future<String> uploadReceipt(ReceiptPhoto photo) => _uploadPhoto(photo, 'PURCHASE_RECEIPT');
+
+  @override
+  Future<String> uploadDeliveryProof(ReceiptPhoto photo) => _uploadPhoto(photo, 'DELIVERY_PROOF');
+
+  /// Pedir permiso (con la huella SHA-256) → PUT de los bytes a la URL firmada → confirmar.
+  Future<String> _uploadPhoto(ReceiptPhoto photo, String purpose) => _call(() async {
         final bytes = Uint8List.fromList(photo.bytes);
         final ticket = (await _authed.post<Map<String, dynamic>>('/files/uploads', data: {
-          'purpose': 'PURCHASE_RECEIPT',
+          'purpose': purpose,
           'mimeType': photo.mimeType,
           'sizeBytes': bytes.length,
           'sha256': sha256.convert(bytes).toString(),
@@ -106,6 +111,16 @@ class CourierRepositoryImpl implements CourierRepository {
 
   @override
   Future<StepOutcome> delay(String code, TripStepEvent event) => _step(code, 'delay', event.toJson());
+
+  @override
+  Future<StepOutcome> arrived(String code, TripStepEvent event) => _step(code, 'arrived', event.toJson());
+
+  @override
+  Future<StepOutcome> deliver(String code, TripStepEvent event, {required String deliveryCode}) =>
+      _step(code, 'deliver', {...event.toJson(), 'deliveryCode': deliveryCode});
+
+  @override
+  Future<StepOutcome> proof(String code, TripStepEvent event, {required String fileId}) => _step(code, 'proof', {...event.toJson(), 'fileId': fileId});
 
   Future<StepOutcome> _step(String code, String action, Map<String, dynamic> body) => _call(() async {
         final response = await _authed.post<Map<String, dynamic>>('/courier/trip/${Uri.encodeComponent(code)}/$action', data: body);
@@ -158,6 +173,7 @@ Trip tripFromJson(Map<String, dynamic> json) {
   final destination = json['destination'] as Map<String, dynamic>?;
   final preparation = json['preparation'] as Map<String, dynamic>?;
   final purchase = json['purchase'] as Map<String, dynamic>?;
+  final delivery = json['delivery'] as Map<String, dynamic>?;
   return Trip(
     code: json['code'] as String,
     status: json['status'] as String,
@@ -194,5 +210,12 @@ Trip tripFromJson(Map<String, dynamic> json) {
             nextCheckAt: DateTime.parse(preparation['nextCheckAt'] as String),
           ),
     purchase: purchase == null ? null : (amountCents: _cents(purchase['amount']), receiptUrl: Env.resolveAsset(purchase['receiptUrl'] as String?)),
+    delivery: delivery == null
+        ? null
+        : TripDelivery(
+            arrivedAt: _date(delivery['arrivedAt']),
+            proofAvailableAt: _date(delivery['proofAvailableAt']),
+            codeAttemptsLeft: (delivery['codeAttemptsLeft'] as num?)?.toInt() ?? 5,
+          ),
   );
 }

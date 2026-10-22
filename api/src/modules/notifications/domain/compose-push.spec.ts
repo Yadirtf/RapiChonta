@@ -30,7 +30,7 @@ describe('Texto de los avisos (H06.2)', () => {
     const keys = (catalog: object, prefix = ''): string[] =>
       Object.entries(catalog).flatMap(([key, value]) => (typeof value === 'object' ? keys(value, `${prefix}${key}.`) : [`${prefix}${key}`]));
     expect(keys(en)).toEqual(keys(es));
-    for (const status of ['ACCEPTED', 'AT_ESTABLISHMENT', 'ON_THE_WAY', 'ARRIVING', 'DELIVERED', 'CANCELLED']) {
+    for (const status of ['ACCEPTED', 'AT_ESTABLISHMENT', 'ON_THE_WAY', 'ARRIVING', 'PENDING_REVIEW', 'DELIVERED', 'CANCELLED']) {
       const message = composePush(pending({ status }), texts)!;
       expect(`${message.title} ${message.body}`).not.toMatch(/\{\w+\}/);
     }

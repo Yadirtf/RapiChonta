@@ -7,6 +7,8 @@ import { SettingsReader } from '../../src/shared/infrastructure/settings/setting
 import { PrismaCourierTrips } from '../../src/modules/fulfillment/infrastructure/prisma-courier-trips';
 import { PrismaGeofenceProbe } from '../../src/modules/fulfillment/infrastructure/prisma-geofence.probe';
 import { PrismaPreparationWatch } from '../../src/modules/fulfillment/infrastructure/prisma-preparation.watch';
+import { PrismaCustomerDeliveries } from '../../src/modules/fulfillment/infrastructure/prisma-customer-deliveries';
+import { PrismaDeliveryReviewWatch } from '../../src/modules/fulfillment/infrastructure/prisma-delivery-review.watch';
 import { PrismaOrdersRepository } from '../../src/modules/orders/infrastructure/prisma-orders.repository';
 import { PrismaCourierDesk } from '../../src/modules/dispatch/infrastructure/prisma-courier-desk';
 import { PrismaDispatchMaintenance } from '../../src/modules/dispatch/infrastructure/prisma-dispatch-maintenance';
@@ -27,6 +29,8 @@ const watch = new PrismaPreparationWatch(service);
 const orders = new PrismaOrdersRepository(service, ids);
 const desk = new PrismaCourierDesk(service, ids);
 const maintenance = new PrismaDispatchMaintenance(service, ids);
+const customers = new PrismaCustomerDeliveries(service, ids);
+const review = new PrismaDeliveryReviewWatch(service, ids);
 
 type Db = Prisma.TransactionClient | PrismaClient;
 
@@ -134,12 +138,12 @@ const ping = (courierId: string, at: { lat: number; lng: number }, secondsAgo: n
   INSERT INTO courier_location_pings (courier_user_id, location, accuracy_m, recorded_at)
   VALUES (${courierId}::uuid, ST_SetSRID(ST_MakePoint(${at.lng}, ${at.lat}), 4326)::geography, ${accuracy}, now() - make_interval(secs => ${secondsAgo}))`;
 
-/** Una foto de factura subida por `userId`. */
-async function receipt(userId: string): Promise<string> {
+/** Una foto de factura (o de entrega) subida por `userId`. */
+async function receipt(userId: string, purpose = 'PURCHASE_RECEIPT'): Promise<string> {
   const [file] = await prisma.$queryRaw<{ id: string }[]>`
     INSERT INTO files (purpose_id, storage_key, mime_type, size_bytes, sha256, uploaded_by_user_id)
     SELECT p.id, 'files/' || gen_random_uuid(), 'image/jpeg', 1000, ${randomUUID().replace(/-/g, '').padEnd(64, '0')}, ${userId}::uuid
-    FROM file_purposes p WHERE p.code = 'PURCHASE_RECEIPT' RETURNING id`;
+    FROM file_purposes p WHERE p.code = ${purpose} RETURNING id`;
   return file.id;
 }
 
@@ -164,6 +168,10 @@ async function finish(s: Scenario) {
     }
     if (current === 'ON_THE_WAY' || current === 'ARRIVING') {
       await history(tx, s.orderId, current, 'DISPUTED', s.customerId, 'CUSTOMER');
+      current = 'DISPUTED';
+    }
+    if (current === 'PENDING_REVIEW') {
+      await history(tx, s.orderId, current, 'DISPUTED', s.staffId, 'OPERATOR');
       current = 'DISPUTED';
     }
     if (current !== 'CANCELLED' && current !== 'DELIVERED') {
@@ -356,5 +364,148 @@ describe('Turno y modo cliente (H08.1, H08.7)', () => {
       SELECT r.code AS reason, round(extract(epoch FROM now() - p.ended_at) / 60)::int AS minutes
       FROM courier_availability_periods p JOIN availability_end_reasons r ON r.id = p.end_reason_id WHERE p.id = ${period.id}::uuid`;
     expect(row).toEqual({ reason: 'INACTIVITY_TIMEOUT', minutes: 20 });
+  });
+});
+
+/** Lo lleva hasta ON_THE_WAY por los pasos reales (compra y "ya está listo"), `minutesAgo` minutos atrás. */
+async function onTheWay(s: Scenario, minutesAgo = 0) {
+  await ping(s.courierId, s.store, 6);
+  await ping(s.courierId, s.store, 3);
+  await probe.evaluate(s.courierId);
+  const at = (extra: number) => new Date(Date.now() - (minutesAgo + extra) * 60_000);
+  expect(await trips.registerPurchase({ ...command(s, await refOf(s), at(10)), offline: true, amount: '18000', receiptFileId: await receipt(s.courierId) })).toEqual({ ok: true });
+  expect(await trips.markReady({ ...command(s, await refOf(s), at(5)), offline: true })).toEqual({ ok: true });
+}
+
+const assignmentOf = async (s: Scenario) =>
+  (
+    await prisma.$queryRaw<{ released: boolean; reason: string | null }[]>`
+      SELECT a.released_at IS NOT NULL AS released, r.code AS reason
+      FROM order_assignments a LEFT JOIN assignment_release_reasons r ON r.id = a.release_reason_id
+      WHERE a.order_id = ${s.orderId}::uuid`
+  )[0];
+
+const lastChange = async (s: Scenario) =>
+  (
+    await prisma.$queryRaw<{ to: string; source: string; role: string | null }[]>`
+      SELECT ts.code AS to, src.code AS source, r.code AS role
+      FROM order_status_history h JOIN order_statuses ts ON ts.id = h.to_status_id
+      JOIN status_change_sources src ON src.id = h.source_id LEFT JOIN roles r ON r.id = h.acting_role_id
+      WHERE h.order_id = ${s.orderId}::uuid ORDER BY h.recorded_at DESC LIMIT 1`
+  )[0];
+
+describe('Cierre de la entrega con código (E10)', () => {
+  it('al salir nace el código; el cliente lo ve; "Llegué" y el código correcto lo entregan y liberan al domiciliario', async () => {
+    const s = await acceptedOrder();
+    try {
+      await onTheWay(s);
+      const mine = await orders.findMine(s.customerId, s.orderCode, 'es');
+      expect(mine!.delivery.code).toMatch(/^\d{4}$/);
+      const deliveryCode = mine!.delivery.code!;
+      expect(await trips.active(s.courierId, 'es')).toMatchObject({ delivery: { arrivedAt: null, proofAvailableAt: null, codeAttemptsLeft: 5 } });
+
+      // "Llegué" sin que la geocerca lo detecte: ARRIVING con el rol del domiciliario.
+      expect(await trips.markArrived(command(s, await refOf(s)))).toEqual({ ok: true });
+      expect(await lastChange(s)).toEqual({ to: 'ARRIVING', source: 'USER_ACTION', role: 'COURIER' });
+      const arriving = await trips.active(s.courierId, 'es');
+      expect(arriving!.delivery!.arrivedAt).not.toBeNull();
+      // La foto se habilita a los 5 minutos (delivery.proof_after_seconds = 300).
+      expect(arriving!.delivery!.proofAvailableAt!.getTime() - arriving!.delivery!.arrivedAt!.getTime()).toBe(300_000);
+
+      // Un código equivocado queda guardado aunque el paso falle.
+      const wrong = deliveryCode === '0000' ? '1111' : '0000';
+      expect(await trips.deliverWithCode({ ...command(s, await refOf(s)), deliveryCode: wrong })).toEqual({ ok: false, reason: 'CODE', status: 'ARRIVING', attemptsLeft: 4 });
+      expect((await trips.active(s.courierId, 'es'))!.delivery!.codeAttemptsLeft).toBe(4);
+
+      expect(await trips.deliverWithCode({ ...command(s, await refOf(s)), deliveryCode })).toEqual({ ok: true });
+      expect(await statusOf(s.orderId)).toBe('DELIVERED');
+      expect(await lastChange(s)).toEqual({ to: 'DELIVERED', source: 'USER_ACTION', role: 'COURIER' });
+      expect(await assignmentOf(s)).toEqual({ released: true, reason: 'ORDER_COMPLETED' });
+      // Ya no lo lleva: puede recibir otro pedido; el cliente ya no ve el código.
+      expect(await trips.active(s.courierId, 'es')).toBeNull();
+      expect((await orders.findMine(s.customerId, s.orderCode, 'es'))!.delivery.code).toBeNull();
+      // Tocar "Recibí" después no es un error ni cambia nada.
+      expect(await customers.confirmReceived(s.customerId, s.orderCode)).toEqual({ ok: true, status: 'DELIVERED', changed: false });
+    } finally {
+      await finish(s);
+    }
+  });
+
+  it('cinco códigos equivocados bloquean el código; la foto se habilita ya, libera al domiciliario y el cliente puede reclamar', async () => {
+    const s = await acceptedOrder();
+    try {
+      await onTheWay(s);
+      await ping(s.courierId, offset(s.home.lat, s.home.lng, -20), 1);
+      expect(await probe.evaluate(s.courierId)).toEqual({ orderCode: s.orderCode, status: 'ARRIVING' });
+
+      // Antes de los 5 minutos no hay foto.
+      const early = await trips.deliverWithProof({ ...command(s, await refOf(s)), fileId: await receipt(s.courierId, 'DELIVERY_PROOF') });
+      expect(early).toMatchObject({ ok: false, reason: 'PROOF_EARLY', status: 'ARRIVING' });
+
+      const { code: real } = (await prisma.$queryRaw<{ code: string }[]>`SELECT code FROM order_delivery_codes WHERE order_id = ${s.orderId}::uuid`)[0];
+      const wrong = real === '0000' ? '1111' : '0000';
+      for (let left = 4; left >= 0; left--) {
+        expect(await trips.deliverWithCode({ ...command(s, await refOf(s)), deliveryCode: wrong })).toMatchObject({ reason: 'CODE', attemptsLeft: left });
+      }
+      // Ni el correcto sirve ya.
+      expect(await trips.deliverWithCode({ ...command(s, await refOf(s)), deliveryCode: real })).toEqual({ ok: false, reason: 'CODE_LOCKED', status: 'ARRIVING' });
+
+      // Una foto de factura (u otra persona) no sirve como prueba de entrega.
+      expect(await trips.deliverWithProof({ ...command(s, await refOf(s)), fileId: await receipt(s.courierId) })).toMatchObject({ reason: 'PROOF' });
+      const photo = await receipt(s.courierId, 'DELIVERY_PROOF');
+      expect(await trips.deliverWithProof({ ...command(s, await refOf(s)), fileId: photo })).toEqual({ ok: true });
+      expect(await statusOf(s.orderId)).toBe('PENDING_REVIEW');
+      expect(await assignmentOf(s)).toEqual({ released: true, reason: 'ORDER_COMPLETED' });
+      const [file] = await prisma.$queryRaw<{ captured: boolean; located: boolean }[]>`
+        SELECT captured_at IS NOT NULL AS captured, captured_location IS NOT NULL AS located FROM files WHERE id = ${photo}::uuid`;
+      expect(file).toEqual({ captured: true, located: true });
+      // El cliente recibe aviso y ve la foto y hasta cuándo puede reclamar.
+      const notes = await prisma.$queryRaw<{ n: number }[]>`
+        SELECT count(*)::int AS n FROM notifications n WHERE n.order_id = ${s.orderId}::uuid AND n.recipient_user_id = ${s.customerId}::uuid
+          AND n.created_at > now() - interval '1 minute'`;
+      expect(notes[0].n).toBeGreaterThanOrEqual(1);
+      const mine = await orders.findMine(s.customerId, s.orderCode, 'es');
+      expect(mine!.delivery).toMatchObject({ code: null, proofFileId: photo });
+      expect(mine!.delivery.reviewClosesAt!.getTime()).toBeGreaterThan(Date.now() + 7100_000);
+
+      expect(await customers.reportNotReceived('00000000-0000-4000-8000-000000000000', s.orderCode)).toEqual({ ok: false, reason: 'NOT_FOUND' });
+      expect(await customers.reportNotReceived(s.customerId, s.orderCode)).toEqual({ ok: true, status: 'DISPUTED', changed: true });
+      expect(await lastChange(s)).toEqual({ to: 'DISPUTED', source: 'USER_ACTION', role: 'CUSTOMER' });
+      expect(await customers.confirmReceived(s.customerId, s.orderCode)).toEqual({ ok: false, reason: 'STEP', status: 'DISPUTED' });
+    } finally {
+      await finish(s);
+    }
+  });
+
+  it('una entrega con foto que nadie reclama se cierra sola como entregada (TIMER)', async () => {
+    const s = await acceptedOrder();
+    try {
+      // Todo hace 3 horas (con la hora del teléfono, como desde la cola sin señal).
+      await onTheWay(s, 180);
+      expect(await trips.markArrived({ ...command(s, await refOf(s), new Date(Date.now() - 180 * 60_000)), offline: true })).toEqual({ ok: true });
+      const photo = await receipt(s.courierId, 'DELIVERY_PROOF');
+      expect(await trips.deliverWithProof({ ...command(s, await refOf(s), new Date(Date.now() - 170 * 60_000)), offline: true, fileId: photo })).toEqual({ ok: true });
+      expect((await review.nextDueAt())!.getTime()).toBeLessThanOrEqual(Date.now());
+
+      expect(await review.closeDue()).toBeGreaterThanOrEqual(1);
+      expect(await statusOf(s.orderId)).toBe('DELIVERED');
+      expect(await lastChange(s)).toEqual({ to: 'DELIVERED', source: 'TIMER', role: null });
+    } finally {
+      await finish(s);
+    }
+  });
+
+  it('"Recibí mi pedido" mientras el domiciliario sigue asignado lo entrega y lo libera', async () => {
+    const s = await acceptedOrder();
+    try {
+      await onTheWay(s);
+      expect(await customers.confirmReceived(s.customerId, s.orderCode)).toEqual({ ok: true, status: 'DELIVERED', changed: true });
+      expect(await lastChange(s)).toEqual({ to: 'DELIVERED', source: 'USER_ACTION', role: 'CUSTOMER' });
+      expect(await assignmentOf(s)).toEqual({ released: true, reason: 'ORDER_COMPLETED' });
+      // Un paso tardío del domiciliario (desde la cola) ya no aplica.
+      expect(await trips.ref(s.courierId, s.orderCode)).toBeNull();
+    } finally {
+      await finish(s);
+    }
   });
 });

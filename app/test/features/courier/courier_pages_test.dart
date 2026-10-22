@@ -101,10 +101,17 @@ void main() {
   });
 
   testWidgets('en el local: lista, total pagado y factura son obligatorios', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(390, 2200));
+    await tester.binding.setSurfaceSize(const Size(390, 2400));
     final repository = FakeCourierRepository(currentTrip: tripFromJson(tripJson(status: 'AT_ESTABLISHMENT')));
     await tester.pumpWidget(_app('/turno/pedido/RC-7K3M', repository));
     await _settle(tester);
+
+    // La cuenta del pedido: productos, domicilio y lo que cobra al entregar, desde la compra.
+    expect(find.text('Cuenta del pedido'.toUpperCase()), findsOneWidget);
+    expect(find.text(r'$ 38.500'), findsOneWidget);
+    expect(find.text(r'$ 3.000'), findsOneWidget);
+    expect(find.text(r'$ 41.500'), findsOneWidget);
+    expect(find.text('Nequi'), findsOneWidget);
 
     expect(find.text('Bien dorado'), findsOneWidget);
     expect(find.text('Timbre dañado, llamar'), findsOneWidget);
@@ -133,6 +140,7 @@ void main() {
     expect(find.text('¿Ya está listo?'), findsOneWidget);
     expect(find.text('Avisaste 1 retraso'), findsOneWidget);
     expect(find.text(r'$ 39.000'), findsOneWidget);
+    expect(find.text(r'$ 41.500'), findsOneWidget);
     await tester.tap(find.text('Sigue en preparación'));
     await _settle(tester);
     expect(repository.steps.single.kind, 'delay');
@@ -154,5 +162,63 @@ void main() {
     expect(find.text(r'$ 41.500'), findsOneWidget);
     expect(find.text('Nequi'), findsOneWidget);
     expect(find.text('Cuando estés cerca le avisamos al cliente para que salga a recibir.'), findsOneWidget);
+  });
+
+  testWidgets('en camino: "Llegué" por si la geocerca no lo detecta', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 2000));
+    final repository = FakeCourierRepository(currentTrip: tripFromJson(tripJson(status: 'ON_THE_WAY', revealed: true, prepared: true, delivery: {'codeAttemptsLeft': 5})));
+    await tester.pumpWidget(_app('/turno/pedido/RC-7K3M', repository));
+    await _settle(tester);
+
+    await tester.tap(find.text('Llegué'));
+    await _settle(tester);
+    expect(repository.steps.single.kind, 'arrived');
+  });
+
+  testWidgets('donde el cliente: el código equivocado dice cuántos intentos quedan; el correcto entrega', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 2400));
+    final now = DateTime.now().toUtc();
+    final repository = FakeCourierRepository(
+      currentTrip: tripFromJson(tripJson(status: 'ARRIVING', revealed: true, prepared: true, delivery: {
+        'arrivedAt': now.toIso8601String(),
+        'proofAvailableAt': now.add(const Duration(minutes: 5)).toIso8601String(),
+        'codeAttemptsLeft': 5,
+      })),
+    );
+    await tester.pumpWidget(_app('/turno/pedido/RC-7K3M', repository));
+    await _settle(tester);
+
+    expect(find.text('Código de entrega'), findsOneWidget);
+    expect(find.text('Te quedan 5 intentos'), findsOneWidget);
+    // Sin código, la foto espera los minutos en el punto.
+    expect(find.textContaining('Entregar con foto en 4:'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), '1111');
+    await _settle(tester);
+    expect(find.text('Ese no es el código. Te quedan 4 intentos.'), findsOneWidget);
+    expect(repository.steps, isEmpty);
+
+    await tester.enterText(find.byType(TextField), fakeDeliveryCode);
+    await _settle(tester);
+    expect(repository.steps.single.kind, 'deliver');
+    expect(find.text('¡Pedido entregado! Ya puedes recibir otro.'), findsOneWidget);
+  });
+
+  testWidgets('sin intentos de código: la foto se habilita de una vez', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 2400));
+    final now = DateTime.now().toUtc();
+    final repository = FakeCourierRepository(
+      currentTrip: tripFromJson(tripJson(status: 'ARRIVING', revealed: true, prepared: true, delivery: {
+        'arrivedAt': now.toIso8601String(),
+        'proofAvailableAt': now.add(const Duration(minutes: 5)).toIso8601String(),
+        'codeAttemptsLeft': 0,
+      })),
+    );
+    await tester.pumpWidget(_app('/turno/pedido/RC-7K3M', repository));
+    await _settle(tester);
+
+    expect(find.text('Entregar pedido'), findsNothing);
+    final button = tester.widget<OutlinedButton>(find.ancestor(of: find.text('Entregar con foto'), matching: find.byWidgetPredicate((w) => w is OutlinedButton)));
+    expect(button.onPressed, isNotNull);
   });
 }

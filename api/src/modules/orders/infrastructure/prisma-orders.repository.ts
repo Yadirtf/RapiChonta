@@ -157,6 +157,9 @@ export class PrismaOrdersRepository extends OrdersRepository {
         is_delayed: boolean | null;
         purchase_amount: string | null;
         receipt_file_id: string | null;
+        delivery_code: string | null;
+        proof_file_id: string | null;
+        review_closes_at: Date | null;
       })[]
     >`
       SELECT s.*, a.items_total::text AS items_total, a.delivery_fee::text AS delivery_fee,
@@ -165,7 +168,14 @@ export class PrismaOrdersRepository extends OrdersRepository {
              ST_Y(ad.location::geometry) AS latitude, ST_X(ad.location::geometry) AS longitude,
              r.full_name AS recipient_name, r.phone_e164 AS recipient_phone,
              pm.code AS payment_method, o.customer_notes,
-             pr.estimated_ready_at, pr.is_delayed, mv.amount::text AS purchase_amount, op.receipt_file_id
+             pr.estimated_ready_at, pr.is_delayed, mv.amount::text AS purchase_amount, op.receipt_file_id,
+             -- El código solo mientras el pedido va donde el cliente: después ya no sirve y no se muestra.
+             CASE WHEN s.status_code IN ('ON_THE_WAY', 'ARRIVING') THEN dc.code END AS delivery_code,
+             dp.file_id AS proof_file_id,
+             CASE WHEN s.status_code = 'PENDING_REVIEW' THEN
+               s.status_at + make_interval(secs => coalesce((SELECT value::float8 FROM v_current_settings
+                                                             WHERE key = 'delivery.review_auto_close_seconds' AND municipality_id = e.municipality_id), 7200))
+             END AS review_closes_at
       FROM (${SUMMARY_SELECT} WHERE o.customer_user_id = ${customerUserId}::uuid AND o.code = ${code}) s
       JOIN orders o ON o.id = s.id
       JOIN v_order_amounts a ON a.order_id = o.id
@@ -177,7 +187,10 @@ export class PrismaOrdersRepository extends OrdersRepository {
       JOIN payment_methods pm ON pm.id = o.payment_method_id
       LEFT JOIN v_order_preparation pr ON pr.order_id = o.id
       LEFT JOIN order_purchases op ON op.order_id = o.id
-      LEFT JOIN cash_movements mv ON mv.id = op.cash_movement_id`;
+      LEFT JOIN cash_movements mv ON mv.id = op.cash_movement_id
+      JOIN establishments e ON e.id = o.establishment_id
+      LEFT JOIN order_delivery_codes dc ON dc.order_id = o.id
+      LEFT JOIN order_delivery_proofs dp ON dp.order_id = o.id`;
     if (!row) return null;
 
     const [lines, timeline, journey] = await Promise.all([
@@ -212,6 +225,7 @@ export class PrismaOrdersRepository extends OrdersRepository {
       journey,
       preparation: row.estimated_ready_at ? { estimatedReadyAt: row.estimated_ready_at, delayed: row.is_delayed === true } : null,
       purchase: row.purchase_amount && row.receipt_file_id ? { amount: row.purchase_amount, receiptFileId: row.receipt_file_id } : null,
+      delivery: { code: row.delivery_code, proofFileId: row.proof_file_id, reviewClosesAt: row.review_closes_at },
     };
   }
 

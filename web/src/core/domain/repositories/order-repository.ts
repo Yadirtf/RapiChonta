@@ -29,6 +29,10 @@ export interface OrderRepository {
   place(input: PlaceOrderInput, language: string): Promise<OrderDetail>;
   mine(before?: string): Promise<MyOrdersPage>;
   find(code: string, language: string): Promise<OrderDetail>;
+  /** "Ya lo recibí": cierra la entrega y libera al domiciliario. */
+  confirmReceived(code: string): Promise<void>;
+  /** "No lo recibí", después de una entrega con foto: queda en revisión. */
+  reportNotReceived(code: string): Promise<void>;
 
   addresses(): Promise<SavedAddress[]>;
   archiveAddress(id: string): Promise<void>;

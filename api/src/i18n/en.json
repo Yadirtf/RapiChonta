@@ -3,8 +3,9 @@
     "ORDER_STATUS_CHANGED": {
       "ACCEPTED": { "title": "A courier took your order", "body": "Heading to {store} for your order {code}." },
       "AT_ESTABLISHMENT": { "title": "Your courier is at {store}", "body": "They're buying everything for order {code}." },
-      "ON_THE_WAY": { "title": "Your order is on its way!", "body": "It left {store} and is heading to you. Have your payment ready." },
-      "ARRIVING": { "title": "Your courier is almost there", "body": "Just a few meters away: step out to get order {code}." },
+      "ON_THE_WAY": { "title": "Your order is on its way!", "body": "It left {store}. Have your payment and delivery code ready (it is in the order)." },
+      "ARRIVING": { "title": "Your courier is almost there", "body": "Step out to get order {code} and have your delivery code ready." },
+      "PENDING_REVIEW": { "title": "Your courier dropped off order {code}", "body": "They left it with a photo. If you didn't get it, tell us from the order." },
       "DELIVERED": { "title": "Order {code} delivered", "body": "Thanks for ordering with RapiChonta. Enjoy!" },
       "CANCELLED": { "title": "Your order {code} was cancelled", "body": "Tap to see the details." },
       "_": { "title": "Your order {code} changed", "body": "Tap to see how it's going." }
