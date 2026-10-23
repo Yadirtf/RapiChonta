@@ -4,7 +4,7 @@ import type * as GeoJSON from "geojson";
 import { maplibregl } from "@/presentation/components/map/maplibre";
 import { type GeoJSONSource, type Map as MapLibreMap, type Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { MapPinned, PenLine, Square, Store, Undo2 } from "lucide-react";
+import { LoaderCircle, LocateFixed, MapPinned, PenLine, Square, Store, Undo2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
@@ -16,6 +16,7 @@ import { useCatalogFormat } from "../../../hooks/useCatalogFormat";
 
 const LEAF = "#1f7a4d";
 const DANGER = "#dc2626";
+const CHONTA = "#e4572e";
 /** Mitad del lado de los cuadrados rápidos, en metros (tienda pequeña, mediana, supermercado). */
 const QUICK_SQUARES = [8, 15, 30];
 
@@ -25,6 +26,19 @@ export interface AreaValue {
 }
 
 type Mode = "point" | "draw" | "edit";
+
+/** Dónde está quien registra el local: sirve cuando el administrador lo da de alta parado en la puerta. */
+type Here = { status: "idle" | "locating" } | { status: "found"; point: GeoPoint; accuracy: number; placed?: boolean } | { status: "error"; reason: "denied" | "unavailable" };
+
+/** Círculo de precisión del GPS como polígono (MapLibre no dibuja círculos en metros). */
+function accuracyRing({ lng, lat }: GeoPoint, meters: number): LngLat[] {
+  const dLat = meters / 111_320;
+  const dLng = dLat / Math.cos((lat * Math.PI) / 180);
+  return Array.from({ length: 49 }, (_, i) => {
+    const angle = (i / 48) * 2 * Math.PI;
+    return [lng + dLng * Math.cos(angle), lat + dLat * Math.sin(angle)];
+  });
+}
 
 interface Props {
   value: AreaValue;
@@ -47,6 +61,7 @@ export function AreaEditor({ value, fallbackCenter, limits, onChange }: Props) {
   const [mode, setMode] = useState<Mode>(value.location ? (value.area.length ? "edit" : "draw") : "point");
   const history = useRef<AreaValue[]>([]);
   const [canUndo, setCanUndo] = useState(false);
+  const [here, setHere] = useState<Here>({ status: "idle" });
   const latest = useRef({ value, mode });
   latest.current = { value, mode };
 
@@ -75,6 +90,10 @@ export function AreaEditor({ value, fallbackCenter, limits, onChange }: Props) {
     map.on("load", () => {
       map.addSource("area", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addLayer({ id: "area-fill", type: "fill", source: "area", filter: ["==", "$type", "Polygon"], paint: { "fill-color": ["get", "color"], "fill-opacity": 0.18 } });
+      // Debajo del área: la precisión del GPS no debe tapar el polígono que se está dibujando.
+      map.addSource("here", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addLayer({ id: "here-accuracy", type: "fill", source: "here", paint: { "fill-color": CHONTA, "fill-opacity": 0.12 } });
+      map.addLayer({ id: "here-accuracy-line", type: "line", source: "here", paint: { "line-color": CHONTA, "line-width": 1.5, "line-opacity": 0.5 } });
       map.addLayer({
         id: "area-line",
         type: "line",
@@ -193,6 +212,49 @@ export function AreaEditor({ value, fallbackCenter, limits, onChange }: Props) {
     };
   }, [value, mode, ready, paint, commit, limits.maxVertices, t]);
 
+  // "Estás aquí": el punto pulsante y el círculo de precisión.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const source = map.getSource("here") as GeoJSONSource | undefined;
+    if (here.status !== "found") {
+      source?.setData({ type: "FeatureCollection", features: [] });
+      return;
+    }
+    source?.setData({ type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [accuracyRing(here.point, Math.max(here.accuracy, 3))] } });
+    const el = document.createElement("div");
+    el.className = "here-dot";
+    el.title = t("here.dot");
+    const marker = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([here.point.lng, here.point.lat]).addTo(map);
+    return () => {
+      marker.remove();
+    };
+  }, [here, ready, t]);
+
+  const locate = () => {
+    if (!("geolocation" in navigator)) return setHere({ status: "error", reason: "unavailable" });
+    setHere({ status: "locating" });
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const point = { lng: coords.longitude, lat: coords.latitude };
+        setHere({ status: "found", point, accuracy: coords.accuracy });
+        mapRef.current?.flyTo({ center: [point.lng, point.lat], zoom: Math.max(mapRef.current.getZoom(), 18.5) });
+      },
+      (error) => setHere({ status: "error", reason: error.code === error.PERMISSION_DENIED ? "denied" : "unavailable" }),
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
+    );
+  };
+
+  /** Pone el local donde está el administrador; si aún no hay área, sigue con el dibujo. */
+  const placeHere = () => {
+    if (here.status !== "found") return;
+    const [lng, lat] = roundVertex([here.point.lng, here.point.lat]);
+    commit({ ...value, location: { lng, lat } });
+    setHere({ ...here, placed: true });
+    setMode(value.area.length ? "edit" : "draw");
+    mapRef.current?.easeTo({ center: [lng, lat], zoom: Math.max(mapRef.current.getZoom(), 19) });
+  };
+
   const quickSquare = (halfSide: number) => {
     const center = value.location ?? (mapRef.current ? { lng: mapRef.current.getCenter().lng, lat: mapRef.current.getCenter().lat } : fallbackCenter);
     commit({ location: center, area: squareAround(center, halfSide) });
@@ -237,6 +299,7 @@ export function AreaEditor({ value, fallbackCenter, limits, onChange }: Props) {
           <div ref={container} className="h-full w-full" />
         </div>
         <p className="pointer-events-none absolute left-3 top-3 max-w-[75%] rounded-xl bg-ink/85 px-3 py-2 text-xs font-medium text-white shadow-lg backdrop-blur">{hint}</p>
+        <HerePanel here={here} onLocate={locate} onPlace={placeHere} />
       </div>
 
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-ink/5 px-4 py-3 text-sm">
@@ -262,5 +325,48 @@ function ToolButton({ active, onClick, icon, label }: { active: boolean; onClick
     >
       {icon} {label}
     </button>
+  );
+}
+
+/**
+ * "Mi ubicación": un botón tipo brújula abajo a la izquierda (los zooms van a la derecha). Al encontrar
+ * la posición ofrece ubicar el local ahí mismo, con la precisión del GPS a la vista para decidir.
+ */
+function HerePanel({ here, onLocate, onPlace }: { here: Here; onLocate: () => void; onPlace: () => void }) {
+  const t = useTranslations("establishmentEditor.area.here");
+  const locating = here.status === "locating";
+  // Con más de 40 m de error el punto puede caer en otra cuadra: se sugiere ajustarlo a mano.
+  const rough = here.status === "found" && here.accuracy > 40;
+
+  return (
+    <div className="pointer-events-none absolute bottom-3 left-3 right-14 flex flex-col items-start gap-2 *:pointer-events-auto">
+      {here.status === "found" && !here.placed && (
+        <div className="here-card flex max-w-full flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-white py-2 pl-3 pr-2 shadow-lg ring-1 ring-ink/10" role="status">
+          <span className="text-xs leading-tight">
+            <strong className="block font-display text-sm text-ink">{t("found")}</strong>
+            <span className={rough ? "font-semibold text-chonta-strong" : "text-ink/60"}>{t(rough ? "rough" : "accuracy", { meters: Math.round(here.accuracy) })}</span>
+          </span>
+          <button onClick={onPlace} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-ink px-3 text-sm font-bold text-brand hover:bg-ink/90">
+            <Store className="size-4" aria-hidden /> {t("placeHere")}
+          </button>
+        </div>
+      )}
+      {here.status === "error" && (
+        <p className="max-w-full rounded-xl bg-chonta-soft px-3 py-2 text-xs font-semibold text-chonta-strong shadow-lg ring-1 ring-chonta/30" role="alert">
+          {t(here.reason)}
+        </p>
+      )}
+      <button
+        onClick={onLocate}
+        disabled={locating}
+        aria-busy={locating}
+        className={`here-button inline-flex h-11 items-center gap-2 rounded-full pl-1.5 pr-4 text-sm font-bold shadow-lg transition ${here.status === "found" ? "bg-chonta text-white" : "bg-white text-ink ring-1 ring-ink/10 hover:ring-chonta/50"}`}
+      >
+        <span className={`grid size-8 place-items-center rounded-full ${here.status === "found" ? "bg-white/20" : "bg-ink text-brand"}`}>
+          {locating ? <LoaderCircle className="size-4.5 animate-spin" aria-hidden /> : <LocateFixed className="size-4.5" strokeWidth={2.4} aria-hidden />}
+        </span>
+        {locating ? t("locating") : here.status === "found" ? t("again") : t("button")}
+      </button>
+    </div>
   );
 }
