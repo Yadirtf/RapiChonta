@@ -15,7 +15,7 @@ const progreso = require('../progreso');
 const { valoresDeseados } = require('../tablero');
 
 function githubFalso() {
-  const estado = { issues: [], labels: [], comentarios: [], padres: new Map(), siguiente: 1 };
+  const estado = { issues: [], labels: [], comentarios: [], padres: new Map(), siguiente: 1, cerradoPorOtro: new Set() };
   const buscar = (n) => {
     const i = estado.issues.find((x) => x.number === n);
     if (!i) { const e = new Error('Not Found'); e.status = 404; throw e; }
@@ -39,6 +39,14 @@ function githubFalso() {
       get: async ({ issue_number }) => ({ data: JSON.parse(JSON.stringify(buscar(issue_number))) }),
       update: async ({ issue_number, ...cambios }) => {
         const i = buscar(issue_number);
+        // Simula otra ejecución que lo cerró en el mismo instante.
+        if (cambios.state === 'closed' && estado.cerradoPorOtro.delete(issue_number)) {
+          i.state = 'closed';
+          i.state_reason = 'completed';
+          const e = new Error('Validation Failed: {"resource":"Issue","code":"custom","message":"This issue was closed by another request. Reload it and try again."}');
+          e.status = 422;
+          throw e;
+        }
         if (cambios.state === 'open') cambios.state_reason = null;
         Object.assign(i, cambios);
         return { data: i };
@@ -141,6 +149,30 @@ test('PR: borrador, revisión e integración cierran la historia y la épica', a
   }
   assert.equal(gh.buscar(e05.number).state, 'closed', 'la épica se cierra con la última historia');
   assert.ok(etiquetas(gh.buscar(e05.number)).includes('estado: hecho'));
+});
+
+test('dos cierres a la vez: quien pierde la carrera no falla ni repite el comentario de la épica', async () => {
+  const gh = await sembrar();
+  const e05 = gh.estado.issues.find((i) => i.title.startsWith('E05 '));
+  const hijas = gh.estado.issues.filter((i) => gh.estado.padres.get(i.number) === e05.number);
+  for (const h of hijas) Object.assign(h, { state: 'closed', state_reason: 'completed' });
+  const ultima = hijas[hijas.length - 1];
+
+  // Otra ejecución (la de otra historia del mismo PR) cierra la épica en el mismo instante.
+  gh.estado.cerradoPorOtro.add(e05.number);
+  await flujo({ github: gh.github, context: contexto('issues', { action: 'closed', issue: gh.buscar(ultima.number) }), core });
+  assert.equal(gh.buscar(e05.number).state, 'closed');
+  assert.ok(etiquetas(gh.buscar(e05.number)).includes('estado: hecho'));
+  assert.equal(gh.estado.comentarios.filter((c) => c.issue_number === e05.number).length, 0, 'el comentario es de quien la cerró');
+
+  // GitHub ya cerró la historia por "Closes #N" cuando el flujo del PR la intenta cerrar.
+  const e06 = gh.estado.issues.find((i) => i.title.startsWith('E06 '));
+  const h = gh.estado.issues.find((i) => gh.estado.padres.get(i.number) === e06.number);
+  gh.estado.cerradoPorOtro.add(h.number);
+  const pr = { number: 501, title: 'feat', body: `Closes #${h.number}`, head: { ref: 'f' }, base: { ref: 'develop' }, draft: false, merged: true };
+  await flujo({ github: gh.github, context: contexto('pull_request', { action: 'closed', pull_request: pr }), core });
+  assert.equal(gh.buscar(h.number).state, 'closed');
+  assert.ok(etiquetas(gh.buscar(h.number)).includes('estado: hecho'));
 });
 
 test('asignar mueve a en progreso y una etiqueta de estado reemplaza a la anterior', async () => {

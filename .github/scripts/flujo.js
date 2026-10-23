@@ -75,13 +75,28 @@ async function revisarPadreAlCerrar(api, issue) {
   const hijos = await subIssues(github, owner, repo, padre.number);
   if (hijos.length === 0 || hijos.some((h) => h.state === 'open' && h.number !== issue.number)) return;
   const completadas = hijos.filter((h) => h.state_reason !== 'not_planned' || h.number === issue.number).length;
-  await github.rest.issues.createComment({
-    owner, repo, issue_number: padre.number,
-    body: `Todas las historias de este issue están cerradas (${completadas} completadas de ${hijos.length}). Se cierra automáticamente.`,
-  });
-  await github.rest.issues.update({ owner, repo, issue_number: padre.number, state: 'closed', state_reason: 'completed' });
+  // Solo comenta quien lo cerró: varias historias se cierran a la vez al integrar un PR que cierra varias.
+  if (await cerrar(api, padre.number)) {
+    await github.rest.issues.createComment({
+      owner, repo, issue_number: padre.number,
+      body: `Todas las historias de este issue están cerradas (${completadas} completadas de ${hijos.length}). Se cierra automáticamente.`,
+    });
+  }
   padre.state = 'closed';
   await ponerEstado(api, padre, ESTADO.hecho);
+}
+
+// Cierra el issue como completado. Devuelve false si otra ejecución lo cerró al mismo tiempo: al integrar un PR que
+// cierra varias historias corren a la vez la del PR, la de cada historia cerrada y el cierre propio de GitHub
+// ("Closes #N"), y GitHub rechaza la segunda con 422 "closed by another request".
+async function cerrar({ github, owner, repo }, numero) {
+  try {
+    await github.rest.issues.update({ owner, repo, issue_number: numero, state: 'closed', state_reason: 'completed' });
+    return true;
+  } catch (e) {
+    if (e.status === 422 && /closed by another request/i.test(e.message || '')) return false;
+    throw e;
+  }
 }
 
 async function reabrirPadre(api, issue) {
@@ -206,7 +221,7 @@ async function alEventoDePR(api, payload) {
           owner, repo, issue_number: n,
           body: `Completado en #${pr.number}, integrado en \`${pr.base.ref}\`.`,
         });
-        await github.rest.issues.update({ owner, repo, issue_number: n, state: 'closed', state_reason: 'completed' });
+        await cerrar(api, n);
         issue.state = 'closed';
       }
       await ponerEstado(api, issue, ESTADO.hecho);
