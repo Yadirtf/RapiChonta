@@ -84,7 +84,10 @@ class OrderRepositoryImpl implements OrderRepository {
   Future<void> confirmReceived(String code) => _call(() => _authed.post<void>('/orders/${Uri.encodeComponent(code)}/received'));
 
   @override
-  Future<void> reportNotReceived(String code) => _call(() => _authed.post<void>('/orders/${Uri.encodeComponent(code)}/not-received'));
+  Future<void> reportNotReceived(String code, {String? description}) => _call(() => _authed.post<void>(
+        '/orders/${Uri.encodeComponent(code)}/not-received',
+        data: {if (description != null && description.trim().isNotEmpty) 'description': description.trim()},
+      ));
 
   @override
   Future<List<SubstituteOption>> substitutes(String code, String adjustmentId, {required String language}) => _call(() async {
@@ -219,8 +222,21 @@ OrderDetail detailFromJson(Map<String, dynamic> json) {
       reviewClosesAt: delivery['reviewClosesAt'] is String ? DateTime.parse(delivery['reviewClosesAt'] as String) : null,
     ),
     adjustments: [for (final a in (json['adjustments'] as List? ?? const []).cast<Map<String, dynamic>>()) adjustmentFromJson(a)],
+    incident: switch (json['incident']) {
+      final Map<String, dynamic> i => OrderIncident(
+          status: i['status'] as String,
+          reportedAt: DateTime.parse(i['reportedAt'] as String),
+          reviewStartedAt: _date(i['reviewStartedAt']),
+          resolvedAt: _date(i['resolvedAt']),
+          resolution: i['resolution'] as String?,
+        ),
+      _ => null,
+    },
+    cancellationReason: json['cancellationReason'] as String?,
   );
 }
+
+DateTime? _date(Object? value) => value is String ? DateTime.parse(value) : null;
 
 /// Una consulta de E09 (la misma forma en el pedido del cliente y en el del domiciliario).
 OrderAdjustment adjustmentFromJson(Map<String, dynamic> json) => OrderAdjustment(

@@ -9,13 +9,16 @@ export const UPLOADABLE_PURPOSES: Record<string, string> = {
   PURCHASE_RECEIPT: 'orders.progress',
   // H10.4: la foto de la entrega cuando el cliente no dio el código, también desde la cámara.
   DELIVERY_PROOF: 'orders.progress',
+  // H10.2: la imagen del QR de su cuenta (la que le da Nequi, Daviplata o su banco), desde la galería.
+  COLLECTION_QR: 'orders.progress',
 };
 
 /**
  * Propósitos que nunca se reutilizan por huella: cada factura (o foto de entrega) es de un solo pedido y de quien
- * la subió (order_purchases y order_delivery_proofs lo exigen). Las fotos de catálogo sí se comparten.
+ * la subió (order_purchases y order_delivery_proofs lo exigen), y el QR es de la cuenta de quien lo subió. Las fotos
+ * de catálogo sí se comparten.
  */
-export const PRIVATE_PURPOSES: readonly string[] = ['PURCHASE_RECEIPT', 'DELIVERY_PROOF'];
+export const PRIVATE_PURPOSES: readonly string[] = ['PURCHASE_RECEIPT', 'DELIVERY_PROOF', 'COLLECTION_QR'];
 
 /** Tipos que la API acepta aunque el catálogo permita otros: solo imágenes rasterizadas (un SVG puede llevar scripts). */
 export const SAFE_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;

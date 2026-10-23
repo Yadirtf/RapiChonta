@@ -305,7 +305,8 @@
       "hours": "Horario",
       "settings": "Configuración",
       "dispatch": "Despacho",
-      "audit": "Auditoría"
+      "audit": "Auditoría",
+      "desk": "Pedidos en curso"
     },
     "viewSite": "Ver el sitio",
     "signOut": "Cerrar sesión",
@@ -1238,7 +1239,7 @@
     },
     "DISPUTED": {
       "label": "Lo estamos revisando",
-      "body": "Nos contaste que no lo recibiste. Te contactamos pronto."
+      "body": "RapiChonta está revisando tu caso. Te contamos apenas lo cerremos."
     },
     "DELIVERED": {
       "label": "Entregado",
@@ -1247,6 +1248,10 @@
     "CANCELLED": {
       "label": "Cancelado",
       "body": "Este pedido se canceló. No tienes nada que pagar."
+    },
+    "OFFERED": {
+      "label": "Ofrecido",
+      "body": "Le avisamos a los domiciliarios cercanos."
     }
   },
   "orders": {
@@ -1319,7 +1324,43 @@
     "prepLeftLabel": "Listo en {time}",
     "prepAlmost": "Ya casi sale",
     "prepBusy": "Alta demanda: sigue en preparación",
-    "prepProgress": "Avance de la preparación"
+    "prepProgress": "Avance de la preparación",
+    "notReceivedWhat": "¿Qué pasó? (opcional)",
+    "notReceivedWhatHint": "Nos ayuda a revisarlo más rápido.",
+    "notReceivedWhatPlaceholder": "Ej.: estuve en casa y nadie timbró",
+    "cancelledBecause": "Motivo",
+    "cancelReasons": {
+      "CUSTOMER_REQUEST": "Lo pediste tú",
+      "NO_COURIER_AVAILABLE": "No había domiciliario",
+      "ESTABLISHMENT_CLOSED": "El local estaba cerrado",
+      "ALL_ITEMS_UNAVAILABLE": "No había ningún producto",
+      "CUSTOMER_UNREACHABLE": "No logramos contactarte",
+      "INCIDENT_RESOLUTION": "Lo resolvimos al revisar tu caso"
+    },
+    "case": {
+      "tab": "Caso {code}",
+      "reviewTitle": "RapiChonta está revisando tu caso",
+      "reviewBody": "Recibimos tu reporte. En breve alguien del equipo lo toma y habla con el domiciliario.",
+      "reviewBodyTaken": "Alguien del equipo ya lo tiene en sus manos y está hablando con el domiciliario.",
+      "resolvedTitle": {
+        "delivered": "Cerramos tu caso: quedó entregado",
+        "cancelled": "Cerramos tu caso: cancelamos el pedido",
+        "closed": "Cerramos tu caso"
+      },
+      "resolvedBody": {
+        "delivered": "Lo confirmamos con el domiciliario y la foto de la entrega. Si algo no cuadra, escríbenos.",
+        "cancelled": "El pedido no llegó a tus manos: lo cancelamos y no tienes nada que pagar.",
+        "closed": "Revisamos lo que nos contaste. Gracias por avisarnos."
+      },
+      "stepsLabel": "En qué va tu caso",
+      "steps": {
+        "reported": "Lo recibimos",
+        "review": "En revisión",
+        "resolved": "Cerrado"
+      },
+      "now": "ahora",
+      "contact": "Si necesitamos algo más te llamamos al número de tu cuenta. Ten el teléfono a mano."
+    }
   },
   "adjustments": {
     "kicker": "Pregunta de tu domiciliario",
@@ -1549,7 +1590,7 @@
       "ROLE_GRANTED": "dio el rol de {role}",
       "ROLE_REVOKED": "quitó el rol de {role}",
       "COURIER_VERIFIED": "verificó a un domiciliario",
-      "INCIDENT_RESOLVED": "resolvió una novedad",
+      "INCIDENT_RESOLVED": "resolvió la novedad como «{resolution}» del pedido",
       "DELIVERY_PROOF_REVIEWED": "revisó una prueba de entrega",
       "CASH_BOX_OPENED": "abrió una caja",
       "CASH_BOX_CLOSED": "cerró una caja",
@@ -1563,7 +1604,224 @@
       "ESTABLISHMENT_CHANGED": "cambió un establecimiento",
       "CATEGORY_CHANGED": "cambió una categoría",
       "MUNICIPALITY_CHANGED": "cambió un municipio",
-      "OTHER": "hizo {action}"
+      "OTHER": "hizo {action}",
+      "INCIDENT_TAKEN": "tomó la novedad «{type}» del pedido"
+    }
+  },
+  "desk": {
+    "documentTitle": "Pedidos en curso · RapiChonta",
+    "live": "En vivo · cada {seconds} s",
+    "title": "Pedidos en curso",
+    "subtitle": "Todo lo que se mueve hoy en {municipality}, con lo que hay que mirar ya arriba.",
+    "yourMunicipality": "tu municipio",
+    "countPriority": "por mirar ya",
+    "countLive": "en curso",
+    "bellOn": "Campana activa",
+    "bellOff": "Campana en silencio",
+    "filtersLabel": "Filtrar por alerta",
+    "filterAll": "Todo",
+    "emptyTitle": "El pase está despejado",
+    "emptyBody": "Aquí aparecen los pedidos en curso del municipio y los entregados que aún deben algo (el cobro).",
+    "inStateTitle": "Tiempo en este estado",
+    "noCourier": "Sin domiciliario",
+    "takenBy": "Lo revisa {name}",
+    "takenByFull": "Lo está revisando {name}",
+    "nobodyYet": "Nadie lo ha tomado",
+    "close": "Cerrar",
+    "back": "Volver",
+    "since": "Desde las {time}",
+    "show": "Ver",
+    "lanes": {
+      "dispatch": {
+        "title": "Por asignar",
+        "empty": "Todos tienen domiciliario"
+      },
+      "store": {
+        "title": "En el local",
+        "empty": "Nadie comprando ahora"
+      },
+      "road": {
+        "title": "En camino",
+        "empty": "Nadie en la vía"
+      },
+      "review": {
+        "title": "Por revisar",
+        "empty": "Sin fotos ni casos"
+      },
+      "closed": {
+        "title": "Cerrados con pendientes",
+        "empty": "Nada pendiente",
+        "body": "Entregados o cancelados en las últimas 24 horas con el cobro sin registrar o que no cuadra. Salen solos cuando la caja queda bien."
+      }
+    },
+    "alerts": {
+      "INCIDENT": {
+        "short": "Novedad",
+        "body": "El cliente dice que no lo recibió, o alguien abrió un caso. Tómalo, habla con los dos y resuélvelo."
+      },
+      "PROOF_REVIEW": {
+        "short": "Foto por revisar",
+        "body": "Se entregó con foto porque el código no se pudo usar. Mírala y decide; si nadie la mira, se cierra sola como entregado."
+      },
+      "NO_TAKERS": {
+        "short": "Nadie aceptó",
+        "body": "La oferta venció o todos dijeron que no. Vuelve a enviarlo desde Despacho."
+      },
+      "DECISION_EXPIRED": {
+        "short": "Cliente no respondió",
+        "body": "El cliente no decidió a tiempo sobre lo que faltaba y se quitó del pedido. Confírmale el nuevo total."
+      },
+      "PREPARATION_DELAYED": {
+        "short": "Preparación demorada",
+        "body": "Pasó la hora estimada o el local dijo «Sigue en preparación». Avísale al cliente si hace falta."
+      },
+      "UNASSIGNED": {
+        "short": "Sin domiciliario",
+        "body": "Espera a que alguien lo tome. Ofrécelo desde Despacho."
+      },
+      "COLLECTION_MISSING": {
+        "short": "Cobro sin registrar",
+        "body": "Se entregó pero el domiciliario no ha dicho cuánto le pagaron ni cómo. Sin eso la caja del día no cierra."
+      },
+      "COLLECTION_MISMATCH": {
+        "short": "Cobro no cuadra",
+        "body": "Lo cobrado no es igual al total del pedido. Confírmalo con el domiciliario antes de cerrar la caja."
+      }
+    },
+    "customer": "Cliente",
+    "courier": "Domiciliario",
+    "courierLeft": "Ya terminó su parte",
+    "incidentTypes": {
+      "NOT_RECEIVED": "No lo recibió",
+      "WRONG_ORDER": "Pedido equivocado",
+      "DAMAGED": "Llegó dañado",
+      "OTHER": "Otra novedad"
+    },
+    "incidentByCustomer": "{name} dice que no lo recibió",
+    "incidentByStaff": "Caso abierto al revisar la foto",
+    "take": "Lo reviso yo",
+    "takenNotice": "Tomaste la novedad de {code}. Los demás ven que la tienes tú.",
+    "resolve": "Resolver",
+    "resolutions": {
+      "RESOLVED_AS_DELIVERED": {
+        "label": "Se entregó",
+        "body": "El pedido queda entregado. Al cliente y al domiciliario les llega el aviso."
+      },
+      "RESOLVED_AS_CANCELLED": {
+        "label": "No se entregó: cancelar",
+        "body": "El pedido se cancela por la novedad y el cliente no paga nada."
+      },
+      "NO_ORDER_CHANGE": {
+        "label": "Sin cambiar el pedido",
+        "body": "Se cierra la novedad y el pedido sigue como está."
+      }
+    },
+    "proofTitle": "Foto de entrega",
+    "proofAlt": "Foto con la que el domiciliario dejó el pedido {code}",
+    "proofNoLocation": "La foto no trae ubicación",
+    "proofDistance": {
+      "near": "En la puerta · a {distance}",
+      "block": "En la cuadra · a {distance}",
+      "far": "Lejos del punto · a {distance}"
+    },
+    "proofOutcomes": {
+      "DELIVERED": {
+        "button": "Sí, se entregó",
+        "title": "Aprobar la entrega de {code}",
+        "body": "La foto muestra el pedido en el punto de entrega. Queda entregado.",
+        "placeholder": "Ej.: se ve la bolsa en la puerta azul de la referencia",
+        "confirm": "Aprobar entrega",
+        "done": "{code} quedó entregado."
+      },
+      "INVESTIGATE": {
+        "button": "Abrir caso",
+        "title": "Abrir un caso para {code}",
+        "body": "El pedido queda en revisión, el caso queda a tu nombre y el domiciliario sabe que lo estamos mirando.",
+        "choice": "¿Qué sospechas?",
+        "placeholder": "Ej.: la foto no muestra la casa; llamo al cliente",
+        "confirm": "Abrir caso",
+        "done": "Abriste el caso de {code}. Lo tienes tú."
+      },
+      "CANCELLED": {
+        "button": "No se entregó",
+        "title": "Cancelar {code} por la entrega",
+        "body": "La foto no prueba la entrega. El pedido se cancela por la novedad y al cliente y al domiciliario les llega el aviso.",
+        "placeholder": "Ej.: el cliente no estaba y el domiciliario lo devolvió",
+        "confirm": "Cancelar pedido",
+        "done": "{code} se canceló por la novedad."
+      }
+    },
+    "cancel": {
+      "title": "Cancelar {code}",
+      "body": "Solo antes de la compra. Si hay un domiciliario asignado, queda libre y le avisamos.",
+      "choice": "Motivo",
+      "placeholder": "Ej.: el cliente llamó, ya no lo necesita",
+      "confirm": "Cancelar pedido",
+      "done": "{code} se canceló."
+    },
+    "cancelHint": "Se puede cancelar mientras nadie ha pagado en el local.",
+    "cancelOrder": "Cancelar pedido",
+    "cancelledFor": "Cancelado: {reason}",
+    "noteLabel": "Comentario",
+    "noteHint": "Obligatorio (mínimo {min} letras). Queda en la línea de tiempo y en la auditoría.",
+    "collectionTitle": "Cobro contra entrega",
+    "collectionMissing": "El domiciliario aún no registra cuánto le pagaron ni por qué medio.",
+    "collectionDue": "Total del pedido",
+    "collectionGot": "Cobrado",
+    "collectionShort": "Cobró {amount} menos que el total",
+    "collectionOver": "Cobró {amount} más que el total",
+    "linesTitle": "{count, plural, one {# producto en la comanda} other {# productos en la comanda}}",
+    "paidAtStore": "Pagó {amount} en el local",
+    "timelineTitle": "Línea de tiempo",
+    "timeline": {
+      "label": "Lo que pasó con el pedido, del más reciente al primero",
+      "empty": "Aún no hay movimientos.",
+      "status": "Pasó a «{status}»",
+      "sources": {
+        "USER_ACTION": "El sistema",
+        "OFFLINE_SYNC": "Desde la cola sin señal",
+        "GEOFENCE": "Geocerca",
+        "TIMER": "Por tiempo",
+        "OFFERS_DECLINED": "Todos dijeron no"
+      },
+      "offerAll": "{count, plural, one {Llamado a # domiciliario} other {Llamado a # domiciliarios}}",
+      "offerOne": "Ofrecido a {name}",
+      "recipient": {
+        "PENDING": "sin responder",
+        "ACCEPTED": "aceptó",
+        "REJECTED": "dijo no",
+        "EXPIRED": "no respondió",
+        "WITHDRAWN": "retirado"
+      },
+      "release": {
+        "COURIER_RELEASED": "{name} lo soltó",
+        "OPERATOR_REASSIGNED": "Se lo quitaron a {name}",
+        "ORDER_CANCELLED": "{name} quedó libre: se canceló",
+        "ORDER_COMPLETED": "{name} terminó su parte"
+      },
+      "delay": "El local dijo «Sigue en preparación»",
+      "adjustment": "{count, plural, one {Preguntó por # producto} other {Preguntó por # productos}}",
+      "decision": {
+        "SUBSTITUTE": "cambiado",
+        "REMOVE_ITEM": "quitado",
+        "ACCEPT_PRICE": "aceptó el precio",
+        "CANCEL_ORDER": "canceló",
+        "EXPIRED_REMOVED": "quitado por tiempo"
+      },
+      "decisionPending": "esperando",
+      "codeAttempt": "{count, plural, one {Código de entrega equivocado} other {Código de entrega equivocado ×#}}",
+      "collection": "Cobró {amount} en {method}",
+      "incidentOpened": "Se abrió la novedad «{type}»",
+      "incidentTaken": "Tomó la novedad",
+      "incidentResolved": "Resolvió la novedad: {resolution}"
+    },
+    "resolveDialog": {
+      "title": "Resolver la novedad de {code}",
+      "body": "Cuenta qué averiguaste. Al cliente y al domiciliario les llega cómo terminó.",
+      "choice": "¿Cómo termina?",
+      "placeholder": "Ej.: llamé al cliente; lo recibió su hermana en la tienda de al lado",
+      "confirm": "Resolver novedad",
+      "done": "Resolviste la novedad de {code}."
     }
   }
 }

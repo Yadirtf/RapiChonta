@@ -404,7 +404,8 @@ export const CATALOGS: CatalogSeed[] = [
       })),
     ),
   },
-  // E10: por qué se canceló un pedido (E09 usa CUSTOMER_REQUEST y ALL_ITEMS_UNAVAILABLE).
+  // E10: por qué se canceló un pedido (E09 usa CUSTOMER_REQUEST y ALL_ITEMS_UNAVAILABLE). Automática = la pone el
+  // sistema o la resolución de una novedad; el operador elige entre las demás al cancelar (H10.5).
   {
     table: 'cancellation_reasons',
     key: 'code',
@@ -416,10 +417,32 @@ export const CATALOGS: CatalogSeed[] = [
           ['ESTABLISHMENT_CLOSED', false],
           ['ALL_ITEMS_UNAVAILABLE', true],
           ['CUSTOMER_UNREACHABLE', false],
-          ['INCIDENT_RESOLUTION', false],
+          ['INCIDENT_RESOLUTION', true],
         ] as const
       ).map(([code, automatic]) => ({ code, is_automatic: automatic })),
     ),
+  },
+  // ─────────────── E10 · Incidencias ───────────────
+  {
+    // opens_dispute: reportarla pasa el pedido a DISPUTED (el de "No lo recibí" y el caso que abre el operador al
+    // revisar una foto). Los reclamos sobre un pedido ya entregado no lo cambian.
+    table: 'incident_types',
+    key: 'code',
+    rows: ordered(
+      (
+        [
+          ['NOT_RECEIVED', true],
+          ['WRONG_ORDER', false],
+          ['DAMAGED', false],
+          ['OTHER', true],
+        ] as const
+      ).map(([code, opens]) => ({ code, opens_dispute: opens })),
+    ),
+  },
+  {
+    table: 'incident_statuses',
+    key: 'code',
+    rows: ordered([STATUS('OPEN', {}, true), STATUS('IN_REVIEW'), STATUS('RESOLVED', {}, false, true)]),
   },
   {
     table: 'notification_delivery_statuses',
@@ -468,6 +491,15 @@ export const TRANSITIONS: { table: string; catalog: string; pairs: [string, stri
       ['ACTIVE', 'INACTIVE'],
       ['TEMPORARILY_CLOSED', 'INACTIVE'],
       ['INACTIVE', 'ACTIVE'],
+    ],
+  },
+  {
+    table: 'incident_status_transitions',
+    catalog: 'incident_statuses',
+    pairs: [
+      ['OPEN', 'IN_REVIEW'],
+      ['OPEN', 'RESOLVED'],
+      ['IN_REVIEW', 'RESOLVED'],
     ],
   },
   {
@@ -564,6 +596,16 @@ export const CASH_MOVEMENT_TYPES: {
   { code: 'RETURN', direction: -1, requiresOrder: false, requiresPaymentMethod: true, isManual: true, usesCollectionAccount: false, onlyForFundingMode: null },
   { code: 'ADJUSTMENT_IN', direction: 1, requiresOrder: false, requiresPaymentMethod: false, isManual: true, usesCollectionAccount: false, onlyForFundingMode: null },
   { code: 'ADJUSTMENT_OUT', direction: -1, requiresOrder: false, requiresPaymentMethod: false, isManual: true, usesCollectionAccount: false, onlyForFundingMode: null },
+];
+
+/**
+ * Cómo se resuelve una novedad (Docs/14-base-de-datos/E10) y a qué estado deja al pedido: el caso de uso lee la
+ * columna, no el código. Nulo: el pedido no cambia (reclamo sobre un pedido ya entregado).
+ */
+export const INCIDENT_RESOLUTIONS: { code: string; resultingOrderStatus: string | null }[] = [
+  { code: 'RESOLVED_AS_DELIVERED', resultingOrderStatus: 'DELIVERED' },
+  { code: 'RESOLVED_AS_CANCELLED', resultingOrderStatus: 'CANCELLED' },
+  { code: 'NO_ORDER_CHANGE', resultingOrderStatus: null },
 ];
 
 /** Permisos por rol (Docs/14-base-de-datos/E01-identidad-y-acceso.md). */

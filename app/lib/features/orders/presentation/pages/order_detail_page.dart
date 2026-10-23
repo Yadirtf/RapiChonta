@@ -19,6 +19,7 @@ import '../../domain/repositories/order_repository.dart';
 import '../providers/orders_providers.dart';
 import '../widgets/adjustment_desk.dart';
 import '../widgets/delivery_pin_map.dart';
+import '../widgets/incident_case.dart';
 import '../widgets/order_route.dart';
 import '../widgets/order_visuals.dart';
 import '../widgets/store_page.dart';
@@ -98,9 +99,11 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                         const SizedBox(height: 16),
                         AdjustmentDesk(key: ValueKey(adjustment.id), order: order, adjustment: adjustment, detailKey: key),
                       ],
-                      if (order.active && (order.preparation?.delayed ?? false)) ...[const SizedBox(height: 12), _HighDemand(order: order)],
+                      if (order.status == 'PREPARING' && (order.preparation?.delayed ?? false)) ...[const SizedBox(height: 12), _HighDemand(order: order)],
                       if (order.delivery.code != null) ...[const SizedBox(height: 16), _DeliveryCodePass(order: order, detailKey: key)],
                       if (order.status == 'PENDING_REVIEW') ...[const SizedBox(height: 16), _LeftWithPhoto(order: order, detailKey: key)],
+                      if (order.incident != null) ...[const SizedBox(height: 16), IncidentCase(code: order.code, incident: order.incident!)],
+                      if (order.status == 'CANCELLED' && order.cancellationReason != null) ...[const SizedBox(height: 16), _CancelReason(reason: order.cancellationReason!)],
                       const SizedBox(height: 16),
                       _Card(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -144,23 +147,18 @@ Future<void> _closeDelivery(
   required String title,
   required String body,
   required String confirm,
-  required Future<void> Function(OrderRepository repository) action,
+  bool askWhat = false,
+  required Future<void> Function(OrderRepository repository, String? description) action,
 }) async {
   final l10n = AppLocalizations.of(context);
-  final ok = await showDialog<bool>(
+  // null: se arrepintió; si confirma, lo que contó (vacío si no escribió nada).
+  final description = await showDialog<String>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
-      content: Text(body),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: Text(l10n.ordersNotYet)),
-        FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(confirm)),
-      ],
-    ),
+    builder: (context) => _CloseDialog(title: title, body: body, confirm: confirm, askWhat: askWhat),
   );
-  if (ok != true || !context.mounted) return;
+  if (description == null || !context.mounted) return;
   try {
-    await action(ref.read(orderRepositoryProvider));
+    await action(ref.read(orderRepositoryProvider), description.isEmpty ? null : description);
   } catch (error) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(behavior: SnackBarBehavior.floating, content: Text(errorText(l10n, error))));
@@ -168,6 +166,57 @@ Future<void> _closeDelivery(
   }
   ref.invalidate(orderDetailProvider(detailKey));
   ref.invalidate(myOrdersProvider);
+}
+
+class _CloseDialog extends StatefulWidget {
+  const _CloseDialog({required this.title, required this.body, required this.confirm, required this.askWhat});
+
+  final String title;
+  final String body;
+  final String confirm;
+  final bool askWhat;
+
+  @override
+  State<_CloseDialog> createState() => _CloseDialogState();
+}
+
+class _CloseDialogState extends State<_CloseDialog> {
+  final _what = TextEditingController();
+
+  @override
+  void dispose() {
+    _what.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return AlertDialog(
+      title: Text(widget.title, style: const TextStyle(fontWeight: FontWeight.w900)),
+      content: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text(widget.body),
+          // H10.3: lo que cuenta el cliente llega al expediente del caso en el panel.
+          if (widget.askWhat) ...[
+            const SizedBox(height: 14),
+            TextField(
+              controller: _what,
+              maxLines: 3,
+              minLines: 2,
+              maxLength: maxNotReceivedDescription,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(labelText: l10n.ordersNotReceivedWhat, hintText: l10n.ordersNotReceivedWhatPlaceholder, helperText: l10n.ordersNotReceivedWhatHint),
+            ),
+          ],
+        ]),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.ordersNotYet)),
+        FilledButton(onPressed: () => Navigator.pop(context, _what.text.trim()), child: Text(widget.confirm)),
+      ],
+    );
+  }
 }
 
 /// El código de entrega como un pase: cuatro casillas de tinta, las mismas que llena el domiciliario en su app.
@@ -234,7 +283,7 @@ class _DeliveryCodePass extends ConsumerWidget {
               title: l10n.ordersReceivedConfirmTitle,
               body: l10n.ordersReceivedConfirmBody,
               confirm: l10n.ordersReceivedConfirm,
-              action: (repository) => repository.confirmReceived(order.code),
+              action: (repository, _) => repository.confirmReceived(order.code),
             ),
             child: Text(l10n.ordersReceivedButton, style: const TextStyle(fontWeight: FontWeight.w800, decoration: TextDecoration.underline)),
           ),
@@ -295,7 +344,7 @@ class _LeftWithPhoto extends ConsumerWidget {
             title: l10n.ordersReceivedConfirmTitle,
             body: l10n.ordersReceivedConfirmBody,
             confirm: l10n.ordersReceivedConfirm,
-            action: (repository) => repository.confirmReceived(order.code),
+            action: (repository, _) => repository.confirmReceived(order.code),
           ),
           icon: const Icon(Icons.check_circle_rounded),
           label: Text(l10n.ordersReceivedConfirm),
@@ -310,7 +359,8 @@ class _LeftWithPhoto extends ConsumerWidget {
             title: l10n.ordersNotReceivedConfirmTitle,
             body: l10n.ordersNotReceivedConfirmBody,
             confirm: l10n.ordersNotReceivedConfirm,
-            action: (repository) => repository.reportNotReceived(order.code),
+            askWhat: true,
+            action: (repository, what) => repository.reportNotReceived(order.code, description: what),
           ),
           icon: const Icon(Icons.report_rounded),
           label: Text(l10n.ordersNotReceivedButton),
@@ -430,7 +480,7 @@ class _StatusTicket extends StatelessWidget {
               ] else
                 Text(l10n.ordersItems(order.itemCount), style: const TextStyle(color: Colors.white54, fontSize: 12)),
               const Spacer(),
-              if (order.active && order.preparation != null)
+              if (order.status == 'PREPARING' && order.preparation != null)
                 Flexible(
                   child: Text(
                     l10n.ordersReadyAround(orderTime(order.preparation!.estimatedReadyAt, language)),
@@ -681,4 +731,30 @@ class _InfoRow extends StatelessWidget {
           ),
         ]),
       );
+}
+
+/// Por qué se canceló, en una línea de la comanda (el operador o el cierre de un caso lo dejan en el pedido).
+class _CancelReason extends StatelessWidget {
+  const _CancelReason({required this.reason});
+
+  final String reason;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: AppColors.chontaSoft, borderRadius: BorderRadius.circular(18)),
+      child: Row(children: [
+        const Icon(Icons.do_not_disturb_on_rounded, color: AppColors.chontaStrong),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(l10n.ordersCancelReasonLabel.toUpperCase(), style: const TextStyle(color: AppColors.chontaStrong, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+            Text(cancelReasonText(l10n, reason), style: const TextStyle(fontWeight: FontWeight.w800)),
+          ]),
+        ),
+      ]),
+    );
+  }
 }

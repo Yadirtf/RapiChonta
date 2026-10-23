@@ -5,11 +5,12 @@ import { PrismaService } from '../../shared/infrastructure/prisma/prisma.service
 import { FilesModule } from '../files/files.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { Notifier } from '../notifications/application/notifier';
-import { CourierTripUseCase, CustomerAdjustmentsUseCase, CustomerDeliveryUseCase, GeofenceUseCase } from './application/courier-trip.use-cases';
+import { CourierCollectionsUseCase, CourierTripUseCase, CustomerAdjustmentsUseCase, CustomerDeliveryUseCase, GeofenceUseCase } from './application/courier-trip.use-cases';
 import { PreparationSignal } from './application/preparation-signal';
 import { REQUIRED_FULFILLMENT_CODES } from './domain/fulfillment.codes';
 import { AdjustmentReader, OrderAdjustments } from './domain/ports/adjustments';
-import { CourierTrips, CustomerDeliveries, DeliveryReviewWatch, GeofenceProbe, PreparationWatch } from './domain/ports/courier-trips';
+import { CourierCollections, CourierTrips, CustomerDeliveries, DeliveryReviewWatch, GeofenceProbe, PreparationWatch } from './domain/ports/courier-trips';
+import { PrismaCourierCollections } from './infrastructure/prisma-courier-collections';
 import { PrismaAdjustmentReader } from './infrastructure/adjustment-read';
 import { PrismaOrderAdjustments } from './infrastructure/prisma-order-adjustments';
 import { PrismaCourierTrips } from './infrastructure/prisma-courier-trips';
@@ -18,7 +19,7 @@ import { PrismaDeliveryReviewWatch } from './infrastructure/prisma-delivery-revi
 import { PrismaGeofenceProbe } from './infrastructure/prisma-geofence.probe';
 import { PrismaPreparationWatch } from './infrastructure/prisma-preparation.watch';
 import { PreparationClock } from './infrastructure/preparation-clock';
-import { CourierTripController, CustomerAdjustmentController, CustomerDeliveryController } from './presentation/http/fulfillment.controller';
+import { CourierCollectionController, CourierTripController, CustomerAdjustmentController, CustomerDeliveryController } from './presentation/http/fulfillment.controller';
 import { FulfillmentPresenter } from './presentation/http/fulfillment-presenter';
 
 /** Al arrancar, verifica los códigos de catálogo que usa el pedido en curso. */
@@ -49,12 +50,14 @@ const seconds = (config: ConfigService, key: string, fallback: number) => {
  * Geocercas (llegada al local y donde el cliente), compra con factura, preparación y la cola sin señal.
  * E10: cierre de la entrega con código, entrega con foto y su cierre automático, y la confirmación del cliente.
  * E09: producto faltante o con otro precio (consulta del domiciliario, decisión del cliente y su vencimiento).
+ * E10: cobro contra entrega (H10.2) y "No lo recibí" con su novedad (H10.3). El panel de novedades está en `operations`.
  */
 @Module({
   imports: [FilesModule, NotificationsModule],
-  controllers: [CourierTripController, CustomerDeliveryController, CustomerAdjustmentController],
+  controllers: [CourierTripController, CourierCollectionController, CustomerDeliveryController, CustomerAdjustmentController],
   providers: [
     { provide: CourierTrips, useClass: PrismaCourierTrips },
+    { provide: CourierCollections, useClass: PrismaCourierCollections },
     { provide: GeofenceProbe, useClass: PrismaGeofenceProbe },
     { provide: PreparationWatch, useClass: PrismaPreparationWatch },
     { provide: CustomerDeliveries, useClass: PrismaCustomerDeliveries },
@@ -73,8 +76,9 @@ const seconds = (config: ConfigService, key: string, fallback: number) => {
     CourierTripUseCase,
     CustomerDeliveryUseCase,
     CustomerAdjustmentsUseCase,
+    CourierCollectionsUseCase,
     GeofenceUseCase,
   ],
-  exports: [GeofenceUseCase],
+  exports: [GeofenceUseCase, PreparationSignal],
 })
 export class FulfillmentModule {}

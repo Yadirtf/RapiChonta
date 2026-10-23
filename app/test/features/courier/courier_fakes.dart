@@ -39,6 +39,12 @@ class FakeCourierRepository implements CourierRepository {
   final reported = <List<ReportedLine>>[];
   final availability = <bool>[];
 
+  /// Cobros registrados (H10.2), cuentas del domiciliario y lo entregado sin cobro.
+  final collected = <List<CollectedPayment>>[];
+  List<CollectionAccount> accounts = const [];
+  List<PendingCollection> pending = const [];
+  final qrUploads = <String>[];
+
   static const _network = Failure('Sin conexión', code: 'NETWORK_ERROR');
 
   void _online() {
@@ -136,9 +142,48 @@ class FakeCourierRepository implements CourierRepository {
 
   @override
   Future<StepOutcome> proof(String code, TripStepEvent event, {required String fileId}) => _record('proof', code, event, fileId);
+
+  @override
+  Future<StepOutcome> collect(String code, TripStepEvent event, {required List<CollectedPayment> payments}) async {
+    final outcome = await _record('collection', code, event);
+    collected.add(payments);
+    pending = [for (final p in pending) if (p.code != code) p];
+    return outcome;
+  }
+
+  @override
+  Future<List<CollectionAccount>> collectionAccounts() async {
+    _online();
+    return accounts;
+  }
+
+  @override
+  Future<List<PendingCollection>> pendingCollections() async {
+    _online();
+    return pending;
+  }
+
+  @override
+  Future<CollectionAccount> setAccountQr(String accountId, ReceiptPhoto photo) async {
+    _online();
+    qrUploads.add(accountId);
+    final account = accounts.firstWhere((a) => a.id == accountId);
+    final updated = CollectionAccount(
+      id: account.id,
+      paymentMethod: account.paymentMethod,
+      accountNumber: account.accountNumber,
+      holderName: account.holderName,
+      qrUrl: 'https://example.test/qr/${account.id}.png',
+    );
+    accounts = [for (final a in accounts) a.id == accountId ? updated : a];
+    return updated;
+  }
 }
 
-Map<String, dynamic> tripJson({required String status, bool revealed = false, bool prepared = false, Map<String, dynamic>? delivery, Map<String, dynamic>? adjustment}) => {
+/// La cuenta Nequi del domiciliario de prueba, sin QR todavía.
+const nequiAccount = CollectionAccount(id: 'acc-nequi', paymentMethod: 'NEQUI', accountNumber: '3101234567', holderName: 'Jhon Jairo Criollo');
+
+Map<String, dynamic> tripJson({required String status, bool revealed = false, bool prepared = false, Map<String, dynamic>? delivery, Map<String, dynamic>? adjustment, Map<String, dynamic>? collection}) => {
       'code': 'RC-7K3M',
       'status': status,
       'statusAt': '2026-10-21T20:30:00.000Z',
@@ -183,7 +228,16 @@ Map<String, dynamic> tripJson({required String status, bool revealed = false, bo
       'purchase': prepared ? {'amount': '39000.00', 'receiptUrl': null} : null,
       'delivery': delivery,
       'adjustment': adjustment,
+      'collection': collection,
     };
+
+/// El cobro del pedido de prueba ya registrado: todo por Nequi.
+const paidCollection = {
+  'total': '41500.00',
+  'payments': [
+    {'paymentMethod': 'NEQUI', 'amount': '41500.00'},
+  ],
+};
 
 /// Una pregunta al cliente (E09) sobre las dos líneas del pedido de prueba: la gaseosa se acabó y el pollo cambió
 /// de precio. [decisions] son las respuestas por línea (null: aún sin responder).

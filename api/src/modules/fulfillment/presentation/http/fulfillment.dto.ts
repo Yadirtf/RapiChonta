@@ -1,6 +1,8 @@
 import { Type } from 'class-transformer';
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsISO8601, IsOptional, IsString, IsUUID, Matches, MaxLength, ValidateNested } from 'class-validator';
 import { ADJUSTMENT_DECISIONS, ADJUSTMENT_REASONS, MAX_REPORTED_LINES } from '../../domain/adjustments';
+import { MAX_COLLECTION_PAYMENTS } from '../../domain/collection';
+import { MAX_INCIDENT_DESCRIPTION } from '../../domain/incidents';
 
 /** Cada paso del domiciliario. Desde la cola sin señal (H08.8) llega con `queued` y la hora del teléfono. */
 export class TripEventDto {
@@ -82,4 +84,41 @@ export class DecideAdjustmentDto {
   @IsOptional()
   @IsUUID()
   productVersionId?: string;
+}
+
+/** Un medio con su valor: "Efectivo $30.000" y "Nequi $12.500" son dos. */
+export class CollectedPaymentDto {
+  @IsString()
+  @MaxLength(40)
+  paymentMethod: string;
+
+  /** Pesos en texto decimal (RNF-05). */
+  @IsString()
+  @MaxLength(14)
+  @Matches(/^\d+(\.\d{1,2})?$/)
+  amount: string;
+}
+
+/** H10.2: cómo le pagó el cliente. Sale también de la cola sin señal, con la hora del teléfono. */
+export class CollectionDto extends TripEventDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(MAX_COLLECTION_PAYMENTS)
+  @ValidateNested({ each: true })
+  @Type(() => CollectedPaymentDto)
+  payments: CollectedPaymentDto[];
+}
+
+/** La imagen del QR de la cuenta, subida antes con el propósito COLLECTION_QR. */
+export class CollectionQrDto {
+  @IsUUID()
+  fileId: string;
+}
+
+/** H10.3: "No lo recibí", con lo que el cliente quiera contar. */
+export class NotReceivedDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(MAX_INCIDENT_DESCRIPTION)
+  description?: string;
 }

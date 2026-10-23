@@ -70,6 +70,13 @@ export interface OrderDetail extends OrderSummary {
   delivery: { code: string | null; proofFileId: string | null; reviewClosesAt: Date | null };
   /** E09: las consultas del domiciliario (la abierta es la que el cliente responde) y lo que se decidió en cada una. */
   adjustments: AdjustmentRequestView[];
+  /**
+   * H10.3: la última novedad del pedido como la ve el cliente: abierta, en revisión (alguien de RapiChonta la tomó) o
+   * resuelta y cómo. El comentario interno del operador no se muestra.
+   */
+  incident: { status: string; reportedAt: Date; reviewStartedAt: Date | null; resolvedAt: Date | null; resolution: string | null } | null;
+  /** Por qué se canceló (código que traducen la web y la app). */
+  cancellationReason: string | null;
 }
 
 export abstract class OrdersRepository {

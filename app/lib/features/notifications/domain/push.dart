@@ -18,18 +18,23 @@ enum PushPermission { granted, denied, notDetermined }
 /// Lo que trae un aviso para abrir lo que corresponde al tocarlo. FCM lo entrega en `data`; Huawei Push Kit,
 /// como extras del intent con prefijo `rc_` (ver api/src/modules/notifications/infrastructure/push/hms-push.gateway.ts).
 class PushTap {
-  const PushTap({required this.type, this.notificationId, this.orderCode, this.status});
+  const PushTap({required this.type, this.notificationId, this.orderCode, this.status, this.audience});
 
   final String type;
   final String? notificationId;
   final String? orderCode;
   final String? status;
 
+  /// A quién va cuando un mismo tipo les llega al cliente y al domiciliario (el cierre de un caso): CUSTOMER o COURIER.
+  final String? audience;
+
   /// Lo que abre el aviso: las ofertas y el pedido en curso del domiciliario van al turno; los del cliente, a su
   /// pedido (también la pregunta del domiciliario, E09); sin pedido, la bandeja de avisos. La respuesta del cliente
-  /// y la cancelación llegan al domiciliario: van a su pedido en curso.
+  /// y la cancelación llegan al domiciliario: van a su pedido en curso. Las novedades (E10) del domiciliario van a su
+  /// turno, donde ve lo que tiene pendiente por cobrar.
   String get route => switch (type) {
         'ORDER_OFFERED' || 'OFFER_WITHDRAWN' => '/turno',
+        _ when forCourier && type.startsWith('INCIDENT_') => '/turno',
         'PREPARATION_TIME_REACHED' || 'ADJUSTMENT_RESOLVED' when orderCode != null => '/turno/pedido/$orderCode',
         'TRIP_CANCELLED' when orderCode != null => '/turno/pedido/$orderCode?cancelado=1',
         _ when orderCode != null => '/pedidos/$orderCode',
@@ -37,7 +42,9 @@ class PushTap {
       };
 
   /// Aviso del lado del domiciliario (refresca su turno, no los pedidos del cliente).
-  bool get forCourier => const {'ORDER_OFFERED', 'OFFER_WITHDRAWN', 'PREPARATION_TIME_REACHED', 'ADJUSTMENT_RESOLVED', 'TRIP_CANCELLED'}.contains(type);
+  bool get forCourier =>
+      const {'ORDER_OFFERED', 'OFFER_WITHDRAWN', 'PREPARATION_TIME_REACHED', 'ADJUSTMENT_RESOLVED', 'TRIP_CANCELLED', 'INCIDENT_OPENED'}.contains(type) ||
+      audience == 'COURIER';
 
   static PushTap? fromData(Map<dynamic, dynamic>? data) {
     if (data == null) return null;
@@ -48,7 +55,7 @@ class PushTap {
 
     final type = read('type');
     if (type == null) return null;
-    return PushTap(type: type, notificationId: read('notificationId'), orderCode: read('orderCode'), status: read('status'));
+    return PushTap(type: type, notificationId: read('notificationId'), orderCode: read('orderCode'), status: read('status'), audience: read('audience'));
   }
 }
 
@@ -96,6 +103,7 @@ class AppNotification {
     this.status,
     this.storeName,
     this.readAt,
+    this.audience,
   });
 
   final String id;
@@ -105,13 +113,14 @@ class AppNotification {
   final String? storeName;
   final DateTime createdAt;
   final DateTime? readAt;
+  final String? audience;
 
   bool get unread => readAt == null;
 
-  PushTap get tap => PushTap(type: type, notificationId: id, orderCode: orderCode, status: status);
+  PushTap get tap => PushTap(type: type, notificationId: id, orderCode: orderCode, status: status, audience: audience);
 
   AppNotification markedRead(DateTime at) =>
-      AppNotification(id: id, type: type, createdAt: createdAt, orderCode: orderCode, status: status, storeName: storeName, readAt: readAt ?? at);
+      AppNotification(id: id, type: type, createdAt: createdAt, orderCode: orderCode, status: status, storeName: storeName, readAt: readAt ?? at, audience: audience);
 
   factory AppNotification.fromJson(Map<String, dynamic> json) => AppNotification(
         id: json['id'] as String,
@@ -121,6 +130,10 @@ class AppNotification {
         storeName: json['storeName'] as String?,
         createdAt: DateTime.parse(json['createdAt'] as String),
         readAt: json['readAt'] == null ? null : DateTime.parse(json['readAt'] as String),
+        audience: switch (json['params']) {
+          {'audience': final String audience} => audience,
+          _ => null,
+        },
       );
 }
 

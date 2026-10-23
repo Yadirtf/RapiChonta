@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 
 import '../../../core/error/failure.dart';
+import '../../establishments/domain/entities/establishment.dart' show parsePriceCents;
+import 'courier.dart';
 
 /// H08.8: los pasos del pedido que el domiciliario marcó sin señal. Se guardan en el teléfono con la hora en
 /// que ocurrieron y su id de evento; al volver la señal salen en orden y la API no repite uno ya aplicado.
@@ -20,6 +22,9 @@ enum StepKind {
 
   /// Entrega con foto (sin código): ARRIVING → PENDING_REVIEW. La foto espera en el teléfono como la factura.
   proof,
+
+  /// H10.2: cómo le pagó el cliente. No cambia el estado; vale antes o después de entregar.
+  collection,
 }
 
 class PendingStep extends Equatable {
@@ -32,6 +37,7 @@ class PendingStep extends Equatable {
     this.receiptPath,
     this.receiptMime,
     this.receiptFileId,
+    this.payments,
   });
 
   /// clientEventId (UUID v4).
@@ -50,6 +56,9 @@ class PendingStep extends Equatable {
   /// Ya subida: no se vuelve a subir al reintentar.
   final String? receiptFileId;
 
+  /// Los pagos del cobro (solo en [StepKind.collection]).
+  final List<CollectedPayment>? payments;
+
   PendingStep withReceipt(String fileId) => PendingStep(
         id: id,
         orderCode: orderCode,
@@ -59,6 +68,7 @@ class PendingStep extends Equatable {
         receiptPath: receiptPath,
         receiptMime: receiptMime,
         receiptFileId: fileId,
+        payments: payments,
       );
 
   Map<String, dynamic> toJson() => {
@@ -70,6 +80,7 @@ class PendingStep extends Equatable {
         'receiptPath': ?receiptPath,
         'receiptMime': ?receiptMime,
         'receiptFileId': ?receiptFileId,
+        if (payments != null) 'payments': [for (final p in payments!) p.toJson()],
       };
 
   /// Una entrada dañada o de otra versión se descarta (null) en vez de bloquear la cola.
@@ -82,6 +93,8 @@ class PendingStep extends Equatable {
     final hasPhoto = json['receiptPath'] is String || json['receiptFileId'] is String;
     if (kind == StepKind.purchase && (json['amount'] is! String || !hasPhoto)) return null;
     if (kind == StepKind.proof && !hasPhoto) return null;
+    final payments = _payments(json['payments']);
+    if (kind == StepKind.collection && (payments == null || payments.isEmpty)) return null;
     return PendingStep(
       id: id,
       orderCode: code,
@@ -91,7 +104,20 @@ class PendingStep extends Equatable {
       receiptPath: json['receiptPath'] as String?,
       receiptMime: json['receiptMime'] as String?,
       receiptFileId: json['receiptFileId'] as String?,
+      payments: payments,
     );
+  }
+
+  static List<CollectedPayment>? _payments(Object? json) {
+    if (json is! List) return null;
+    final payments = <CollectedPayment>[];
+    for (final p in json) {
+      if (p is! Map || p['paymentMethod'] is! String) return null;
+      final cents = parsePriceCents(p['amount']?.toString() ?? '');
+      if (cents == null) return null;
+      payments.add(CollectedPayment(paymentMethod: p['paymentMethod'] as String, amountCents: cents));
+    }
+    return payments;
   }
 
   @override

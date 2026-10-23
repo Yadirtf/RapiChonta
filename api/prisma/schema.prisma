@@ -326,6 +326,8 @@ model User {
   deliveryCodeAttempts   DeliveryCodeAttempt[]
   adjustmentsReported    OrderAdjustmentRequest[]
   adjustmentsDecided     OrderItemAdjustment[]
+  incidentsReported      Incident[]
+  incidentStatusChanges  IncidentStatusHistory[]
 
   @@index([statusId])
   @@map("users")
@@ -1305,10 +1307,11 @@ model OrderStatus {
   /// En este estado el pedido tiene un domiciliario: exactamente una asignación vigente (E07, disparador diferido).
   requiresCourier        Boolean   @default(false) @map("requires_courier")
 
-  orders          Order[]
-  transitionsFrom OrderStatusTransition[] @relation("OrderTransitionFrom")
-  transitionsTo   OrderStatusTransition[] @relation("OrderTransitionTo")
-  historyTo       OrderStatusHistory[]    @relation("OrderHistoryTo")
+  orders              Order[]
+  transitionsFrom     OrderStatusTransition[]  @relation("OrderTransitionFrom")
+  transitionsTo       OrderStatusTransition[]  @relation("OrderTransitionTo")
+  historyTo           OrderStatusHistory[]     @relation("OrderHistoryTo")
+  incidentResolutions IncidentResolutionType[]
 
   @@map("order_statuses")
 }
@@ -1389,6 +1392,7 @@ model Order {
   deliveryProof      OrderDeliveryProof?
   adjustmentRequests OrderAdjustmentRequest[]
   cancellation       OrderCancellation?
+  incidents          Incident[]
 
   @@index([customerUserId, createdAt(sort: Desc)])
   @@index([customerUserId, statusId])
@@ -1907,4 +1911,99 @@ model OrderCancellation {
   reason               CancellationReason @relation(fields: [cancellationReasonId], references: [id], onDelete: Restrict)
 
   @@map("order_cancellations")
+}
+
+// ═══════════════════════════ E10 · Incidencias ═══════════════════════════
+
+/// Sistema: qué reporta el cliente (o el operador al revisar una foto). opens_dispute: el pedido pasa a DISPUTED.
+model IncidentType {
+  id            Int        @id @default(autoincrement()) @db.SmallInt
+  code          String     @unique @db.VarChar(40)
+  sortOrder     Int        @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?  @map("deactivated_at") @db.Timestamptz(6)
+  opensDispute  Boolean    @map("opens_dispute")
+  incidents     Incident[]
+
+  @@map("incident_types")
+}
+
+/// Sistema: OPEN (inicial), IN_REVIEW (un operador la tomó), RESOLVED (terminal).
+model IncidentStatus {
+  id            Int       @id @default(autoincrement()) @db.SmallInt
+  code          String    @unique @db.VarChar(40)
+  sortOrder     Int       @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  isInitial     Boolean   @map("is_initial")
+  isTerminal    Boolean   @map("is_terminal")
+
+  incidents       Incident[]
+  transitionsFrom IncidentStatusTransition[] @relation("IncidentStatusTransitionFrom")
+  transitionsTo   IncidentStatusTransition[] @relation("IncidentStatusTransitionTo")
+  historyTo       IncidentStatusHistory[]    @relation("IncidentStatusHistoryTo")
+
+  @@map("incident_statuses")
+}
+
+model IncidentStatusTransition {
+  fromStatusId Int                     @map("from_status_id") @db.SmallInt
+  toStatusId   Int                     @map("to_status_id") @db.SmallInt
+  fromStatus   IncidentStatus          @relation("IncidentStatusTransitionFrom", fields: [fromStatusId], references: [id], onDelete: Cascade)
+  toStatus     IncidentStatus          @relation("IncidentStatusTransitionTo", fields: [toStatusId], references: [id], onDelete: Cascade)
+  history      IncidentStatusHistory[]
+
+  @@id([fromStatusId, toStatusId])
+  @@map("incident_status_transitions")
+}
+
+/// Sistema: cómo se resolvió y a qué estado deja al pedido (nulo: no cambia, p. ej. un reclamo sobre un pedido entregado).
+model IncidentResolutionType {
+  id                     Int          @id @default(autoincrement()) @db.SmallInt
+  code                   String       @unique @db.VarChar(40)
+  sortOrder              Int          @map("sort_order") @db.SmallInt
+  deactivatedAt          DateTime?    @map("deactivated_at") @db.Timestamptz(6)
+  resultingOrderStatusId Int?         @map("resulting_order_status_id") @db.SmallInt
+  resultingOrderStatus   OrderStatus? @relation(fields: [resultingOrderStatusId], references: [id], onDelete: Restrict)
+  incidents              Incident[]
+
+  @@map("incident_resolution_types")
+}
+
+/// Un caso por revisar sobre un pedido. Una sola sin resolver por pedido. Quién la tomó y la resolvió está en su historial.
+model Incident {
+  id               String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId          String                  @map("order_id") @db.Uuid
+  incidentTypeId   Int                     @map("incident_type_id") @db.SmallInt
+  reportedByUserId String                  @map("reported_by_user_id") @db.Uuid
+  description      String?                 @db.VarChar(500)
+  statusId         Int                     @map("status_id") @db.SmallInt
+  /// Lleno si y solo si está RESOLVED (disparador diferido).
+  resolutionTypeId Int?                    @map("resolution_type_id") @db.SmallInt
+  resolutionNotes  String?                 @map("resolution_notes") @db.VarChar(500)
+  createdAt        DateTime                @default(dbgenerated("clock_timestamp()")) @map("created_at") @db.Timestamptz(6)
+  order            Order                   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  type             IncidentType            @relation(fields: [incidentTypeId], references: [id], onDelete: Restrict)
+  reportedBy       User                    @relation(fields: [reportedByUserId], references: [id], onDelete: Restrict)
+  status           IncidentStatus          @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  resolutionType   IncidentResolutionType? @relation(fields: [resolutionTypeId], references: [id], onDelete: Restrict)
+  history          IncidentStatusHistory[]
+
+  @@index([orderId])
+  @@index([statusId])
+  @@map("incidents")
+}
+
+model IncidentStatusHistory {
+  id              String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  incidentId      String                    @map("incident_id") @db.Uuid
+  fromStatusId    Int?                      @map("from_status_id") @db.SmallInt
+  toStatusId      Int                       @map("to_status_id") @db.SmallInt
+  changedByUserId String                    @map("changed_by_user_id") @db.Uuid
+  occurredAt      DateTime                  @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(6)
+  incident        Incident                  @relation(fields: [incidentId], references: [id], onDelete: Restrict)
+  toStatus        IncidentStatus            @relation("IncidentStatusHistoryTo", fields: [toStatusId], references: [id], onDelete: Restrict)
+  transition      IncidentStatusTransition? @relation(fields: [fromStatusId, toStatusId], references: [fromStatusId, toStatusId], onDelete: Restrict)
+  changedBy       User                      @relation(fields: [changedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([incidentId, occurredAt])
+  @@map("incident_status_history")
 }

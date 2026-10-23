@@ -23,6 +23,7 @@ import '../widgets/pending_ribbon.dart';
 import '../widgets/receipt_capture.dart';
 import '../widgets/trip_actions.dart';
 import '../widgets/trip_adjustment.dart';
+import '../widgets/trip_collection.dart';
 import '../widgets/trip_map.dart';
 
 /// El pedido en curso (H08.3 a H08.6, H08.8), etapa por etapa. Las llegadas (al local y donde el cliente) las
@@ -836,27 +837,7 @@ class _DeliverStage extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final language = Localizations.localeOf(context).languageCode;
     final destination = trip.destination;
-    final collect = ClipPath(
-      // Lo que se cobra, en tiquete de tinta: es lo último que no se puede olvidar.
-      clipper: const TicketClipper(notchAt: 0.62),
-      child: Container(
-        color: AppColors.ink,
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Eyebrow(l10n.tripCollect, color: AppColors.brand),
-          const SizedBox(height: 4),
-          Text(formatPesos(trip.customerTotalCents, language), style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w900, letterSpacing: -1)),
-          const SizedBox(height: 18),
-          Row(children: [
-            Icon(paymentIcon(trip.paymentMethod), color: AppColors.brand, size: 18),
-            const SizedBox(width: 8),
-            Expanded(child: Text(paymentLabel(l10n, trip.paymentMethod), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800))),
-          ]),
-          const SizedBox(height: 4),
-          Text(l10n.tripCollectBreakdown(formatPesos(trip.itemsCents, language), formatPesos(trip.feeCents, language)), style: const TextStyle(color: Colors.white54, fontSize: 12)),
-        ]),
-      ),
-    );
+    final collect = CollectTicket(trip: trip);
     final whereTo = DutyCard(
       child: destination == null
           ? Row(children: [
@@ -923,6 +904,8 @@ class _DeliverStage extends StatelessWidget {
         const SizedBox(height: 16),
         // Donde el cliente el orden es el de la entrega: cobrar, pedir el código, y (si no aparece) llamar.
         collect,
+        const SizedBox(height: 16),
+        CollectionDesk(orderCode: trip.code, totalCents: trip.customerTotalCents, expectedMethod: trip.paymentMethod, collection: trip.collection),
         const SizedBox(height: 16),
         _HandoverCard(trip: trip, arrivalQueued: arrivalQueued),
         const SizedBox(height: 16),
@@ -1088,6 +1071,8 @@ class _HandoverCardState extends ConsumerState<_HandoverCard> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final locked = _left <= 0;
+    // H10.2: el código cierra el pedido, así que primero se dice cómo pagó (la foto no espera: el cliente no está).
+    final collected = collectedPayments(ref.watch(pendingStepsProvider), widget.trip.code, widget.trip.collection) != null;
     final proofAt = _proofAt;
     final wait = proofAt?.difference(DateTime.now());
     final proofReady = locked || wait == null || wait <= Duration.zero;
@@ -1108,7 +1093,19 @@ class _HandoverCardState extends ConsumerState<_HandoverCard> {
             ]),
           ),
         ]),
-        if (!locked) ...[
+        if (!locked && !collected) ...[
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: AppColors.cream, borderRadius: BorderRadius.circular(14)),
+            child: Row(children: [
+              const Icon(Icons.point_of_sale_rounded, color: AppColors.chonta, size: 20),
+              const SizedBox(width: 8),
+              Expanded(child: Text(l10n.tripCollectFirst, style: const TextStyle(fontWeight: FontWeight.w700))),
+            ]),
+          ),
+        ],
+        if (!locked && collected) ...[
           const SizedBox(height: 16),
           _CodeBoxes(controller: _code, focusNode: _focus, error: _error != null && _attemptsLeft != null, onComplete: _busy ? null : _deliver),
           const SizedBox(height: 8),

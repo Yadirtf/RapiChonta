@@ -61,6 +61,9 @@ Widget _app(String location, FakeCourierRepository repository) {
 Future<void> _settle(WidgetTester tester) async {
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 400));
+  // Lo que depende de la sesión y del turno (cuentas de cobro, cobros pendientes) llega un cuadro después.
+  await tester.pump();
+  await tester.pump();
 }
 
 void main() {
@@ -164,7 +167,7 @@ void main() {
     expect(find.text('Portón verde frente al parque'), findsOneWidget);
     expect(find.text('Rosa Mutumbajoy'), findsOneWidget);
     expect(find.text(r'$ 41.500'), findsOneWidget);
-    expect(find.text('Nequi'), findsOneWidget);
+    expect(find.text('Dijo que paga con Nequi'), findsOneWidget);
     expect(find.text('Cuando estés cerca le avisamos al cliente para que salga a recibir.'), findsOneWidget);
   });
 
@@ -179,11 +182,96 @@ void main() {
     expect(repository.steps.single.kind, 'arrived');
   });
 
+  testWidgets('donde el cliente: primero el cobro (dividido en dos medios) y luego el código', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 2600));
+    final now = DateTime.now().toUtc();
+    final repository = FakeCourierRepository(
+      currentTrip: tripFromJson(tripJson(status: 'ARRIVING', revealed: true, prepared: true, delivery: {
+        'arrivedAt': now.toIso8601String(),
+        'proofAvailableAt': now.add(const Duration(minutes: 5)).toIso8601String(),
+        'codeAttemptsLeft': 5,
+      })),
+    )..accounts = const [nequiAccount];
+    await tester.pumpWidget(_app('/turno/pedido/RC-7K3M', repository));
+    await _settle(tester);
+
+    expect(find.text('¿Cómo te pagó?'), findsOneWidget);
+    expect(find.text('Dijo que paga con Nequi'), findsOneWidget);
+    // Sin cobro no se pide el código; sin QR, se ofrece subirlo.
+    expect(find.text('Primero registra cómo te pagó; luego pide el código.'), findsOneWidget);
+    expect(find.text('Te quedan 5 intentos'), findsNothing);
+    expect(find.text('Subir el QR de mi Nequi'), findsOneWidget);
+    expect(find.text('Cuadra con el pedido'), findsOneWidget);
+
+    // Parte por Nequi y parte en efectivo.
+    await tester.enterText(find.byType(TextField).first, '30000');
+    await tester.pump();
+    expect(find.text('Faltan \$ 11.500'), findsOneWidget);
+    await tester.tap(find.text('Pagó con dos medios'));
+    await tester.pump();
+    expect(find.text('Cuadra con el pedido'), findsOneWidget);
+    await tester.tap(find.text('Cobré \$ 41.500'));
+    await _settle(tester);
+
+    expect(repository.collected.single, const [
+      CollectedPayment(paymentMethod: 'NEQUI', amountCents: 3000000),
+      CollectedPayment(paymentMethod: 'CASH', amountCents: 1150000),
+    ]);
+    expect(find.text('COBRADO'), findsOneWidget);
+    expect(find.text('Te quedan 5 intentos'), findsOneWidget);
+  });
+
+  testWidgets('si no cuadra, lo dice antes de registrar', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 2600));
+    final now = DateTime.now().toUtc();
+    final repository = FakeCourierRepository(
+      currentTrip: tripFromJson(tripJson(status: 'ARRIVING', revealed: true, prepared: true, delivery: {
+        'arrivedAt': now.toIso8601String(),
+        'proofAvailableAt': now.add(const Duration(minutes: 5)).toIso8601String(),
+        'codeAttemptsLeft': 5,
+      })),
+    );
+    await tester.pumpWidget(_app('/turno/pedido/RC-7K3M', repository));
+    await _settle(tester);
+
+    // Sin cuenta Nequi: se avisa y el cobro va en efectivo.
+    expect(find.textContaining('no tienes esa cuenta registrada'), findsOneWidget);
+    await tester.tap(find.text('Efectivo'));
+    await tester.enterText(find.byType(TextField).first, '40000');
+    await tester.pump();
+    await tester.tap(find.text('Cobré \$ 40.000'));
+    await _settle(tester);
+    expect(find.text('Faltan \$ 1.500'), findsNWidgets(2));
+    await tester.tap(find.text('Registrar así'));
+    await _settle(tester);
+    expect(repository.collected.single, const [CollectedPayment(paymentMethod: 'CASH', amountCents: 4000000)]);
+  });
+
+  testWidgets('en el turno: las entregas sin cobro se registran desde el aviso', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 2400));
+    final repository = FakeCourierRepository()
+      ..pending = [
+        PendingCollection(code: 'RC-7K3M', status: 'PENDING_REVIEW', storeName: 'Asadero El Chontaduro', customerTotalCents: 4150000, paymentMethod: 'CASH', closedAt: DateTime.utc(2026, 10, 21, 21)),
+      ];
+    await tester.pumpWidget(_app('/turno', repository));
+    await _settle(tester);
+
+    expect(find.text('1 entrega sin cobro registrado'), findsOneWidget);
+    await tester.tap(find.text('1 entrega sin cobro registrado'));
+    await _settle(tester);
+    await tester.tap(find.text('Asadero El Chontaduro'));
+    await _settle(tester);
+    await tester.tap(find.text('Cobré \$ 41.500'));
+    await _settle(tester);
+    expect(repository.collected.single, const [CollectedPayment(paymentMethod: 'CASH', amountCents: 4150000)]);
+    expect(find.text('Todo cobrado. ¡Caja al día!'), findsOneWidget);
+  });
+
   testWidgets('donde el cliente: el código equivocado dice cuántos intentos quedan; el correcto entrega', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 2400));
     final now = DateTime.now().toUtc();
     final repository = FakeCourierRepository(
-      currentTrip: tripFromJson(tripJson(status: 'ARRIVING', revealed: true, prepared: true, delivery: {
+      currentTrip: tripFromJson(tripJson(status: 'ARRIVING', revealed: true, prepared: true, collection: paidCollection, delivery: {
         'arrivedAt': now.toIso8601String(),
         'proofAvailableAt': now.add(const Duration(minutes: 5)).toIso8601String(),
         'codeAttemptsLeft': 5,

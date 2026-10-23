@@ -62,6 +62,23 @@ void main() {
       expect(const PushTap(type: 'TRIP_CANCELLED').forCourier, isTrue);
     });
 
+    test('E10: la novedad y el cierre del caso van al turno del domiciliario; al cliente, a su pedido', () {
+      expect(const PushTap(type: 'INCIDENT_OPENED', orderCode: 'RC-7K3M').route, '/turno');
+      expect(const PushTap(type: 'INCIDENT_OPENED').forCourier, isTrue);
+      expect(const PushTap(type: 'INCIDENT_RESOLVED', orderCode: 'RC-7K3M', audience: 'COURIER').route, '/turno');
+      expect(const PushTap(type: 'INCIDENT_RESOLVED', orderCode: 'RC-7K3M', audience: 'CUSTOMER').route, '/pedidos/RC-7K3M');
+      expect(const PushTap(type: 'INCIDENT_RESOLVED', orderCode: 'RC-7K3M', audience: 'CUSTOMER').forCourier, isFalse);
+      expect(PushTap.fromData({'type': 'INCIDENT_RESOLVED', 'rc_orderCode': 'RC-7K3M', 'rc_audience': 'COURIER'})!.route, '/turno');
+      final inbox = AppNotification.fromJson({
+        'id': 'n-9',
+        'type': 'INCIDENT_RESOLVED',
+        'orderCode': 'RC-7K3M',
+        'params': {'variant': 'RESOLVED_AS_DELIVERED', 'audience': 'COURIER'},
+        'createdAt': '2026-10-21T21:00:00.000Z',
+      });
+      expect(inbox.tap.route, '/turno');
+    });
+
     test('FCM trae los datos tal cual; Huawei, como extras rc_* del intent', () {
       final fcm = PushTap.fromData({'type': 'ORDER_STATUS_CHANGED', 'notificationId': 'n-1', 'orderCode': 'RC-7K3M', 'status': 'ON_THE_WAY'})!;
       final hms = PushTap.fromData({'rc_type': 'ORDER_STATUS_CHANGED', 'rc_notificationId': 'n-1', 'rc_orderCode': 'RC-7K3M'})!;

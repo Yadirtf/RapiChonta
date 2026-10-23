@@ -1,4 +1,5 @@
 import { ADJUSTMENT_DECISIONS, ADJUSTMENT_NOTICES, ADJUSTMENT_REASONS, CANCELLATION_REASONS } from './adjustments';
+import { INCIDENT_NOTICES, INCIDENT_RESOLUTIONS, INCIDENT_STATUSES, INCIDENT_TYPES } from './incidents';
 
 /**
  * Lo que el domiciliario hace con el pedido después de tomarlo (Docs/14-base-de-datos/E08-modo-domiciliario.md).
@@ -68,6 +69,10 @@ export const GEOFENCE_MAX_ACCURACY_M = 50;
 export const GEOFENCE_FRESH_SECONDS = 120;
 
 export const PURCHASE_MOVEMENT = 'PURCHASE';
+/** H10.2: lo que pagó el cliente, un movimiento por medio. */
+export const COLLECTION_MOVEMENT = 'COLLECTION';
+/** La imagen del QR de la cuenta del domiciliario (Nequi, Daviplata, banco). */
+export const COLLECTION_QR_PURPOSE = 'COLLECTION_QR';
 export const RECEIPT_PURPOSE = 'PURCHASE_RECEIPT';
 export const PREPARATION_NOTICE = 'PREPARATION_TIME_REACHED';
 export const PROOF_PURPOSE = 'DELIVERY_PROOF';
@@ -80,11 +85,14 @@ export const TRIP_CANCELLED_NOTICE = 'TRIP_CANCELLED';
 export const REQUIRED_FULFILLMENT_CODES: Record<string, readonly string[]> = {
   order_statuses: Object.values(TRIP_STATUSES),
   status_change_sources: Object.values(TRIP_SOURCES),
-  cash_movement_types: [PURCHASE_MOVEMENT],
-  file_purposes: [RECEIPT_PURPOSE, PROOF_PURPOSE],
-  notification_types: [PREPARATION_NOTICE, TRIP_CANCELLED_NOTICE, ...Object.values(ADJUSTMENT_NOTICES)],
+  cash_movement_types: [PURCHASE_MOVEMENT, COLLECTION_MOVEMENT],
+  file_purposes: [RECEIPT_PURPOSE, PROOF_PURPOSE, COLLECTION_QR_PURPOSE],
+  notification_types: [PREPARATION_NOTICE, TRIP_CANCELLED_NOTICE, ...Object.values(ADJUSTMENT_NOTICES), ...Object.values(INCIDENT_NOTICES)],
   assignment_release_reasons: [COMPLETED_RELEASE, CANCELLED_RELEASE],
   adjustment_reasons: Object.values(ADJUSTMENT_REASONS),
   adjustment_decisions: Object.values(ADJUSTMENT_DECISIONS),
   cancellation_reasons: Object.values(CANCELLATION_REASONS),
+  incident_types: Object.values(INCIDENT_TYPES),
+  incident_statuses: Object.values(INCIDENT_STATUSES),
+  incident_resolution_types: Object.values(INCIDENT_RESOLUTIONS),
 };

@@ -11,6 +11,7 @@ import {
   LEGAL_REQUIREMENTS,
   ORDER_TRANSITIONS,
   CASH_MOVEMENT_TYPES,
+  INCIDENT_RESOLUTIONS,
   ROLE_PERMISSIONS,
   SETTINGS,
   TRANSITIONS,
@@ -79,6 +80,14 @@ async function seedCatalogs() {
         requires_order = EXCLUDED.requires_order, requires_payment_method = EXCLUDED.requires_payment_method,
         is_manual = EXCLUDED.is_manual, uses_courier_collection_account = EXCLUDED.uses_courier_collection_account,
         only_for_funding_mode_id = EXCLUDED.only_for_funding_mode_id
+    `;
+  }
+
+  for (const [index, r] of INCIDENT_RESOLUTIONS.entries()) {
+    await prisma.$executeRaw`
+      INSERT INTO incident_resolution_types (code, sort_order, resulting_order_status_id)
+      VALUES (${r.code}, ${index + 1}, (SELECT id FROM order_statuses WHERE code = ${r.resultingOrderStatus}))
+      ON CONFLICT (code) DO UPDATE SET sort_order = EXCLUDED.sort_order, resulting_order_status_id = EXCLUDED.resulting_order_status_id
     `;
   }
 

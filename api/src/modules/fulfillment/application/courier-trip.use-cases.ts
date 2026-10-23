@@ -6,7 +6,9 @@ import { resolveOccurredAt, TripEvent } from '../domain/event-time';
 import { TRIP_STATUSES, TripStatusCode } from '../domain/fulfillment.codes';
 import { FulfillmentErrors } from '../domain/fulfillment.errors';
 import { AdjustmentReader, OrderAdjustments } from '../domain/ports/adjustments';
-import { CourierTrips, CustomerDeliveries, GeofenceProbe, Trip, TripCommand, TripResult } from '../domain/ports/courier-trips';
+import { CourierCollections, CourierTrips, CustomerDeliveries, GeofenceProbe, Trip, TripCommand, TripResult } from '../domain/ports/courier-trips';
+import { MAX_INCIDENT_DESCRIPTION } from '../domain/incidents';
+import { CollectedPayment, resolveCollection } from '../domain/collection';
 import { PreparationSignal } from './preparation-signal';
 
 /** Pesos con hasta dos decimales; tope de 10 dígitos enteros (numeric(12,2)). */
@@ -169,8 +171,10 @@ export class CustomerDeliveryUseCase {
     return this.apply(code, () => this.deliveries.confirmReceived(principal.userId, code));
   }
 
-  reportNotReceived(principal: Principal, code: string) {
-    return this.apply(code, () => this.deliveries.reportNotReceived(principal.userId, code));
+  /** H10.3: lo que cuente el cliente ("nadie me tocó", "lo dejaron en otra casa") va con la novedad, recortado. */
+  reportNotReceived(principal: Principal, code: string, description?: string | null) {
+    const text = description?.trim().slice(0, MAX_INCIDENT_DESCRIPTION) || null;
+    return this.apply(code, () => this.deliveries.reportNotReceived(principal.userId, code, text));
   }
 
   private async apply(code: string, change: () => ReturnType<CustomerDeliveries['confirmReceived']>) {
@@ -222,5 +226,38 @@ export class CustomerAdjustmentsUseCase {
     const found = await this.adjustments.substitutes(principal.userId, code, adjustmentId, language);
     if (!found) throw FulfillmentErrors.adjustmentClosed('UNKNOWN');
     return rankSubstitutes(found.original, found.candidates, found.inOrder);
+  }
+}
+
+/**
+ * H10.2: el cobro contra entrega. El domiciliario marca con qué medio(s) le pagó el cliente y cuánto; la cuenta que
+ * recibió el dinero sale de sus cuentas (nunca la manda la app). Se puede encolar sin señal: la hora del teléfono solo
+ * elige la caja del día y no cambia el pedido. Un cobro por pedido: reenviarlo no lo duplica.
+ */
+@Injectable()
+export class CourierCollectionsUseCase {
+  constructor(private readonly collections: CourierCollections) {}
+
+  async record(principal: Principal, code: string, payments: CollectedPayment[], event: TripEvent, now = new Date()) {
+    const resolved = resolveCollection(payments, await this.collections.methods(principal.userId));
+    if (!resolved.ok) throw FulfillmentErrors.collectionInvalid(resolved.problem);
+    // Sin cambio de estado no hay hora anterior que respetar: la del teléfono vale si no es del futuro ni muy vieja.
+    const { at } = resolveOccurredAt(event, new Date(0), now);
+    const result = await this.collections.record(principal.userId, code, resolved.payments, at);
+    if (!result.ok) throw result.reason === 'NOT_FOUND' ? FulfillmentErrors.collectionOrderNotFound() : FulfillmentErrors.collectionStepNotAllowed(result.status ?? 'UNKNOWN');
+    return { orderCode: code, replayed: result.replayed };
+  }
+
+  accounts(principal: Principal) {
+    return this.collections.accounts(principal.userId);
+  }
+
+  async setQr(principal: Principal, accountId: string, fileId: string) {
+    if (!(await this.collections.setQr(principal.userId, accountId, fileId))) throw FulfillmentErrors.collectionAccountNotFound();
+    return (await this.collections.accounts(principal.userId)).find((a) => a.id === accountId)!;
+  }
+
+  pending(principal: Principal) {
+    return this.collections.pending(principal.userId);
   }
 }

@@ -1,5 +1,6 @@
 import { GeoPoint } from '../../../catalog/domain/value-objects/geo-point';
 import { ReportedLine } from '../adjustments';
+import { CollectionMethod, ResolvedPayment } from '../collection';
 import { AdjustmentRequestView } from './adjustments';
 
 /** El pedido en curso, lo justo para decidir si una acción aplica. */
@@ -43,6 +44,8 @@ export interface Trip extends TripRef {
   delivery: { arrivedAt: Date | null; proofAvailableAt: Date | null; codeAttemptsLeft: number } | null;
   /** E09, en el local: la última consulta al cliente (con su cuenta regresiva o ya decidida). */
   adjustment?: AdjustmentRequestView | null;
+  /** H10.2: lo que ya registró como cobrado al cliente (un pago por medio); nulo si aún no cobra. */
+  collection: { total: string; payments: { paymentMethod: string; amount: string }[] } | null;
 }
 
 export interface TripCommand {
@@ -94,8 +97,53 @@ export type CustomerDeliveryResult = { ok: true; status: string; changed: boolea
 export abstract class CustomerDeliveries {
   /** "Recibí mi pedido": ON_THE_WAY / ARRIVING / PENDING_REVIEW → DELIVERED (libera al domiciliario si aún lo tenía). */
   abstract confirmReceived(customerUserId: string, code: string): Promise<CustomerDeliveryResult>;
-  /** "No lo recibí": PENDING_REVIEW → DISPUTED (frena el cierre automático; lo resuelve el operador). */
-  abstract reportNotReceived(customerUserId: string, code: string): Promise<CustomerDeliveryResult>;
+  /**
+   * H10.3 "No lo recibí": en una transacción, la novedad NOT_RECEIVED (con lo que cuente el cliente), PENDING_REVIEW →
+   * DISPUTED (frena el cierre automático) y el aviso INCIDENT_OPENED al domiciliario. La resuelve el operador (H10.5).
+   */
+  abstract reportNotReceived(customerUserId: string, code: string, description: string | null): Promise<CustomerDeliveryResult>;
+}
+
+/** Un pedido que el domiciliario entregó y al que le falta el cobro (el cliente confirmó antes de que lo marcara). */
+export interface PendingCollection {
+  code: string;
+  status: string;
+  storeName: string;
+  customerTotal: string;
+  /** El medio que el cliente dijo que usaría al pedir. */
+  paymentMethod: string;
+  closedAt: Date;
+}
+
+/** Cuenta propia del domiciliario a la que el cliente le paga con QR (Nequi, Daviplata, transferencia). */
+export interface CollectionAccount {
+  id: string;
+  paymentMethod: string;
+  bank: string | null;
+  accountType: string | null;
+  accountNumber: string;
+  holderName: string;
+  qrFileId: string | null;
+}
+
+export type CollectionResult =
+  | { ok: true; replayed: boolean }
+  | { ok: false; reason: 'NOT_FOUND' | 'STEP'; status?: string };
+
+/** H10.2: el cobro contra entrega en el libro de caja, y las cuentas con QR para recibirlo. */
+export abstract class CourierCollections {
+  /** Efectivo más cada medio de cuenta, con la cuenta vigente del domiciliario (o nula si no tiene). */
+  abstract methods(courierUserId: string): Promise<CollectionMethod[]>;
+  abstract accounts(courierUserId: string): Promise<CollectionAccount[]>;
+  /** Pone el QR de su cuenta (una imagen COLLECTION_QR que subió él). Falso si la cuenta o la imagen no son suyas. */
+  abstract setQr(courierUserId: string, accountId: string, fileId: string): Promise<boolean>;
+  /**
+   * Un COLLECTION por pago en la caja del día, con el pedido bloqueado: el pedido es del domiciliario (el último que lo
+   * llevó), ya va donde el cliente o se entregó, y no tiene cobro. Si ya lo tiene, es un reenvío y no se repite.
+   */
+  abstract record(courierUserId: string, orderCode: string, payments: readonly ResolvedPayment[], occurredAt: Date): Promise<CollectionResult>;
+  /** Lo que entregó en las últimas 24 horas sin registrar el cobro. */
+  abstract pending(courierUserId: string): Promise<PendingCollection[]>;
 }
 
 /** Entregas con foto que nadie reclamó: se cierran solas al cumplirse delivery.review_auto_close_seconds. */

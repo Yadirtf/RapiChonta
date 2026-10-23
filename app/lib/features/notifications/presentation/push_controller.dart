@@ -128,6 +128,7 @@ class PushController {
     if (tap.forCourier) {
       _ref.invalidate(courierOffersProvider);
       _ref.invalidate(courierTripProvider);
+      _ref.invalidate(pendingCollectionsProvider);
     } else if (tap.orderCode != null) {
       _ref.invalidate(myOrdersProvider);
       _ref.invalidate(orderDetailProvider);

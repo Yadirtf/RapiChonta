@@ -161,6 +161,8 @@ export class PrismaOrdersRepository extends OrdersRepository {
         delivery_code: string | null;
         proof_file_id: string | null;
         review_closes_at: Date | null;
+        cancellation_reason: string | null;
+        incident: { status: string; reportedAt: string; reviewStartedAt: string | null; resolvedAt: string | null; resolution: string | null } | null;
       })[]
     >`
       SELECT s.*, a.items_total::text AS items_total, a.delivery_fee::text AS delivery_fee,
@@ -176,7 +178,18 @@ export class PrismaOrdersRepository extends OrdersRepository {
              CASE WHEN s.status_code = 'PENDING_REVIEW' THEN
                s.status_at + make_interval(secs => coalesce((SELECT value::float8 FROM v_current_settings
                                                              WHERE key = 'delivery.review_auto_close_seconds' AND municipality_id = e.municipality_id), 7200))
-             END AS review_closes_at
+             END AS review_closes_at,
+             (SELECT cr.code FROM order_cancellations c JOIN cancellation_reasons cr ON cr.id = c.cancellation_reason_id
+              WHERE c.order_id = o.id) AS cancellation_reason,
+             (SELECT json_build_object(
+                       'status', st.code, 'reportedAt', i.created_at, 'resolution', rt.code,
+                       'reviewStartedAt', (SELECT min(h.occurred_at) FROM incident_status_history h WHERE h.incident_id = i.id AND h.from_status_id IS NOT NULL),
+                       'resolvedAt', (SELECT h.occurred_at FROM incident_status_history h JOIN incident_statuses hs ON hs.id = h.to_status_id AND hs.is_terminal
+                                      WHERE h.incident_id = i.id))
+              FROM incidents i
+              JOIN incident_statuses st ON st.id = i.status_id
+              LEFT JOIN incident_resolution_types rt ON rt.id = i.resolution_type_id
+              WHERE i.order_id = o.id ORDER BY i.created_at DESC LIMIT 1) AS incident
       FROM (${SUMMARY_SELECT} WHERE o.customer_user_id = ${customerUserId}::uuid AND o.code = ${code}) s
       JOIN orders o ON o.id = s.id
       JOIN v_order_amounts a ON a.order_id = o.id
@@ -229,6 +242,16 @@ export class PrismaOrdersRepository extends OrdersRepository {
       purchase: row.purchase_amount && row.receipt_file_id ? { amount: row.purchase_amount, receiptFileId: row.receipt_file_id } : null,
       delivery: { code: row.delivery_code, proofFileId: row.proof_file_id, reviewClosesAt: row.review_closes_at },
       adjustments,
+      incident: row.incident
+        ? {
+            status: row.incident.status,
+            reportedAt: new Date(row.incident.reportedAt),
+            reviewStartedAt: row.incident.reviewStartedAt ? new Date(row.incident.reviewStartedAt) : null,
+            resolvedAt: row.incident.resolvedAt ? new Date(row.incident.resolvedAt) : null,
+            resolution: row.incident.resolution,
+          }
+        : null,
+      cancellationReason: row.cancellation_reason,
     };
   }
 

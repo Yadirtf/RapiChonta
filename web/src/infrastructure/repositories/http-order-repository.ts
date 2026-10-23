@@ -29,8 +29,8 @@ export class HttpOrderRepository implements OrderRepository {
     await apiRequest<unknown>("POST", `/orders/${id(code)}/received`);
   }
 
-  async reportNotReceived(code: string) {
-    await apiRequest<unknown>("POST", `/orders/${id(code)}/not-received`);
+  async reportNotReceived(code: string, description?: string) {
+    await apiRequest<unknown>("POST", `/orders/${id(code)}/not-received`, { body: { description: description?.trim() || undefined } });
   }
 
   async substitutes(code: string, adjustmentId: string, language: string) {

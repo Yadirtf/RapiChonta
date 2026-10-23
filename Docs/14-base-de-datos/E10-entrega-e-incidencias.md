@@ -111,6 +111,14 @@ Un disparador diferido sobre `order_status_history` exige que todo pedido que en
 
 Resolver (H10.5), en una transacción: llenar `resolution_type_id` y `resolution_notes`, historial de la incidencia `→ RESOLVED`, historial del pedido `DISPUTED → resulting_order_status_id` (si no es nulo) y notificaciones `INCIDENT_RESOLVED` al cliente y al domiciliario.
 
+Implementado en la migración `20261028000000_incidents_collections_e10`:
+
+- Un disparador diferido sobre `order_status_history` y `incident_status_history` (`fn_order_dispute_consistency`) exige en las dos direcciones que el pedido esté en `DISPUTED` si y solo si tiene una novedad sin resolver de un tipo que abre disputa: no se entra sin caso ni se sale sin resolverlo.
+- Tomarla (`OPEN → IN_REVIEW`) y resolverla son del personal; la fila inicial del historial la escribe quien la reporta (cliente del pedido o personal). Lo reportado no se edita.
+- `INCIDENT_OPENED` le llega al domiciliario (abre su turno). `INCIDENT_RESOLVED` lleva en `notifications.params` la resolución (`variant`, el push elige el texto) y a quién va (`audience`: `CUSTOMER` o `COURIER`), porque el mismo tipo llega a los dos y cada app abre su pantalla: el cliente su pedido, el domiciliario su turno. Al salir de `DISPUTED` no se envía además el aviso genérico del estado.
+- `cancellation_reasons.INCIDENT_RESOLUTION` es `is_automatic`: la pone el sistema al resolver como cancelado.
+- El registro del personal (`v_staff_activity`, RNF-07) suma `INCIDENT_TAKEN` e `INCIDENT_RESOLVED` con la resolución y el comentario.
+
 ## Cancelaciones
 
 `order_cancellations` (1:1 con el pedido): `cancellation_reason_id` y `notes`. Quién y cuándo canceló están en la fila `→ CANCELLED` del historial; un disparador diferido exige que todo pedido cancelado tenga su motivo.
@@ -129,4 +137,7 @@ Ninguna alerta se guarda; todas salen de `v_active_order_alerts`:
 | Decisión vencida | Decisión `EXPIRED_REMOVED` en los últimos minutos |
 | Foto por revisar | Estado `PENDING_REVIEW` |
 | Incidencia | Incidencia sin resolver |
-| Entregado sin cobro | Pedido `counts_as_delivered` sin movimiento `COLLECTION` ([E11](E11-cajas-y-comisiones.md)) |
+| Entregado sin cobro | Pedido `counts_as_delivered` en las últimas 24 horas sin movimiento `COLLECTION` (`COLLECTION_MISSING`, [E11](E11-cajas-y-comisiones.md)) |
+| Cobro distinto | Cobrado con un total distinto de `v_order_amounts.customer_total` (`COLLECTION_MISMATCH`) |
+
+La vista devuelve una fila por pedido y alerta con `since` (desde cuándo aplica). Los pedidos terminados solo aparecen por el cobro, para que la caja del día no quede con huecos. El panel "Pedidos en curso" (`/panel/pedidos`, módulo `operations` de la API) la lee cada 5 s y ordena los pedidos en carriles: por despachar, en el local, en la vía y por revisar (foto o caso).

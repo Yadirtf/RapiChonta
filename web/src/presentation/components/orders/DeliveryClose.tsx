@@ -3,12 +3,13 @@
 import { Camera, CheckCircle2, MessageCircle, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import type { OrderDetail } from "@/core/domain/entities/order";
+import { MAX_NOT_RECEIVED_DESCRIPTION, type OrderDetail } from "@/core/domain/entities/order";
 import { container } from "@/infrastructure/di/container";
 import { useErrorMessage } from "../../hooks/useErrorMessage";
 import { Alert } from "../ui/Alert";
 import { Button } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
+import { FieldShell, inputClass } from "../ui/Field";
 
 type Close = "received" | "notReceived";
 
@@ -99,13 +100,14 @@ function CloseButton({ order, kind, onClosed, className = "" }: { order: OrderDe
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [description, setDescription] = useState("");
   const received = kind === "received";
 
   const confirm = async () => {
     setBusy(true);
     setError(null);
     try {
-      await (received ? container.orders.confirmReceived(order.code) : container.orders.reportNotReceived(order.code));
+      await (received ? container.orders.confirmReceived(order.code) : container.orders.reportNotReceived(order.code, description));
       setOpen(false);
       onClosed();
     } catch (e) {
@@ -128,6 +130,22 @@ function CloseButton({ order, kind, onClosed, className = "" }: { order: OrderDe
         description={received ? t("receivedConfirmBody") : t("notReceivedConfirmBody")}
         closeLabel={t("close")}
       >
+        {!received && (
+          <FieldShell label={t("notReceivedWhat")} hint={t("notReceivedWhatHint")} className="mb-4">
+            {({ id, describedBy }) => (
+              <textarea
+                id={id}
+                aria-describedby={describedBy}
+                value={description}
+                maxLength={MAX_NOT_RECEIVED_DESCRIPTION}
+                rows={3}
+                placeholder={t("notReceivedWhatPlaceholder")}
+                onChange={(e) => setDescription(e.target.value)}
+                className={`${inputClass} h-auto resize-none py-3`}
+              />
+            )}
+          </FieldShell>
+        )}
         {!!error && <Alert className="mb-4">{errorMessage(error)}</Alert>}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button variant="ghost" onClick={() => setOpen(false)} disabled={busy}>

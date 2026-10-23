@@ -2,7 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { ROLES } from '../../identity/domain/identity.codes';
 import { CatalogIds } from '../../../shared/infrastructure/prisma/catalog-ids';
 import { PrismaService } from '../../../shared/infrastructure/prisma/prisma.service';
+import { Prisma } from '../../../generated/prisma/client';
 import { COMPLETED_RELEASE, TRIP_SOURCES, TRIP_STATUSES } from '../domain/fulfillment.codes';
+import { INCIDENT_NOTICES, INCIDENT_STATUSES, INCIDENT_TYPES } from '../domain/incidents';
 import { CustomerDeliveries, CustomerDeliveryResult } from '../domain/ports/courier-trips';
 
 /**
@@ -22,11 +24,33 @@ export class PrismaCustomerDeliveries extends CustomerDeliveries {
     return this.change(customerUserId, code, [TRIP_STATUSES.ON_THE_WAY, TRIP_STATUSES.ARRIVING, TRIP_STATUSES.PENDING_REVIEW], TRIP_STATUSES.DELIVERED);
   }
 
-  reportNotReceived(customerUserId: string, code: string): Promise<CustomerDeliveryResult> {
-    return this.change(customerUserId, code, [TRIP_STATUSES.PENDING_REVIEW], TRIP_STATUSES.DISPUTED);
+  /**
+   * La novedad nace antes del cambio de estado (la base exige que todo pedido en DISPUTED tenga una abierta) y el
+   * domiciliario que lo dejó recibe el aviso: RapiChonta lo va a llamar.
+   */
+  async reportNotReceived(customerUserId: string, code: string, description: string | null): Promise<CustomerDeliveryResult> {
+    const [type, open] = await Promise.all([this.ids.of('incident_types', INCIDENT_TYPES.NOT_RECEIVED), this.ids.of('incident_statuses', INCIDENT_STATUSES.OPEN)]);
+    return this.change(customerUserId, code, [TRIP_STATUSES.PENDING_REVIEW], TRIP_STATUSES.DISPUTED, async (tx, orderId) => {
+      const [incident] = await tx.$queryRaw<{ id: string }[]>`
+        INSERT INTO incidents (order_id, incident_type_id, reported_by_user_id, description, status_id)
+        VALUES (${orderId}::uuid, ${type}, ${customerUserId}::uuid, ${description}, ${open}) RETURNING id`;
+      await tx.$executeRaw`
+        INSERT INTO incident_status_history (incident_id, to_status_id, changed_by_user_id) VALUES (${incident.id}::uuid, ${open}, ${customerUserId}::uuid)`;
+      await tx.$executeRaw`
+        INSERT INTO notifications (recipient_user_id, notification_type_id, order_id)
+        SELECT oc.courier_user_id, t.id, oc.order_id
+        FROM v_order_courier oc JOIN notification_types t ON t.code = ${INCIDENT_NOTICES.OPENED} AND t.deactivated_at IS NULL
+        WHERE oc.order_id = ${orderId}::uuid`;
+    });
   }
 
-  private async change(customerUserId: string, code: string, from: string[], to: string): Promise<CustomerDeliveryResult> {
+  private async change(
+    customerUserId: string,
+    code: string,
+    from: string[],
+    to: string,
+    before?: (tx: Prisma.TransactionClient, orderId: string) => Promise<void>,
+  ): Promise<CustomerDeliveryResult> {
     const [toId, role, source, reason] = await Promise.all([
       this.ids.of('order_statuses', to),
       this.ids.of('roles', ROLES.CUSTOMER),
@@ -43,6 +67,7 @@ export class PrismaCustomerDeliveries extends CustomerDeliveries {
       // Repetir el toque (o llegar después del domiciliario con el código) no es un error.
       if (order.status === to) return { ok: true, status: to, changed: false };
       if (!from.includes(order.status)) return { ok: false, reason: 'STEP', status: order.status };
+      await before?.(tx, order.id);
       await tx.$executeRaw`
         UPDATE order_assignments SET released_at = clock_timestamp(), release_reason_id = ${reason}, released_by_user_id = ${customerUserId}::uuid
         WHERE order_id = ${order.id}::uuid AND released_at IS NULL`;

@@ -55,6 +55,53 @@ void main() {
     });
   });
 
+  group('Cobro en la puerta (H10.2)', () {
+    const cash = CollectedPayment(paymentMethod: 'CASH', amountCents: 2000000);
+    const nequi = CollectedPayment(paymentMethod: 'NEQUI', amountCents: 2150000);
+
+    test('el efectivo siempre; los medios de cuenta solo si tiene la cuenta', () {
+      expect(CollectionRules.methods(const []), ['CASH']);
+      expect(CollectionRules.methods(const [nequiAccount, nequiAccount]), ['CASH', 'NEQUI']);
+    });
+
+    test('por qué no se puede registrar: sin pagos, montos en cero, medio repetido o demasiados', () {
+      expect(CollectionRules.problem(const []), 'EMPTY');
+      expect(CollectionRules.problem(const [CollectedPayment(paymentMethod: 'CASH', amountCents: 0)]), 'AMOUNT');
+      expect(CollectionRules.problem(const [cash, cash]), 'REPEATED_METHOD');
+      expect(
+        CollectionRules.problem(const [cash, nequi, CollectedPayment(paymentMethod: 'DAVIPLATA', amountCents: 100), CollectedPayment(paymentMethod: 'BANK_TRANSFER', amountCents: 100)]),
+        'TOO_MANY',
+      );
+      expect(CollectionRules.problem(const [cash, nequi]), isNull);
+      expect(CollectionRules.total(const [cash, nequi]), 4150000);
+    });
+
+    test('los montos viajan en pesos decimales; el cobro en cola se guarda y se lee igual', () {
+      expect(nequi.toJson(), {'paymentMethod': 'NEQUI', 'amount': '21500'});
+      expect(const CollectedPayment(paymentMethod: 'CASH', amountCents: 150050).toJson()['amount'], '1500.50');
+      final step = PendingStep(id: 'c-1', orderCode: 'RC-7K3M', kind: StepKind.collection, occurredAt: DateTime.utc(2026, 10, 21, 21), payments: const [cash, nequi]);
+      expect(PendingStep.tryParse(step.toJson())!.payments, const [cash, nequi]);
+      // Un cobro sin pagos no sirve: se descarta en vez de trabar la cola.
+      expect(PendingStep.tryParse({...step.toJson(), 'payments': []}), isNull);
+    });
+
+    test('lo que llega de la API: el cobro del pedido y la cuenta con su QR', () {
+      final trip = tripFromJson(tripJson(status: 'ARRIVING', collection: paidCollection));
+      expect(trip.collection, const TripCollection(totalCents: 4150000, payments: [CollectedPayment(paymentMethod: 'NEQUI', amountCents: 4150000)]));
+      expect(tripFromJson(tripJson(status: 'ARRIVING')).collection, isNull);
+      final account = accountFromJson({
+        'id': 'acc-1',
+        'paymentMethod': 'NEQUI',
+        'bank': null,
+        'accountType': null,
+        'accountNumber': '3101234567',
+        'holderName': 'Jhon Jairo Criollo',
+        'qrUrl': 'https://cdn.example/qr.png',
+      });
+      expect(account.qrUrl, 'https://cdn.example/qr.png');
+    });
+  });
+
   group('Lo que llega de la API', () {
     test('el pedido en curso: montos en centavos, geocerca y destino solo si la API lo revela', () {
       final trip = tripFromJson(tripJson(status: 'ACCEPTED'));
@@ -184,6 +231,18 @@ void main() {
       await expectLater(queue().submit(orderCode: 'RC-7K3M', kind: StepKind.ready), throwsA(isA<Failure>().having((f) => f.code, 'code', 'TRIP_STEP_NOT_ALLOWED')));
       expect(container.read(pendingStepsProvider).steps, isEmpty);
       expect(container.read(pendingStepsProvider).rejected, isNull);
+    });
+
+    test('el cobro sin señal espera en la cola y, al salir, queda cobrado en la pantalla', () async {
+      const payments = [CollectedPayment(paymentMethod: 'CASH', amountCents: 4150000)];
+      repository.offline = true;
+      expect(await queue().submit(orderCode: 'RC-7K3M', kind: StepKind.collection, payments: payments), isFalse);
+      expect((await store.load()).single.payments, payments);
+      repository.offline = false;
+      await queue().flush();
+      expect(repository.steps.single.kind, 'collection');
+      expect(repository.collected.single, payments);
+      expect(container.read(pendingStepsProvider).collected['RC-7K3M'], payments);
     });
 
     test('un rechazo al enviar más tarde queda a la vista hasta cerrarlo', () async {

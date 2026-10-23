@@ -116,6 +116,15 @@ Inmutable: un disparador rechaza `UPDATE` y `DELETE` (RF-71, [06 · Seguridad](.
 
 Al entregar, el domiciliario marca con qué medio le pagaron. Cada medio es un movimiento `COLLECTION` del pedido (si pagó parte en efectivo y parte por Nequi, son dos movimientos). El medio que el cliente dijo que usaría sigue en `orders.payment_method_id`; el real está aquí.
 
+Implementado en E10 (migración `20261028000000_incidents_collections_e10`):
+
+- `POST /courier/orders/:code/collection` con `payments: [{paymentMethod, amount}]` (máximo tres medios distintos). Se acepta desde `ON_THE_WAY` hasta el cierre (también `PENDING_REVIEW` y `DISPUTED`), una sola vez por pedido: un reenvío (doble toque, cola sin señal) responde `replayed`. Va a la caja del día del domiciliario en el municipio del local (se crea si el cobro llega antes que la compra).
+- Un medio basado en cuenta (Nequi, Daviplata, transferencia) lleva `collection_account_id`: la cuenta vigente del domiciliario para ese medio (lo revisa `fn_cash_movements_insert`). En efectivo no lleva cuenta. Sin cuenta para ese medio, la API responde `COLLECTION_INVALID` con `problem: NO_ACCOUNT`.
+- Que el total no cuadre con lo que debía cobrar no es error (vuelto, cliente que quedó debiendo): el panel lo muestra como alerta `COLLECTION_MISMATCH`.
+- `v_order_collections`: lo cobrado por pedido (suma de sus `COLLECTION`).
+- El QR de cada cuenta (`courier_collection_accounts.qr_file_id`, archivo con propósito `COLLECTION_QR`) lo sube el domiciliario desde la galería de la app; la app lo muestra a pantalla completa en la puerta.
+- `GET /courier/collections/pending`: lo entregado en las últimas 24 horas sin cobro; la app lo muestra en el turno para registrarlo. En la app el código de entrega se pide después del cobro; la entrega con foto no espera el cobro (el cliente no está).
+
 ## Cálculo del cierre (H11.3, H11.4)
 
 Con base `B`, compra `P`, cobro `P + F` (productos más tarifa `F`), comisión `C` y devolución `R`:

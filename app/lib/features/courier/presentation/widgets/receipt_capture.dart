@@ -16,8 +16,13 @@ String? sniffImageMime(Uint8List head) {
 }
 
 /// Toma la foto con la cámara, reducida (1600 px, calidad 78): se lee bien y sube rápido con poca señal.
-Future<ReceiptPhoto?> captureReceipt() async {
-  final file = await ImagePicker().pickImage(source: ImageSource.camera, maxWidth: 1600, maxHeight: 1600, imageQuality: 78);
+Future<ReceiptPhoto?> captureReceipt() => _pick(ImageSource.camera);
+
+/// El QR de cobro lo da el banco como imagen: se elige de la galería, no se fotografía.
+Future<ReceiptPhoto?> pickFromGallery() => _pick(ImageSource.gallery);
+
+Future<ReceiptPhoto?> _pick(ImageSource source) async {
+  final file = await ImagePicker().pickImage(source: source, maxWidth: 1600, maxHeight: 1600, imageQuality: 78);
   if (file == null) return null;
   final bytes = await file.readAsBytes();
   final mime = sniffImageMime(bytes);

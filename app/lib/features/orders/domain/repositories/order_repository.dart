@@ -22,7 +22,8 @@ abstract class OrderRepository {
   Future<void> confirmReceived(String code);
 
   /// "No lo recibí" (después de una entrega con foto).
-  Future<void> reportNotReceived(String code);
+  /// H10.3: abre el caso; [description] es lo que el cliente cuenta (opcional).
+  Future<void> reportNotReceived(String code, {String? description});
 
   /// "Cambiar por": productos del local para la línea que falta, los parecidos primero (E09).
   Future<List<SubstituteOption>> substitutes(String code, String adjustmentId, {required String language});
