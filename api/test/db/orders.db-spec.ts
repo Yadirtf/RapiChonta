@@ -179,4 +179,20 @@ describe('Pedidos en PostgreSQL', () => {
       expect(await book.lastUsed(s.userId)).toMatchObject({ id: once.id, label: null, reference: 'Donde la tía' });
     });
   });
+
+  it('cada medio contra entrega tiene su fila en "¿Cómo pagas al recibir?" y solo esos medios', async () => {
+    await inTransaction(async (tx) => {
+      const [{ missing }] = await tx.$queryRaw<{ missing: number }[]>`
+        SELECT count(*)::int AS missing FROM payment_methods pm
+        WHERE pm.is_cash_on_delivery AND NOT EXISTS (SELECT 1 FROM checkout_payment_methods c WHERE c.payment_method_id = pm.id)`;
+      expect(missing).toBe(0);
+
+      const [online] = await tx.$queryRaw<{ id: number }[]>`
+        INSERT INTO payment_methods (code, sort_order, is_cash_on_delivery, is_account_based, requires_bank) VALUES ('PRUEBA_LINEA', 99, false, true, false) RETURNING id`;
+      await expectDbError(tx, () => tx.$executeRaw`INSERT INTO checkout_payment_methods (payment_method_id, sort_order) VALUES (${online.id}::smallint, 9)`, /contra entrega/);
+      await expectDbError(tx, () => tx.$executeRaw`UPDATE checkout_payment_methods SET sort_order = 0`, /sort_order_check/);
+      // La imagen tiene que ser un archivo subido.
+      await expectDbError(tx, () => tx.$executeRaw`UPDATE checkout_payment_methods SET image_file_id = gen_random_uuid()`, /image_file_id_fkey/);
+    });
+  });
 });

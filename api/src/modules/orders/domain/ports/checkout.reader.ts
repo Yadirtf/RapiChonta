@@ -19,6 +19,6 @@ export abstract class CheckoutReader {
   abstract newCustomerLimit(municipalityId: number): Promise<string | null>;
   /** Versión vigente de la comisión del municipio; null si el administrador no la ha configurado. */
   abstract commissionRateId(municipalityId: number): Promise<string | null>;
-  /** Medios de pago contra entrega activos, en el orden del catálogo. */
+  /** Medios de pago contra entrega que hoy ve el cliente (los visibles en el panel), en su orden. */
   abstract paymentMethods(): Promise<string[]>;
 }

@@ -95,6 +95,19 @@ La moneda de cobro es siempre COP (RNF-05); `USD` y `EUR` existen para el precio
 
 Qué medios se pueden pagar en línea y por qué pasarela lo dice `payment_gateway_methods` en [E14](E13-E15-fases-futuras.md#h141-pago-en-línea-rf-90), no una marca aquí. `is_account_based` dice que el dinero entra a una cuenta (no es efectivo); si esa cuenta es una cuenta de cobro del domiciliario lo decide el tipo de movimiento ([E11](E11-cajas-y-comisiones.md#cash_movements-h112-rf-71)), no el medio.
 
+### checkout_payment_methods (negocio)
+
+Lo que ve el cliente en "¿Cómo pagas al recibir?" lo decide el administrador en el panel (**Medios de pago**, `/panel/pagos`), no el código. Es una tabla 1:1 con `payment_methods`, separada para que la semilla, que reescribe los catálogos del sistema en cada despliegue, nunca pise lo que cambió el panel: solo agrega la fila de un medio nuevo, al final.
+
+| Columna | Tipo | Nulo | Descripción |
+| --- | --- | --- | --- |
+| `payment_method_id` | smallint PK, FK `payment_methods` | no | Solo medios contra entrega (`is_cash_on_delivery`); lo valida un disparador. |
+| `sort_order` | smallint | no | Orden en que lo ve el cliente (`CHECK > 0`). |
+| `hidden_at` | timestamptz | sí | Desde cuándo está oculto al pagar. `NULL`: el cliente lo ve. |
+| `image_file_id` | uuid FK `files` | sí | Imagen del medio (propósito `PAYMENT_METHOD_IMAGE`, 1 MB, JPEG/PNG/WebP). Sin imagen, la web y la app muestran el ícono. |
+
+Reglas: siempre queda al menos un medio visible (la API bloquea la lista al cambiarla), y ocultar un medio no cambia los pedidos hechos ni el cobro del domiciliario ([E10](E10-entrega-e-incidencias.md)), que sigue aceptando todos los medios activos por si el cliente cambia de idea en la puerta. Solo el administrador general (`settings.manage`, sin municipio) los cambia; cada cambio queda en `audit_logs` como `PAYMENT_METHOD_CHANGED`.
+
 ## Archivos
 
 Toda foto o documento (foto de producto, logo, factura, foto de entrega, documento del domiciliario, QR de cobro) es una fila en `files`. Las demás tablas guardan solo `file_id`.
@@ -128,7 +141,7 @@ erDiagram
 | `captured_at` | `timestamptz` | sí | Hora en que la cámara tomó la foto (foto de entrega, RF-63) |
 | `captured_location` | `geography(Point)` | sí | Ubicación de la foto de entrega |
 
-`file_purposes` (sistema): `PRODUCT_IMAGE`, `ESTABLISHMENT_LOGO`, `PURCHASE_RECEIPT`, `DELIVERY_PROOF`, `COURIER_DOCUMENT`, `COLLECTION_QR`, `LEGAL_DOCUMENT`. Columnas extra: `max_size_bytes integer`, `allowed_mime_types text[]`, `requires_camera boolean` (true en `DELIVERY_PROOF`).
+`file_purposes` (sistema): `PRODUCT_IMAGE`, `ESTABLISHMENT_LOGO`, `PURCHASE_RECEIPT`, `DELIVERY_PROOF`, `COURIER_DOCUMENT`, `COLLECTION_QR`, `PAYMENT_METHOD_IMAGE`, `LEGAL_DOCUMENT`. Columnas extra: `max_size_bytes integer`, `allowed_mime_types text[]`, `requires_camera boolean` (true en `DELIVERY_PROOF`).
 
 Las URLs se firman al leer, con vencimiento (RNF-08); no se guardan.
 

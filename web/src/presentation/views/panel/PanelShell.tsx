@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Bike, BookOpenText, ClipboardList, Clock, LayoutDashboard, Loader2, LogOut, Map, MapPinned, Radar, ShieldAlert, Siren, SlidersHorizontal, Store, Tags, Users } from "lucide-react";
+import { Bike, BookOpenText, ClipboardList, Clock, LayoutDashboard, Loader2, LogOut, Map, MapPinned, Radar, ShieldAlert, Siren, SlidersHorizontal, Store, Tags, Users, Wallet } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -29,6 +29,7 @@ const NAV = [
   { href: "/panel/zonas", key: "zones", icon: MapPinned, permission: PERMISSIONS.MANAGE_ZONES },
   { href: "/panel/horario", key: "hours", icon: Clock, permission: PERMISSIONS.MANAGE_HOURS },
   { href: "/panel/configuracion", key: "settings", icon: SlidersHorizontal, permission: PERMISSIONS.MANAGE_SETTINGS },
+  { href: "/panel/pagos", key: "payments", icon: Wallet, permission: PERMISSIONS.MANAGE_SETTINGS },
   { href: "/panel/personal", key: "staff", icon: Users, permission: PERMISSIONS.MANAGE_STAFF },
   { href: "/panel/auditoria", key: "audit", icon: BookOpenText, permission: PERMISSIONS.READ_AUDIT },
 ] as const;

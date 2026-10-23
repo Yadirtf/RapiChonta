@@ -6,6 +6,7 @@ import type {
   OrderDetail,
   OrderQuote,
   PaymentMethodCode,
+  PaymentOption,
   QuoteDelivery,
   RecipientChoice,
   SavedAddress,
@@ -26,7 +27,7 @@ export interface PlaceOrderInput {
 
 /** Puerto del cliente para pedir y seguir sus pedidos (E04). */
 export interface OrderRepository {
-  paymentMethods(): Promise<PaymentMethodCode[]>;
+  paymentMethods(): Promise<PaymentOption[]>;
   quote(input: { establishmentId: string; items: CheckoutItem[]; delivery: QuoteDelivery }, language: string): Promise<OrderQuote>;
   place(input: PlaceOrderInput, language: string): Promise<OrderDetail>;
   mine(before?: string): Promise<MyOrdersPage>;

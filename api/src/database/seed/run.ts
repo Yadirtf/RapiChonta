@@ -91,6 +91,14 @@ async function seedCatalogs() {
     `;
   }
 
+  // Un medio contra entrega nuevo entra al final de "¿Cómo pagas al recibir?"; lo que el panel ya ordenó no se toca.
+  await prisma.$executeRaw`
+    INSERT INTO checkout_payment_methods (payment_method_id, sort_order)
+    SELECT pm.id, (SELECT coalesce(max(sort_order), 0) FROM checkout_payment_methods) + row_number() OVER (ORDER BY pm.sort_order, pm.id)
+    FROM payment_methods pm
+    WHERE pm.is_cash_on_delivery AND NOT EXISTS (SELECT 1 FROM checkout_payment_methods c WHERE c.payment_method_id = pm.id)
+  `;
+
   const permissions = [...new Set(Object.values(ROLE_PERMISSIONS).flat())];
   await upsertCatalog(
     'permissions',

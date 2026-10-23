@@ -12,7 +12,7 @@ final orderRepositoryProvider = Provider<OrderRepository>(
   (ref) => OrderRepositoryImpl(public: buildApiClient(), authed: ref.watch(authedDioProvider)),
 );
 
-final paymentMethodsProvider = FutureProvider<List<String>>((ref) => ref.watch(orderRepositoryProvider).paymentMethods());
+final paymentMethodsProvider = FutureProvider<List<PaymentOption>>((ref) => ref.watch(orderRepositoryProvider).paymentMethods());
 
 typedef CustomerBook = ({List<SavedAddress> addresses, SavedAddress? last, List<SavedRecipient> recipients});
 

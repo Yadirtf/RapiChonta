@@ -11,6 +11,8 @@ export const UPLOADABLE_PURPOSES: Record<string, string> = {
   DELIVERY_PROOF: 'orders.progress',
   // H10.2: la imagen del QR de su cuenta (la que le da Nequi, Daviplata o su banco), desde la galería.
   COLLECTION_QR: 'orders.progress',
+  // La imagen de cada medio en "¿Cómo pagas al recibir?" (logo de Nequi, Daviplata...), desde el panel.
+  PAYMENT_METHOD_IMAGE: 'settings.manage',
 };
 
 /**

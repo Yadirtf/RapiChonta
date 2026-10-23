@@ -104,8 +104,22 @@ model PaymentMethod {
   collectionAccounts CourierCollectionAccount[]
   orders             Order[]
   cashMovements      CashMovement[]
+  checkoutOption     CheckoutPaymentMethod?
 
   @@map("payment_methods")
+}
+
+/// Cómo se le ofrece al cliente un medio contra entrega en "¿Cómo pagas al recibir?": orden, si se muestra y su imagen.
+/// Lo administra el panel; la semilla solo agrega la fila de un medio nuevo y nunca la pisa.
+model CheckoutPaymentMethod {
+  paymentMethodId Int           @id @map("payment_method_id") @db.SmallInt
+  sortOrder       Int           @map("sort_order") @db.SmallInt
+  hiddenAt        DateTime?     @map("hidden_at") @db.Timestamptz(6)
+  imageFileId     String?       @map("image_file_id") @db.Uuid
+  paymentMethod   PaymentMethod @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
+  image           File?         @relation(fields: [imageFileId], references: [id], onDelete: Restrict)
+
+  @@map("checkout_payment_methods")
 }
 
 model FilePurpose {
@@ -143,6 +157,7 @@ model File {
   productImages         ProductImage[]
   purchaseReceipts      OrderPurchase[]
   deliveryProofs        OrderDeliveryProof[]
+  paymentMethodImages   CheckoutPaymentMethod[]
   content               FileContent?
 
   @@index([purposeId, sha256])

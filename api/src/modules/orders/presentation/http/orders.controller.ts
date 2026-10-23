@@ -1,13 +1,15 @@
-import { Body, Controller, Delete, Get, Header, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, Put, Query } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../../../shared/presentation/public.decorator';
-import { CurrentPrincipal, RequirePermissions } from '../../../identity/presentation/http/decorators/auth.decorators';
+import { ROLES } from '../../../identity/domain/identity.codes';
+import { CurrentPrincipal, RequirePermissions, Roles } from '../../../identity/presentation/http/decorators/auth.decorators';
 import { Principal } from '../../../identity/domain/principal';
 import { ManageAddressesUseCase, ManageRecipientsUseCase } from '../../application/address-book.use-cases';
-import { CreateOrderInput, CreateOrderUseCase, DeliveryTarget, ListPaymentMethodsUseCase, QuoteOrderUseCase } from '../../application/checkout.use-cases';
+import { CreateOrderInput, CreateOrderUseCase, DeliveryTarget, QuoteOrderUseCase } from '../../application/checkout.use-cases';
+import { ListPaymentMethodsUseCase, ManagePaymentOptionsUseCase } from '../../application/payment-options.use-cases';
 import { GetMyOrderUseCase, ListMyOrdersUseCase } from '../../application/my-orders.use-cases';
-import { ORDER_PERMISSIONS } from '../../domain/orders.codes';
-import { CreateOrderDto, DeliveryDto, MyOrdersQueryDto, OrderQueryDto, QuoteOrderDto, RecipientDto, SaveAddressDto } from './orders.dto';
+import { ORDER_PERMISSIONS, PAYMENT_OPTIONS_PERMISSION } from '../../domain/orders.codes';
+import { CreateOrderDto, DeliveryDto, MyOrdersQueryDto, OrderQueryDto, PaymentOptionDto, PaymentOrderDto, QuoteOrderDto, RecipientDto, SaveAddressDto } from './orders.dto';
 import { OrdersPresenter } from './orders-presenter';
 
 const delivery = (d: DeliveryDto): DeliveryTarget =>
@@ -28,12 +30,12 @@ export class OrdersController {
     private readonly presenter: OrdersPresenter,
   ) {}
 
-  /** GET /api/v1/orders/payment-methods — medios contra entrega activos (RF-22). */
+  /** GET /api/v1/orders/payment-methods — medios contra entrega que el panel deja ver, con su imagen (RF-22). */
   @Public()
   @Get('payment-methods')
-  @Header('Cache-Control', 'public, max-age=300')
+  @Header('Cache-Control', 'public, max-age=60')
   async methods() {
-    return (await this.paymentMethods.execute()).map((code) => ({ code }));
+    return (await this.paymentMethods.execute()).map((m) => this.presenter.paymentMethod(m));
   }
 
   /** POST /api/v1/orders/quote — total con la tarifa de la zona de entrega y el tope de cliente nuevo (H04.1). */
@@ -78,6 +80,32 @@ export class OrdersController {
   @RequirePermissions(ORDER_PERMISSIONS.READ_OWN)
   async detail(@CurrentPrincipal() principal: Principal, @Param('code') code: string, @Query() query: OrderQueryDto) {
     return this.presenter.detail(await this.getMine.execute(principal, code, query.lang));
+  }
+}
+
+/** Panel: qué medios de pago ven los clientes en "¿Cómo pagas al recibir?", su orden y su imagen. */
+@Controller('admin/payment-methods')
+@Roles(ROLES.ADMIN)
+@RequirePermissions(PAYMENT_OPTIONS_PERMISSION)
+export class AdminPaymentMethodsController {
+  constructor(
+    private readonly options: ManagePaymentOptionsUseCase,
+    private readonly presenter: OrdersPresenter,
+  ) {}
+
+  @Get()
+  async list() {
+    return (await this.options.list()).map((o) => this.presenter.paymentOption(o));
+  }
+
+  @Put('order')
+  async reorder(@CurrentPrincipal() principal: Principal, @Body() body: PaymentOrderDto) {
+    return (await this.options.reorder(principal, body.codes)).map((o) => this.presenter.paymentOption(o));
+  }
+
+  @Patch(':code')
+  async update(@CurrentPrincipal() principal: Principal, @Param('code') code: string, @Body() body: PaymentOptionDto) {
+    return (await this.options.update(principal, code, { offered: body.offered, imageFileId: body.imageFileId })).map((o) => this.presenter.paymentOption(o));
   }
 }
 

@@ -3,7 +3,7 @@ import '../entities/order.dart';
 
 /// Puerto del cliente para pedir y seguir sus pedidos (E04).
 abstract class OrderRepository {
-  Future<List<String>> paymentMethods();
+  Future<List<PaymentOption>> paymentMethods();
   Future<OrderQuote> quote({required String establishmentId, required List<Map<String, dynamic>> items, required DeliveryTarget delivery, required String language});
   Future<OrderDetail> place({
     required String establishmentId,

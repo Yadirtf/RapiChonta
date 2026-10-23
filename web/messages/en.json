@@ -176,7 +176,11 @@
     "DELIVERY_STEP_NOT_ALLOWED": "The order already changed. Refresh to see where it is.",
     "ADJUSTMENT_CLOSED": "That question was already answered. We refreshed your order.",
     "ADJUSTMENT_OPTION_INVALID": "That option doesn't apply to this item.",
-    "SUBSTITUTE_UNAVAILABLE": "That item can't be ordered anymore: pick another one."
+    "SUBSTITUTE_UNAVAILABLE": "That item can't be ordered anymore: pick another one.",
+    "LAST_PAYMENT_METHOD": "At least one payment method must stay visible to customers.",
+    "PAYMENT_ORDER_MISMATCH": "The list changed while you were sorting it. We reloaded it: try again.",
+    "PAYMENT_METHOD_NOT_FOUND": "That payment method no longer exists.",
+    "PAYMENT_METHODS_GLOBAL_ONLY": "Only the general administrator can change payment methods."
   },
   "auth": {
     "signInTitle": "Sign in with your phone",
@@ -306,7 +310,8 @@
       "settings": "Settings",
       "dispatch": "Dispatch",
       "audit": "Audit",
-      "desk": "Live orders"
+      "desk": "Live orders",
+      "payments": "Payment methods"
     },
     "viewSite": "View site",
     "signOut": "Sign out",
@@ -1611,7 +1616,8 @@
       "CATEGORY_CHANGED": "changed a category",
       "MUNICIPALITY_CHANGED": "changed a municipality",
       "OTHER": "did {action}",
-      "INCIDENT_TAKEN": "took the «{type}» issue of order"
+      "INCIDENT_TAKEN": "took the «{type}» issue of order",
+      "PAYMENT_METHOD_CHANGED": "changed the payment methods"
     }
   },
   "desk": {
@@ -1829,5 +1835,30 @@
       "confirm": "Resolve issue",
       "done": "You resolved the issue on {code}."
     }
+  },
+  "paymentsAdmin": {
+    "title": "Payment methods",
+    "subtitle": "What customers see in “How will you pay on delivery?”: which methods, in which order and with which image.",
+    "emptyTitle": "There are no pay-on-delivery methods",
+    "orderHint": "Drag to reorder: the first one is the one customers see first. Changes save automatically.",
+    "drag": "Move {name}",
+    "addImage": "Upload an image for {name}",
+    "changeImage": "Change the image for {name}",
+    "removeImage": "Remove the image for {name}",
+    "position": "#{position}",
+    "positionTitle": "Place in the customer's list",
+    "kind": {
+      "cash": "Cash: the courier brings change.",
+      "wallet": "To the courier's account: they show their QR or number.",
+      "bank": "Transfer to the courier's bank account."
+    },
+    "offered": "Visible",
+    "hidden": "Hidden",
+    "offeredLabel": "Customers see {name}",
+    "hiddenHint": "Hidden at checkout. If the customer asks for it at the door, the courier can still collect with it.",
+    "lastOffered": "It is the only visible method: turn on another one before hiding it.",
+    "previewTitle": "What customers see",
+    "previewStep": "How will you pay on delivery?",
+    "previewHint": "Upload each method's logo (PNG or JPG, ideally square on a white background). Without one, the icon is used."
   }
 }

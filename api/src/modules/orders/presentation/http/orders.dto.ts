@@ -3,6 +3,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsIn,
   IsInt,
   IsISO8601,
@@ -161,4 +162,25 @@ export class SaveAddressDto {
 
   @IsLongitude()
   longitude: number;
+}
+
+/** Panel: el nuevo orden de "¿Cómo pagas al recibir?", con todos los medios. */
+export class PaymentOrderDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(40)
+  @IsString({ each: true })
+  @MaxLength(40, { each: true })
+  codes: string[];
+}
+
+/** Panel: mostrar u ocultar un medio, o cambiar su imagen (null la quita). */
+export class PaymentOptionDto {
+  @IsOptional()
+  @IsBoolean()
+  offered?: boolean;
+
+  @IsOptional()
+  @IsUUID()
+  imageFileId?: string | null;
 }

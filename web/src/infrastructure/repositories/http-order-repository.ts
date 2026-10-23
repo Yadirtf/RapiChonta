@@ -1,12 +1,12 @@
-import type { MyOrdersPage, OrderDetail, OrderQuote, PaymentMethodCode, SavedAddress, SavedRecipient, SubstituteOption } from "@/core/domain/entities/order";
+import type { MyOrdersPage, OrderDetail, OrderQuote, PaymentOption, SavedAddress, SavedRecipient, SubstituteOption } from "@/core/domain/entities/order";
 import type { OrderRepository, PlaceOrderInput } from "@/core/domain/repositories/order-repository";
-import { apiGet, apiRequest } from "../http/api-client";
+import { apiGet, apiRequest, resolveApiAsset } from "../http/api-client";
 
 const id = (value: string) => encodeURIComponent(value);
 
 export class HttpOrderRepository implements OrderRepository {
   async paymentMethods() {
-    return (await apiGet<{ code: PaymentMethodCode }[]>("/orders/payment-methods")).map((m) => m.code);
+    return (await apiGet<PaymentOption[]>("/orders/payment-methods")).map((m) => ({ code: m.code, imageUrl: resolveApiAsset(m.imageUrl) }));
   }
 
   quote(input: Parameters<OrderRepository["quote"]>[0], language: string) {
