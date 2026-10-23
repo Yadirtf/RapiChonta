@@ -1,3 +1,6 @@
+import 'dart:ui' as ui;
+
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rapichonta/core/map/map_images.dart';
 import 'package:rapichonta/core/map/map_style.dart';
@@ -44,5 +47,19 @@ void main() {
     );
     // Firma PNG.
     expect(bytes!.sublist(0, 4), [0x89, 0x50, 0x4E, 0x47]);
+  });
+
+  testWidgets('el pin con el logo del local también se pinta, abierto y cerrado', (tester) async {
+    final logo = await tester.runAsync(() {
+      final recorder = ui.PictureRecorder();
+      Canvas(recorder).drawRect(const Rect.fromLTWH(0, 0, 32, 32), Paint()..color = Colors.green);
+      return recorder.endRecording().toImage(32, 32);
+    });
+    for (final open in [true, false]) {
+      final bytes = await tester.runAsync(
+        () => MapImages.render(MapImages.logoPin(PlacePin(icon: 'store', logo: logo, open: open, selected: open)), MapImages.logoPinSize, 2),
+      );
+      expect(bytes!.sublist(0, 4), [0x89, 0x50, 0x4E, 0x47]);
+    }
   });
 }

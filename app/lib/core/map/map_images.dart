@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart' show Uint8List, visibleForTesting;
@@ -23,6 +24,28 @@ class MapImages {
   /// la gota girada, su sombra y la escala del seleccionado. Se ancla abajo, en la punta.
   static const pinSize = Size(64, 64);
   static Widget pin(Widget drop) => Align(alignment: Alignment.bottomCenter, child: SizedBox(width: 48, height: 52, child: drop));
+
+  /// Lienzo de la gota con el logo del local (64 × 62), que es más grande y lleva la insignia de la categoría.
+  static const logoPinSize = Size(80, 80);
+  static Widget logoPin(Widget drop) => Align(alignment: Alignment.bottomCenter, child: SizedBox(width: 64, height: 62, child: drop));
+
+  static final _logos = <String, Future<ui.Image?>>{};
+
+  /// Descarga y decodifica una imagen (el logo de un local) para pintarla dentro de un pin. Una vez por URL;
+  /// null si no carga, y el pin se queda con la categoría.
+  static Future<ui.Image?> logo(String url) => _logos.putIfAbsent(url, () {
+        final done = Completer<ui.Image?>();
+        final stream = NetworkImage(url).resolve(ImageConfiguration.empty);
+        late final ImageStreamListener listener;
+        void finish(ui.Image? image) {
+          stream.removeListener(listener);
+          if (!done.isCompleted) done.complete(image);
+        }
+
+        listener = ImageStreamListener((info, _) => finish(info.image.clone()), onError: (_, _) => finish(null));
+        stream.addListener(listener);
+        return done.future.timeout(const Duration(seconds: 10), onTimeout: () => null);
+      });
 
   /// MapLibre toma la imagen a 1 píxel por punto: con este tamaño de ícono queda en su tamaño lógico y nítida.
   static double iconSize(double pixelRatio) => 1 / pixelRatio;

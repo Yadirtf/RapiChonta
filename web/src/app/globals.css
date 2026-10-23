@@ -97,6 +97,66 @@ body {
   border-color: #e9e7ee;
 }
 
+/* Local con logo: la gota lo enmarca como un medallón crema y la categoría pasa a una insignia. */
+.place-pin.with-logo {
+  width: 46px;
+  height: 46px;
+}
+
+.place-pin > .place-logo {
+  display: block;
+  width: 35px;
+  height: 35px;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: var(--color-cream);
+  box-shadow: inset 0 0 0 1px rgb(20 18 31 / 0.12);
+}
+
+.place-logo > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.place-badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: var(--color-chonta-strong);
+  color: white;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgb(20 18 31 / 0.35);
+  transition: transform 150ms ease;
+}
+
+.place-marker:hover .place-badge,
+.place-marker:focus-visible .place-badge,
+.place-marker[aria-pressed="true"] .place-badge {
+  transform: translate(3px, -4px);
+}
+
+.place-marker[aria-pressed="true"] .place-badge {
+  background: var(--color-ink);
+  color: var(--color-brand);
+}
+
+.place-marker.is-closed .place-logo > img {
+  filter: grayscale(1);
+  opacity: 0.75;
+}
+
+.place-marker.is-closed .place-badge {
+  background: #6b6875;
+  color: #e9e7ee;
+}
+
 /* ───────────── Lenguaje visual del catálogo: la tienda de barrio ───────────── */
 
 /*
