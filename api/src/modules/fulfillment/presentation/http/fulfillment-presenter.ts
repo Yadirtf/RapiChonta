@@ -3,7 +3,7 @@ import { GeoPoint } from '../../../catalog/domain/value-objects/geo-point';
 import { FileUrls } from '../../../files/application/file-urls';
 import { SubstituteCandidate } from '../../domain/adjustments';
 import { AdjustmentRequestView } from '../../domain/ports/adjustments';
-import { Trip } from '../../domain/ports/courier-trips';
+import { CollectionAccount, PendingCollection, Trip } from '../../domain/ports/courier-trips';
 
 /** Una consulta de E09 tal como la ven la web y la app (la misma forma para el cliente y el domiciliario). */
 export const adjustmentView = (r: AdjustmentRequestView) => ({
@@ -80,7 +80,25 @@ export class FulfillmentPresenter {
           }
         : null,
       adjustment: t.adjustment ? adjustmentView(t.adjustment) : null,
+      collection: t.collection,
     };
+  }
+
+  /** H10.2: la cuenta con su QR (URL firmada, se calcula en cada respuesta). */
+  account(a: CollectionAccount) {
+    return {
+      id: a.id,
+      paymentMethod: a.paymentMethod,
+      bank: a.bank,
+      accountType: a.accountType,
+      accountNumber: a.accountNumber,
+      holderName: a.holderName,
+      qrUrl: this.urls.url(a.qrFileId),
+    };
+  }
+
+  pendingCollection(p: PendingCollection) {
+    return { code: p.code, status: p.status, storeName: p.storeName, customerTotal: p.customerTotal, paymentMethod: p.paymentMethod, closedAt: p.closedAt.toISOString() };
   }
 
   substitute(c: SubstituteCandidate & { sameSection: boolean }) {

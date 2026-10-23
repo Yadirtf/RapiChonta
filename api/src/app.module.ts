@@ -6,6 +6,7 @@ import { BusinessConfigModule } from './modules/business-config/business-config.
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { DispatchModule } from './modules/dispatch/dispatch.module';
 import { FulfillmentModule } from './modules/fulfillment/fulfillment.module';
+import { OperationsModule } from './modules/operations/operations.module';
 import { FilesModule } from './modules/files/files.module';
 import { HealthModule } from './modules/health/health.module';
 import { IdentityModule } from './modules/identity/identity.module';
@@ -29,6 +30,7 @@ import { PrismaModule } from './shared/infrastructure/prisma/prisma.module';
     NotificationsModule,
     DispatchModule,
     FulfillmentModule,
+    OperationsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

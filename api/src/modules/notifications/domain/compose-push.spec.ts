@@ -36,6 +36,14 @@ describe('Texto de los avisos (H06.2)', () => {
     }
   });
 
+  it('el cierre de un caso dice cómo quedó, según la resolución; sin resolución conocida usa el genérico', () => {
+    const resolved = (variant?: string) => composePush(pending({ type: 'INCIDENT_RESOLVED' as never, status: null, params: variant ? { variant } : null }), texts)!;
+    expect(resolved('RESOLVED_AS_DELIVERED').body).toBe('Quedó como entregado. Gracias por la paciencia.');
+    expect(resolved('RESOLVED_AS_CANCELLED').body).toBe('Lo cancelamos. Toca para ver el detalle del caso.');
+    expect(resolved().body).toBe('Ya cerramos el caso. Toca para ver cómo quedó.');
+    expect(resolved('NO_ORDER_CHANGE').title).toBe('Revisamos el pedido RC-7K3M');
+  });
+
   it('un tipo sin plantilla no se envía al teléfono', () => {
     expect(composePush(pending({ type: 'UNKNOWN' as never }), texts)).toBeNull();
   });

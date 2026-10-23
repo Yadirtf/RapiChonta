@@ -15,8 +15,12 @@
     "PREPARATION_TIME_REACHED": { "title": "¿Ya está listo el pedido {code}?", "body": "Se cumplió el tiempo de preparación en {store}. Toca para responder." },
     "ADJUSTMENT_REQUESTED": { "title": "Tu domiciliario necesita que decidas", "body": "Algo de tu pedido {code} no está o cambió de precio. Responde pronto." },
     "ADJUSTMENT_RESOLVED": { "title": "Ya hay respuesta para el pedido {code}", "body": "Mira qué quedó en la lista y sigue con la compra." },
-    "INCIDENT_OPENED": { "title": "Novedad en el pedido {code}", "body": "Abrimos un caso y te contamos en cuanto se resuelva." },
-    "INCIDENT_RESOLVED": { "title": "Novedad resuelta", "body": "Ya cerramos el caso del pedido {code}." },
+    "INCIDENT_OPENED": { "title": "El cliente dice que no recibió el pedido {code}", "body": "RapiChonta está revisando tu foto de entrega. Ten el teléfono a mano por si te llamamos." },
+    "INCIDENT_RESOLVED": {
+      "RESOLVED_AS_DELIVERED": { "title": "Revisamos el pedido {code}", "body": "Quedó como entregado. Gracias por la paciencia." },
+      "RESOLVED_AS_CANCELLED": { "title": "Revisamos el pedido {code}", "body": "Lo cancelamos. Toca para ver el detalle del caso." },
+      "_": { "title": "Revisamos el pedido {code}", "body": "Ya cerramos el caso. Toca para ver cómo quedó." }
+    },
     "DELIVERY_PROOF_PENDING": { "title": "Falta la prueba de entrega", "body": "Toma la foto de la entrega del pedido {code}." },
     "TRIP_CANCELLED": { "title": "El pedido {code} se canceló", "body": "Ya no tienes que comprarlo. Quedas libre para otro pedido." }
   }

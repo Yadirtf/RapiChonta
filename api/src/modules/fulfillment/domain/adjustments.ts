@@ -23,6 +23,8 @@ export type AdjustmentDecisionCode = (typeof ADJUSTMENT_DECISIONS)[keyof typeof 
 export const CANCELLATION_REASONS = {
   CUSTOMER_REQUEST: 'CUSTOMER_REQUEST',
   ALL_ITEMS_UNAVAILABLE: 'ALL_ITEMS_UNAVAILABLE',
+  /** E10: el operador resolvió una novedad como cancelado (el comentario va en order_cancellations.notes). */
+  INCIDENT_RESOLUTION: 'INCIDENT_RESOLUTION',
 } as const;
 export type CancellationReasonCode = (typeof CANCELLATION_REASONS)[keyof typeof CANCELLATION_REASONS];
 

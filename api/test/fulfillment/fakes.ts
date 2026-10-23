@@ -1,7 +1,11 @@
 import { Principal } from '../../src/modules/identity/domain/principal';
 import {
+  CollectionAccount,
+  CollectionResult,
+  CourierCollections,
   CourierTrips,
   CustomerDeliveries,
+  PendingCollection,
   CustomerDeliveryResult,
   DeliveryReviewWatch,
   PreparationWatch,
@@ -11,6 +15,7 @@ import {
   TripResult,
 } from '../../src/modules/fulfillment/domain/ports/courier-trips';
 import { PreparationSignal } from '../../src/modules/fulfillment/application/preparation-signal';
+import { CollectionMethod, ResolvedPayment } from '../../src/modules/fulfillment/domain/collection';
 import { ReportedLine, SubstituteCandidate } from '../../src/modules/fulfillment/domain/adjustments';
 import {
   AdjustmentReader,
@@ -85,16 +90,48 @@ export class MemoryCourierTrips extends CourierTrips {
 
 export class MemoryCustomerDeliveries extends CustomerDeliveries {
   result: CustomerDeliveryResult = { ok: true, status: 'DELIVERED', changed: true };
-  calls: { kind: string; customer: string; code: string }[] = [];
+  calls: { kind: string; customer: string; code: string; description?: string | null }[] = [];
 
   async confirmReceived(customer: string, code: string) {
     this.calls.push({ kind: 'received', customer, code });
     return this.result;
   }
 
-  async reportNotReceived(customer: string, code: string) {
-    this.calls.push({ kind: 'not-received', customer, code });
+  async reportNotReceived(customer: string, code: string, description: string | null) {
+    this.calls.push({ kind: 'not-received', customer, code, description });
     return this.result;
+  }
+}
+
+/** H10.2: el domiciliario con efectivo y Nequi (con cuenta); Daviplata existe pero no tiene cuenta. */
+export class MemoryCourierCollections extends CourierCollections {
+  methodsList: CollectionMethod[] = [
+    { code: 'CASH', isAccountBased: false, accountId: null },
+    { code: 'NEQUI', isAccountBased: true, accountId: 'cuenta-nequi' },
+    { code: 'DAVIPLATA', isAccountBased: true, accountId: null },
+  ];
+  recorded: { courier: string; code: string; payments: readonly ResolvedPayment[]; at: Date }[] = [];
+  result: CollectionResult = { ok: true, replayed: false };
+  qr: { accountId: string; fileId: string }[] = [];
+  owned = new Set(['cuenta-nequi']);
+
+  async methods() {
+    return this.methodsList;
+  }
+  async accounts(): Promise<CollectionAccount[]> {
+    return [...this.owned].map((id) => ({ id, paymentMethod: 'NEQUI', bank: null, accountType: null, accountNumber: '3001234567', holderName: 'Ana', qrFileId: this.qr.find((q) => q.accountId === id)?.fileId ?? null }));
+  }
+  async setQr(_courier: string, accountId: string, fileId: string) {
+    if (!this.owned.has(accountId)) return false;
+    this.qr.push({ accountId, fileId });
+    return true;
+  }
+  async record(courier: string, code: string, payments: readonly ResolvedPayment[], at: Date) {
+    this.recorded.push({ courier, code, payments, at });
+    return this.result;
+  }
+  async pending(): Promise<PendingCollection[]> {
+    return [];
   }
 }
 

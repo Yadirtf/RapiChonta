@@ -32,6 +32,13 @@ export const FulfillmentErrors = {
   adjustmentOptionInvalid: () => new DomainError('Esa opción no aplica a este producto', 'ADJUSTMENT_OPTION_INVALID'),
   /** E09: el producto elegido para cambiar ya no se puede pedir, o ya está en el pedido. */
   substituteUnavailable: () => new DomainError('Ese producto ya no se puede pedir: elige otro', 'SUBSTITUTE_UNAVAILABLE'),
+  /** H10.2: el cobro no es válido (`problem`: EMPTY, AMOUNT, REPEATED_METHOD, METHOD, NO_ACCOUNT, TOO_MANY). */
+  collectionInvalid: (problem: string) => new DomainError('Revisa cómo te pagó el cliente', 'COLLECTION_INVALID', { problem }),
+  /** H10.2: ese pedido no lo llevó este domiciliario, o aún no va donde el cliente (404/422 según el caso). */
+  collectionOrderNotFound: () => new NotFoundError('COLLECTION_ORDER_NOT_FOUND', 'No llevaste ese pedido'),
+  collectionStepNotAllowed: (status: string) => new DomainError('Ese pedido aún no se cobra', 'COLLECTION_STEP_NOT_ALLOWED', { status }),
+  /** La cuenta no es suya o la imagen no es un QR que haya subido él. */
+  collectionAccountNotFound: () => new NotFoundError('COLLECTION_ACCOUNT_NOT_FOUND', 'Esa cuenta de cobro no es tuya'),
   /** El mismo evento de la cola sin señal ya se aplicó a otro pedido (no debería pasar: id generado en el teléfono). */
   eventConflict: () => new ConflictError('CLIENT_EVENT_CONFLICT', 'Ese cambio ya se registró en otro pedido'),
 };

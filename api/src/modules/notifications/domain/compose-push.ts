@@ -26,10 +26,13 @@ export function composePush(notification: PendingNotification, texts: PushTexts)
   const catalog = (texts[notification.language] ?? texts[FALLBACK_LANGUAGE]).push;
   const entry = catalog[notification.type];
   let template: Template | undefined;
-  if (notification.type === NOTIFICATION_TYPES.ORDER_STATUS_CHANGED && entry && !isTemplate(entry)) {
-    template = entry[notification.status ?? ''] ?? entry['_'];
-  } else if (isTemplate(entry)) {
+  if (isTemplate(entry)) {
     template = entry;
+  } else if (entry) {
+    // Una plantilla por variante: el estado nuevo en ORDER_STATUS_CHANGED; en los demás, params.variant (p. ej. cómo
+    // se resolvió una novedad). `_` es la de cualquier otro caso.
+    const variant = notification.type === NOTIFICATION_TYPES.ORDER_STATUS_CHANGED ? notification.status : notification.params?.variant;
+    template = entry[String(variant ?? '')] ?? entry['_'];
   }
   if (!template) return null;
 

@@ -3,13 +3,14 @@ import { DomainError } from '../../../shared/domain/domain.error';
 import {
   courier,
   MemoryAdjustmentReader,
+  MemoryCourierCollections,
   MemoryCourierTrips,
   MemoryCustomerDeliveries,
   MemoryOrderAdjustments,
   SpyPreparationSignal,
 } from '../../../../test/fulfillment/fakes';
 import { GeofenceProbe } from '../domain/ports/courier-trips';
-import { CourierTripUseCase, CustomerAdjustmentsUseCase, CustomerDeliveryUseCase, GeofenceUseCase } from './courier-trip.use-cases';
+import { CourierCollectionsUseCase, CourierTripUseCase, CustomerAdjustmentsUseCase, CustomerDeliveryUseCase, GeofenceUseCase } from './courier-trip.use-cases';
 import { DecideFailure } from '../domain/ports/adjustments';
 import { Trip } from '../domain/ports/courier-trips';
 
@@ -144,6 +145,73 @@ describe('CustomerDeliveryUseCase', () => {
     expect(await codeOf(useCase.reportNotReceived(customer, 'RC-7K3M'))).toBe('ORDER_NOT_FOUND');
     deliveries.result = { ok: false, reason: 'STEP', status: 'PREPARING' };
     expect(await codeOf(useCase.reportNotReceived(customer, 'RC-7K3M'))).toBe('DELIVERY_STEP_NOT_ALLOWED');
+  });
+
+  it('"No lo recibí" lleva lo que cuenta el cliente, limpio y recortado; vacío no se guarda', async () => {
+    const deliveries = new MemoryCustomerDeliveries();
+    deliveries.result = { ok: true, status: 'DISPUTED', changed: true };
+    const useCase = new CustomerDeliveryUseCase(deliveries, { kick: jest.fn() } as unknown as Notifier, new SpyPreparationSignal());
+    expect(await useCase.reportNotReceived(customer, 'RC-7K3M', '  Nadie me tocó la puerta  ')).toEqual({ orderCode: 'RC-7K3M', status: 'DISPUTED' });
+    await useCase.reportNotReceived(customer, 'RC-7K3M', '   ');
+    await useCase.reportNotReceived(customer, 'RC-7K3M', 'x'.repeat(900));
+    expect(deliveries.calls.map((c) => c.description?.length ?? null)).toEqual([23, null, 500]);
+  });
+});
+
+describe('CourierCollectionsUseCase (H10.2)', () => {
+  const setupCollections = () => {
+    const collections = new MemoryCourierCollections();
+    return { collections, useCase: new CourierCollectionsUseCase(collections) };
+  };
+
+  it('efectivo + Nequi: cada pago lleva la cuenta solo si el medio es de cuenta (la pone la API, no la app)', async () => {
+    const { collections, useCase } = setupCollections();
+    const result = await useCase.record(courier, 'RC-7K3M', [{ paymentMethod: 'CASH', amount: '20000' }, { paymentMethod: 'NEQUI', amount: '13500.50' }], { clientEventId: EVENT, queued: false }, now);
+    expect(result).toEqual({ orderCode: 'RC-7K3M', replayed: false });
+    expect(collections.recorded[0]).toMatchObject({
+      courier: 'domiciliario-1',
+      at: now,
+      payments: [
+        { paymentMethod: 'CASH', amount: '20000', collectionAccountId: null },
+        { paymentMethod: 'NEQUI', amount: '13500.50', collectionAccountId: 'cuenta-nequi' },
+      ],
+    });
+  });
+
+  it('sin señal toma la hora del teléfono si es coherente', async () => {
+    const { collections, useCase } = setupCollections();
+    const phone = new Date(now.getTime() - 20 * 60_000);
+    await useCase.record(courier, 'RC-7K3M', [{ paymentMethod: 'CASH', amount: '5000' }], { clientEventId: EVENT, queued: true, occurredAt: phone }, now);
+    expect(collections.recorded[0].at).toEqual(phone);
+  });
+
+  it('rechaza antes de tocar la base: medio sin cuenta, medio repetido, montos inválidos', async () => {
+    const { collections, useCase } = setupCollections();
+    const problem = async (payments: { paymentMethod: string; amount: string }[]) =>
+      ((await useCase.record(courier, 'RC-7K3M', payments, { clientEventId: EVENT, queued: false }, now).catch((e: DomainError) => e)) as DomainError).details?.problem;
+    expect(await problem([{ paymentMethod: 'DAVIPLATA', amount: '1000' }])).toBe('NO_ACCOUNT');
+    expect(await problem([{ paymentMethod: 'CASH', amount: '1000' }, { paymentMethod: 'CASH', amount: '2000' }])).toBe('REPEATED_METHOD');
+    expect(await problem([{ paymentMethod: 'CASH', amount: '0' }])).toBe('AMOUNT');
+    expect(await problem([{ paymentMethod: 'BITCOIN', amount: '1000' }])).toBe('METHOD');
+    expect(await problem([])).toBe('EMPTY');
+    expect(collections.recorded).toHaveLength(0);
+  });
+
+  it('pedido que no llevó: 404; aún en el local: COLLECTION_STEP_NOT_ALLOWED; reenvío: replayed', async () => {
+    const { collections, useCase } = setupCollections();
+    const pay = () => useCase.record(courier, 'RC-7K3M', [{ paymentMethod: 'CASH', amount: '1000' }], { clientEventId: EVENT, queued: false }, now);
+    collections.result = { ok: false, reason: 'NOT_FOUND' };
+    expect(await codeOf(pay())).toBe('COLLECTION_ORDER_NOT_FOUND');
+    collections.result = { ok: false, reason: 'STEP', status: 'PREPARING' };
+    expect(await codeOf(pay())).toBe('COLLECTION_STEP_NOT_ALLOWED');
+    collections.result = { ok: true, replayed: true };
+    expect(await pay()).toEqual({ orderCode: 'RC-7K3M', replayed: true });
+  });
+
+  it('el QR solo en una cuenta suya', async () => {
+    const { useCase } = setupCollections();
+    expect((await useCase.setQr(courier, 'cuenta-nequi', 'qr-1')).qrFileId).toBe('qr-1');
+    expect(await codeOf(useCase.setQr(courier, 'cuenta-ajena', 'qr-1'))).toBe('COLLECTION_ACCOUNT_NOT_FOUND');
   });
 });
 

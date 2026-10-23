@@ -16,6 +16,9 @@ import { TripRef } from '../../src/modules/fulfillment/domain/ports/courier-trip
 import { PrismaOrderAdjustments } from '../../src/modules/fulfillment/infrastructure/prisma-order-adjustments';
 import { readOrderAdjustments } from '../../src/modules/fulfillment/infrastructure/adjustment-read';
 import { rankSubstitutes } from '../../src/modules/fulfillment/domain/adjustments';
+import { PrismaCourierCollections } from '../../src/modules/fulfillment/infrastructure/prisma-courier-collections';
+import { PrismaDeskReader } from '../../src/modules/operations/infrastructure/prisma-desk.reader';
+import { PrismaDeskActions } from '../../src/modules/operations/infrastructure/prisma-desk.actions';
 
 /**
  * E08 en PostgreSQL (Docs/14-base-de-datos/E08-modo-domiciliario.md): geocercas con ST_Covers / ST_DWithin,
@@ -35,6 +38,9 @@ const maintenance = new PrismaDispatchMaintenance(service, ids);
 const customers = new PrismaCustomerDeliveries(service, ids);
 const review = new PrismaDeliveryReviewWatch(service, ids);
 const adjustments = new PrismaOrderAdjustments(service, ids);
+const collections = new PrismaCourierCollections(service, ids);
+const deskReader = new PrismaDeskReader(service, ids);
+const deskActions = new PrismaDeskActions(service, ids);
 
 type Db = Prisma.TransactionClient | PrismaClient;
 
@@ -161,6 +167,26 @@ const command = (s: Scenario, ref: TripRef, occurredAt = new Date()) => ({
 
 const refOf = async (s: Scenario) => (await trips.ref(s.courierId, s.orderCode))!;
 
+/** Una novedad abierta que pone el pedido en disputa, reportada por el cliente o el personal. */
+async function openIncident(tx: Db, s: Scenario, reporterId: string) {
+  const [incident] = await tx.$queryRaw<{ id: string }[]>`
+    INSERT INTO incidents (order_id, incident_type_id, reported_by_user_id, status_id)
+    VALUES (${s.orderId}::uuid, ${id('incident_types', 'OTHER')}, ${reporterId}::uuid, ${id('incident_statuses', 'OPEN')}) RETURNING id`;
+  await tx.$executeRaw`INSERT INTO incident_status_history (incident_id, to_status_id, changed_by_user_id) VALUES (${incident.id}::uuid, ${id('incident_statuses', 'OPEN')}, ${reporterId}::uuid)`;
+}
+
+/** Cierra como cancelada la novedad sin resolver del pedido, para poder sacarlo de la disputa. */
+async function resolveIncidents(tx: Db, s: Scenario) {
+  const open = await tx.$queryRaw<{ id: string; status_id: number }[]>`
+    SELECT i.id, i.status_id FROM incidents i JOIN incident_statuses st ON st.id = i.status_id AND NOT st.is_terminal WHERE i.order_id = ${s.orderId}::uuid`;
+  for (const incident of open) {
+    await tx.$executeRaw`UPDATE incidents SET resolution_type_id = ${id('incident_resolution_types', 'RESOLVED_AS_CANCELLED')}, resolution_notes = 'Cierre de la prueba' WHERE id = ${incident.id}::uuid`;
+    await tx.$executeRaw`
+      INSERT INTO incident_status_history (incident_id, from_status_id, to_status_id, changed_by_user_id)
+      VALUES (${incident.id}::uuid, ${incident.status_id}, ${id('incident_statuses', 'RESOLVED')}, ${s.staffId}::uuid)`;
+  }
+}
+
 /** Deja el pedido en un estado terminal por un camino válido de la máquina de estados, y cierra los turnos. */
 async function finish(s: Scenario) {
   const status = await statusOf(s.orderId);
@@ -170,14 +196,14 @@ async function finish(s: Scenario) {
       await history(tx, s.orderId, 'PREPARING', 'ON_THE_WAY', s.courierId, 'COURIER');
       current = 'ON_THE_WAY';
     }
-    if (current === 'ON_THE_WAY' || current === 'ARRIVING') {
-      await history(tx, s.orderId, current, 'DISPUTED', s.customerId, 'CUSTOMER');
+    if (current === 'ON_THE_WAY' || current === 'ARRIVING' || current === 'PENDING_REVIEW') {
+      // Un pedido en disputa tiene su novedad abierta (E10): la abre el personal y lo pasa a DISPUTED.
+      const byStaff = current === 'PENDING_REVIEW';
+      await openIncident(tx, s, byStaff ? s.staffId : s.customerId);
+      await history(tx, s.orderId, current, 'DISPUTED', byStaff ? s.staffId : s.customerId, byStaff ? 'OPERATOR' : 'CUSTOMER');
       current = 'DISPUTED';
     }
-    if (current === 'PENDING_REVIEW') {
-      await history(tx, s.orderId, current, 'DISPUTED', s.staffId, 'OPERATOR');
-      current = 'DISPUTED';
-    }
+    if (current === 'DISPUTED') await resolveIncidents(tx, s);
     if (current !== 'CANCELLED' && current !== 'DELIVERED') {
       await tx.$executeRaw`
         UPDATE order_assignments SET released_at = clock_timestamp(), release_reason_id = ${id('assignment_release_reasons', 'ORDER_CANCELLED')}, released_by_user_id = ${s.staffId}::uuid
@@ -473,8 +499,8 @@ describe('Cierre de la entrega con código (E10)', () => {
       expect(mine!.delivery).toMatchObject({ code: null, proofFileId: photo });
       expect(mine!.delivery.reviewClosesAt!.getTime()).toBeGreaterThan(Date.now() + 7100_000);
 
-      expect(await customers.reportNotReceived('00000000-0000-4000-8000-000000000000', s.orderCode)).toEqual({ ok: false, reason: 'NOT_FOUND' });
-      expect(await customers.reportNotReceived(s.customerId, s.orderCode)).toEqual({ ok: true, status: 'DISPUTED', changed: true });
+      expect(await customers.reportNotReceived('00000000-0000-4000-8000-000000000000', s.orderCode, null)).toEqual({ ok: false, reason: 'NOT_FOUND' });
+      expect(await customers.reportNotReceived(s.customerId, s.orderCode, 'No llegó nadie')).toEqual({ ok: true, status: 'DISPUTED', changed: true });
       expect(await lastChange(s)).toEqual({ to: 'DISPUTED', source: 'USER_ACTION', role: 'CUSTOMER' });
       expect(await customers.confirmReceived(s.customerId, s.orderCode)).toEqual({ ok: false, reason: 'STEP', status: 'DISPUTED' });
     } finally {
@@ -646,6 +672,193 @@ describe('Producto faltante en PostgreSQL (E09)', () => {
       expect(await assignmentOf(s)).toEqual({ released: true, reason: 'ORDER_CANCELLED' });
     } finally {
       await finish(s);
+    }
+  });
+});
+
+describe('Cobro, novedades y panel de pedidos (E10)', () => {
+  const villagarzon = async () => (await prisma.$queryRaw<{ id: number }[]>`SELECT id FROM municipalities WHERE dane_code = '86885'`)[0].id;
+  const staff = (s: Scenario) => ({ userId: s.staffId, role: 'ADMIN' as const });
+  const alertsOf = async (s: Scenario) => {
+    const order = (await deskReader.board(await villagarzon(), 'ADMIN')).find((o) => o.code === s.orderCode);
+    return order ? order.alerts.map((a) => a.code).sort() : null;
+  };
+  const noticesOf = (s: Scenario, type: string) => prisma.$queryRaw<{ recipient: string; variant: string | null }[]>`
+    SELECT n.recipient_user_id AS recipient, n.params->>'variant' AS variant
+    FROM notifications n JOIN notification_types t ON t.id = n.notification_type_id AND t.code = ${type}
+    WHERE n.order_id = ${s.orderId}::uuid ORDER BY n.created_at`;
+  const totalOf = async (s: Scenario) =>
+    (await prisma.$queryRaw<{ total: string }[]>`SELECT customer_total::text AS total FROM v_order_amounts WHERE order_id = ${s.orderId}::uuid`)[0].total;
+  const nequiAccount = async (courierId: string) =>
+    (
+      await prisma.$queryRaw<{ id: string }[]>`
+        INSERT INTO courier_collection_accounts (courier_user_id, payment_method_id, account_number, holder_name)
+        VALUES (${courierId}::uuid, ${id('payment_methods', 'NEQUI')}, '3001234567', 'Domiciliario E10') RETURNING id`
+    )[0].id;
+  /** Hasta PENDING_REVIEW: el código se bloquea y deja la foto de entrega. */
+  async function withProof(s: Scenario) {
+    await onTheWay(s);
+    await ping(s.courierId, offset(s.home.lat, s.home.lng, -20), 1);
+    await probe.evaluate(s.courierId);
+    const { code: real } = (await prisma.$queryRaw<{ code: string }[]>`SELECT code FROM order_delivery_codes WHERE order_id = ${s.orderId}::uuid`)[0];
+    for (let i = 0; i < 5; i++) await trips.deliverWithCode({ ...command(s, await refOf(s)), deliveryCode: real === '0000' ? '1111' : '0000' });
+    expect(await trips.deliverWithProof({ ...command(s, await refOf(s)), fileId: await receipt(s.courierId, 'DELIVERY_PROOF') })).toEqual({ ok: true });
+    expect(await statusOf(s.orderId)).toBe('PENDING_REVIEW');
+  }
+
+  it('H10.2: el cobro en dos medios va a la caja del día con la cuenta del domiciliario, una sola vez; si no cuadra, el panel lo marca', async () => {
+    const s = await acceptedOrder();
+    try {
+      await onTheWay(s);
+      const account = await nequiAccount(s.courierId);
+      expect((await collections.methods(s.courierId)).find((m) => m.code === 'NEQUI')).toEqual({ code: 'NEQUI', isAccountBased: true, accountId: account });
+      // Un medio de cuenta sin la cuenta que recibió el dinero no entra al libro.
+      await expect(collections.record(s.courierId, s.orderCode, [{ paymentMethod: 'NEQUI', amount: '1000', collectionAccountId: null }], new Date())).rejects.toThrow();
+      // Otro domiciliario no cobra un pedido ajeno.
+      const stranger = await acceptedOrder();
+      try {
+        expect(await collections.record(stranger.courierId, s.orderCode, [{ paymentMethod: 'CASH', amount: '1000', collectionAccountId: null }], new Date())).toEqual({ ok: false, reason: 'NOT_FOUND' });
+      } finally {
+        await finish(stranger);
+      }
+
+      // Entregado con el código y sin cobro: queda pendiente para el domiciliario y el panel lo avisa.
+      const { code: real } = (await prisma.$queryRaw<{ code: string }[]>`SELECT code FROM order_delivery_codes WHERE order_id = ${s.orderId}::uuid`)[0];
+      expect(await trips.deliverWithCode({ ...command(s, await refOf(s)), deliveryCode: real })).toEqual({ ok: true });
+      expect((await collections.pending(s.courierId)).map((p) => p.code)).toEqual([s.orderCode]);
+      expect(await alertsOf(s)).toEqual(['COLLECTION_MISSING']);
+
+      const total = Number(await totalOf(s));
+      const payments = [
+        { paymentMethod: 'CASH', amount: '10000', collectionAccountId: null },
+        { paymentMethod: 'NEQUI', amount: String(total - 10000 - 500), collectionAccountId: account },
+      ];
+      expect(await collections.record(s.courierId, s.orderCode, payments, new Date())).toEqual({ ok: true, replayed: false });
+      // Reenvío desde la cola sin señal: no se repite.
+      expect(await collections.record(s.courierId, s.orderCode, payments, new Date())).toEqual({ ok: true, replayed: true });
+      const [ledger] = await prisma.$queryRaw<{ n: number; total: string; accounts: number; same_box: boolean }[]>`
+        SELECT count(*)::int AS n, sum(m.amount)::text AS total, count(m.collection_account_id)::int AS accounts,
+               count(DISTINCT m.cash_box_id) = 1 AS same_box
+        FROM cash_movements m JOIN cash_movement_types t ON t.id = m.movement_type_id AND t.code = 'COLLECTION'
+        WHERE m.order_id = ${s.orderId}::uuid`;
+      expect({ ...ledger, total: Number(ledger.total) }).toEqual({ n: 2, total: total - 500, accounts: 1, same_box: true });
+      expect(await collections.pending(s.courierId)).toEqual([]);
+      // Cobró $500 menos que el total: el panel lo marca para cuadrar la caja.
+      expect(await alertsOf(s)).toEqual(['COLLECTION_MISMATCH']);
+      const detail = (await deskReader.detail(s.orderCode, 'ADMIN'))!;
+      expect(detail.collection!.payments.map((p) => p.paymentMethod)).toEqual(['CASH', 'NEQUI']);
+      expect(detail.timeline.filter((e) => e.kind === 'COLLECTION')).toHaveLength(2);
+      expect((await trips.active(s.courierId, 'es'))).toBeNull();
+    } finally {
+      await finish(s);
+    }
+  });
+
+  it('H10.3 y H10.5: "No lo recibí" abre el caso y avisa al domiciliario; sin resolverlo no sale de la disputa; resuelto como entregado avisa a los dos', async () => {
+    const s = await acceptedOrder();
+    try {
+      await withProof(s);
+      expect(await alertsOf(s)).toEqual(['PROOF_REVIEW']);
+      expect(await customers.reportNotReceived(s.customerId, s.orderCode, 'Nadie me tocó la puerta')).toEqual({ ok: true, status: 'DISPUTED', changed: true });
+      expect((await noticesOf(s, 'INCIDENT_OPENED')).map((n) => n.recipient)).toEqual([s.courierId]);
+      const board = (await deskReader.board(await villagarzon(), 'ADMIN')).find((o) => o.code === s.orderCode)!;
+      expect(board.alerts.map((a) => a.code)).toEqual(['INCIDENT']);
+      expect(board.incident).toMatchObject({ type: 'NOT_RECEIVED', status: 'OPEN', description: 'Nadie me tocó la puerta', reportedByRole: 'CUSTOMER', takenBy: null });
+      expect((await orders.findMine(s.customerId, s.orderCode, 'es'))!.incident).toMatchObject({ status: 'OPEN', resolution: null });
+
+      // La base no deja sacar el pedido de la disputa sin cerrar el caso, ni abrir un segundo caso.
+      await expect(prisma.$transaction((tx) => history(tx, s.orderId, 'DISPUTED', 'DELIVERED', s.staffId, 'OPERATOR'))).rejects.toThrow();
+      await expect(
+        prisma.$executeRaw`INSERT INTO incidents (order_id, incident_type_id, reported_by_user_id, status_id)
+          VALUES (${s.orderId}::uuid, ${id('incident_types', 'OTHER')}, ${s.customerId}::uuid, ${id('incident_statuses', 'OPEN')})`,
+      ).rejects.toThrow();
+
+      const incidentId = board.incident!.id;
+      expect(await deskActions.takeIncident(staff(s), incidentId)).toEqual({ ok: true, status: 'DISPUTED' });
+      expect(await deskActions.takeIncident(staff(s), incidentId)).toEqual({ ok: false, reason: 'CLOSED', status: 'IN_REVIEW' });
+      expect((await deskReader.board(await villagarzon(), 'ADMIN')).find((o) => o.code === s.orderCode)!.incident!.takenBy).not.toBeNull();
+      // Un caso que abre disputa debe dejar el pedido en algún estado.
+      expect(await deskActions.resolveIncident(staff(s), incidentId, 'NO_ORDER_CHANGE', 'Sin cambio')).toEqual({ ok: false, reason: 'RESOLUTION' });
+      expect(await deskActions.resolveIncident(staff(s), incidentId, 'RESOLVED_AS_DELIVERED', 'Llamé al cliente: lo recibió su hermana')).toEqual({ ok: true, status: 'DELIVERED' });
+      expect(await deskActions.resolveIncident(staff(s), incidentId, 'RESOLVED_AS_DELIVERED', 'Otra vez')).toEqual({ ok: false, reason: 'CLOSED', status: 'RESOLVED' });
+
+      expect(await statusOf(s.orderId)).toBe('DELIVERED');
+      const resolved = await noticesOf(s, 'INCIDENT_RESOLVED');
+      expect(resolved.map((n) => n.recipient).sort()).toEqual([s.customerId, s.courierId].sort());
+      expect(new Set(resolved.map((n) => n.variant))).toEqual(new Set(['RESOLVED_AS_DELIVERED']));
+      // El cliente no recibe además el aviso genérico de "entregado" al salir de la disputa.
+      const [generic] = await prisma.$queryRaw<{ n: number }[]>`
+        SELECT count(*)::int AS n FROM notifications n JOIN order_status_history h ON h.id = n.order_status_history_id
+        JOIN order_statuses f ON f.id = h.from_status_id AND f.code = 'DISPUTED' WHERE h.order_id = ${s.orderId}::uuid`;
+      expect(generic.n).toBe(0);
+      expect((await orders.findMine(s.customerId, s.orderCode, 'es'))!.incident).toMatchObject({ status: 'RESOLVED', resolution: 'RESOLVED_AS_DELIVERED' });
+
+      const detail = (await deskReader.detail(s.orderCode, 'ADMIN'))!;
+      expect(detail.proof).toMatchObject({ distanceMeters: expect.any(Number) });
+      expect(detail.timeline.filter((e) => e.kind === 'INCIDENT').map((e) => (e as { status: string }).status)).toEqual(['OPEN', 'IN_REVIEW', 'RESOLVED']);
+      expect(detail.timeline.at(-1)).toMatchObject({ kind: 'STATUS', to: 'DELIVERED', note: 'Llamé al cliente: lo recibió su hermana' });
+      const [audit] = await prisma.$queryRaw<{ n: number }[]>`
+        SELECT count(*)::int AS n FROM v_staff_activity WHERE actor_user_id = ${s.staffId}::uuid AND action IN ('INCIDENT_TAKEN', 'INCIDENT_RESOLVED')
+          AND occurred_at > now() - interval '1 minute'`;
+      expect(audit.n).toBeGreaterThanOrEqual(2);
+    } finally {
+      await finish(s);
+    }
+  });
+
+  it('H10.5: la foto se aprueba, o se investiga y luego se cancela con el motivo INCIDENT_RESOLUTION', async () => {
+    const approved = await acceptedOrder();
+    try {
+      await withProof(approved);
+      expect(await deskActions.reviewProof(staff(approved), approved.orderCode, 'DELIVERED', 'Foto clara en la puerta', 'OTHER')).toEqual({ ok: true, status: 'DELIVERED' });
+      expect(await lastChange(approved)).toEqual({ to: 'DELIVERED', source: 'USER_ACTION', role: 'ADMIN' });
+      expect(await deskActions.reviewProof(staff(approved), approved.orderCode, 'DELIVERED', 'Otra vez', 'OTHER')).toEqual({ ok: false, reason: 'STEP', status: 'DELIVERED' });
+    } finally {
+      await finish(approved);
+    }
+
+    const s = await acceptedOrder();
+    try {
+      await withProof(s);
+      // Solo un tipo que abre disputa sirve para investigar.
+      expect(await deskActions.reviewProof(staff(s), s.orderCode, 'INVESTIGATE', 'La foto no muestra la casa', 'WRONG_ORDER')).toEqual({ ok: false, reason: 'TYPE' });
+      expect(await deskActions.reviewProof(staff(s), s.orderCode, 'INVESTIGATE', 'La foto no muestra la casa', 'OTHER')).toEqual({ ok: true, status: 'DISPUTED' });
+      expect((await noticesOf(s, 'INCIDENT_OPENED')).map((n) => n.recipient)).toEqual([s.courierId]);
+      const incident = (await deskReader.board(await villagarzon(), 'ADMIN')).find((o) => o.code === s.orderCode)!.incident!;
+      expect(incident).toMatchObject({ status: 'IN_REVIEW', reportedByRole: 'STAFF' });
+      expect(await deskActions.resolveIncident(staff(s), incident.id, 'RESOLVED_AS_CANCELLED', 'El cliente no estaba; se devolvió')).toEqual({ ok: true, status: 'CANCELLED' });
+      const [cancel] = await prisma.$queryRaw<{ reason: string; notes: string }[]>`
+        SELECT r.code AS reason, c.notes FROM order_cancellations c JOIN cancellation_reasons r ON r.id = c.cancellation_reason_id WHERE c.order_id = ${s.orderId}::uuid`;
+      expect(cancel).toEqual({ reason: 'INCIDENT_RESOLUTION', notes: 'El cliente no estaba; se devolvió' });
+      expect((await orders.findMine(s.customerId, s.orderCode, 'es'))!.cancellationReason).toBe('INCIDENT_RESOLUTION');
+    } finally {
+      await finish(s);
+    }
+  });
+
+  it('H10.5: el personal cancela antes de la compra con un motivo propio y un comentario, y el domiciliario queda libre', async () => {
+    const s = await acceptedOrder();
+    try {
+      const reasons = await deskReader.cancellationReasons();
+      expect(reasons).not.toContain('INCIDENT_RESOLUTION');
+      expect((await deskReader.board(await villagarzon(), 'ADMIN')).find((o) => o.code === s.orderCode)!.cancellable).toBe(true);
+      expect(await deskActions.cancel(staff(s), s.orderCode, 'INCIDENT_RESOLUTION', 'Prueba')).toEqual({ ok: false, reason: 'REASON' });
+      expect(await deskActions.cancel(staff(s), s.orderCode, reasons[0], 'El local cerró antes de tiempo')).toEqual({ ok: true, status: 'CANCELLED' });
+      expect(await assignmentOf(s)).toEqual({ released: true, reason: 'ORDER_CANCELLED' });
+      expect((await noticesOf(s, 'TRIP_CANCELLED')).map((n) => n.recipient)).toEqual([s.courierId]);
+      expect(await deskActions.cancel(staff(s), s.orderCode, reasons[0], 'Otra vez')).toEqual({ ok: false, reason: 'STEP', status: 'CANCELLED' });
+    } finally {
+      await finish(s);
+    }
+
+    // Ya comprado no se cancela desde aquí.
+    const bought = await acceptedOrder();
+    try {
+      await onTheWay(bought);
+      expect((await deskReader.board(await villagarzon(), 'ADMIN')).find((o) => o.code === bought.orderCode)!.cancellable).toBe(false);
+      expect(await deskActions.cancel(staff(bought), bought.orderCode, (await deskReader.cancellationReasons())[0], 'Ya no lo quiere')).toMatchObject({ ok: false, reason: 'STEP' });
+    } finally {
+      await finish(bought);
     }
   });
 });

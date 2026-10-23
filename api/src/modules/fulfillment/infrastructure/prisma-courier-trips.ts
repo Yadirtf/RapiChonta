@@ -6,6 +6,7 @@ import { ROLES } from '../../identity/domain/identity.codes';
 import { CatalogIds } from '../../../shared/infrastructure/prisma/catalog-ids';
 import { PrismaService } from '../../../shared/infrastructure/prisma/prisma.service';
 import {
+  COLLECTION_MOVEMENT,
   COMPLETED_RELEASE,
   DEFAULT_PROOF_AFTER_SECONDS,
   DELIVERY_CODE_MAX_ATTEMPTS,
@@ -18,6 +19,7 @@ import {
   TripStatusCode,
 } from '../domain/fulfillment.codes';
 import { ADJUSTMENT_NOTICES, ADJUSTMENT_SETTINGS, DEFAULT_ADJUSTMENT_TIMEOUT_SECONDS, ReportedLine } from '../domain/adjustments';
+import { formatCents, totalCents } from '../domain/collection';
 import { CourierTrips, Trip, TripCommand, TripFailure, TripRef, TripResult } from '../domain/ports/courier-trips';
 
 type Tx = Prisma.TransactionClient;
@@ -52,6 +54,7 @@ const proofAvailableAt = (d: DeliveryState): Date | null => {
 };
 
 const point = (lat: number, lng: number) => GeoPoint.create(lat, lng);
+
 
 /** Un error de la base dentro de $queryRaw llega con el SQLSTATE y el nombre de la restricción en el texto. */
 const isClientEventReplay = (error: unknown) =>
@@ -104,6 +107,7 @@ export class PrismaCourierTrips extends CourierTrips {
         arrived_at: Date | null;
         proof_after: number | null;
         failed_attempts: number;
+        collection: { paymentMethod: string; amount: string }[] | null;
       }[]
     >`
       SELECT o.id AS order_id, o.code, s.code AS status, s.reveals_delivery_details AS reveals,
@@ -126,7 +130,12 @@ export class PrismaCourierTrips extends CourierTrips {
               WHERE h.order_id = o.id AND ts.code = ${TRIP_STATUSES.ARRIVING}) AS arrived_at,
              (SELECT value::float8 FROM v_current_settings
               WHERE key = ${FULFILLMENT_SETTINGS.PROOF_AFTER_SECONDS} AND municipality_id = e.municipality_id) AS proof_after,
-             (SELECT count(*)::int FROM delivery_code_attempts d WHERE d.order_id = o.id) AS failed_attempts
+             (SELECT count(*)::int FROM delivery_code_attempts d WHERE d.order_id = o.id) AS failed_attempts,
+             (SELECT json_agg(json_build_object('paymentMethod', cpm.code, 'amount', cm.amount::text) ORDER BY cm.created_at)
+              FROM cash_movements cm
+              JOIN cash_movement_types ct ON ct.id = cm.movement_type_id AND ct.code = ${COLLECTION_MOVEMENT}
+              JOIN payment_methods cpm ON cpm.id = cm.payment_method_id
+              WHERE cm.order_id = o.id) AS collection
       FROM order_assignments a
       JOIN orders o ON o.id = a.order_id
       JOIN order_statuses s ON s.id = o.status_id
@@ -205,6 +214,7 @@ export class PrismaCourierTrips extends CourierTrips {
               codeAttemptsLeft: Math.max(0, DELIVERY_CODE_MAX_ATTEMPTS - row.failed_attempts),
             }
           : null,
+      collection: row.collection?.length ? { total: formatCents(totalCents(row.collection)), payments: row.collection } : null,
     };
   }
 

@@ -15,8 +15,12 @@
     "PREPARATION_TIME_REACHED": { "title": "Is order {code} ready?", "body": "The preparation time at {store} is up. Tap to answer." },
     "ADJUSTMENT_REQUESTED": { "title": "Your courier needs a decision", "body": "Something in order {code} is missing or changed price. Reply soon." },
     "ADJUSTMENT_RESOLVED": { "title": "Order {code} has an answer", "body": "See what stays on the list and carry on shopping." },
-    "INCIDENT_OPENED": { "title": "Update on order {code}", "body": "We opened a case and will let you know once it's solved." },
-    "INCIDENT_RESOLVED": { "title": "Issue resolved", "body": "We closed the case for order {code}." },
+    "INCIDENT_OPENED": { "title": "The customer says order {code} didn't arrive", "body": "RapiChonta is reviewing your delivery photo. Keep your phone close in case we call." },
+    "INCIDENT_RESOLVED": {
+      "RESOLVED_AS_DELIVERED": { "title": "We reviewed order {code}", "body": "It stays as delivered. Thanks for your patience." },
+      "RESOLVED_AS_CANCELLED": { "title": "We reviewed order {code}", "body": "We cancelled it. Tap to see the case details." },
+      "_": { "title": "We reviewed order {code}", "body": "The case is closed. Tap to see how it ended." }
+    },
     "DELIVERY_PROOF_PENDING": { "title": "Delivery photo missing", "body": "Take the delivery photo for order {code}." },
     "TRIP_CANCELLED": { "title": "Order {code} was cancelled", "body": "No need to buy it anymore. You are free for another order." }
   }

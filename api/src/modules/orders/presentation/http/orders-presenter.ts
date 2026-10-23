@@ -68,6 +68,16 @@ export class OrdersPresenter {
         reviewClosesAt: o.delivery.reviewClosesAt?.toISOString() ?? null,
       },
       adjustments: o.adjustments.map(adjustmentView),
+      incident: o.incident
+        ? {
+            status: o.incident.status,
+            reportedAt: o.incident.reportedAt.toISOString(),
+            reviewStartedAt: o.incident.reviewStartedAt?.toISOString() ?? null,
+            resolvedAt: o.incident.resolvedAt?.toISOString() ?? null,
+            resolution: o.incident.resolution,
+          }
+        : null,
+      cancellationReason: o.cancellationReason,
     };
   }
 
