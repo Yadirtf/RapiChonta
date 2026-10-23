@@ -13,9 +13,11 @@ import '../../../establishments/presentation/format/money.dart';
 import '../../../establishments/presentation/providers/establishments_providers.dart';
 import '../../../establishments/presentation/widgets/storefront.dart';
 import '../../../notifications/presentation/push_controller.dart';
+import '../../domain/entities/adjustment.dart';
 import '../../domain/entities/order.dart';
 import '../../domain/repositories/order_repository.dart';
 import '../providers/orders_providers.dart';
+import '../widgets/adjustment_desk.dart';
 import '../widgets/delivery_pin_map.dart';
 import '../widgets/order_route.dart';
 import '../widgets/order_visuals.dart';
@@ -92,6 +94,10 @@ class _OrderDetailPageState extends ConsumerState<OrderDetailPage> {
                     children: [
                       if (widget.placed) _PlacedBanner(code: order.code),
                       _StatusTicket(order: order),
+                      if (AdjustmentRules.openOf(order.adjustments) case final adjustment? when order.status == 'AWAITING_CUSTOMER') ...[
+                        const SizedBox(height: 16),
+                        AdjustmentDesk(key: ValueKey(adjustment.id), order: order, adjustment: adjustment, detailKey: key),
+                      ],
                       if (order.active && (order.preparation?.delayed ?? false)) ...[const SizedBox(height: 12), _HighDemand(order: order)],
                       if (order.delivery.code != null) ...[const SizedBox(height: 16), _DeliveryCodePass(order: order, detailKey: key)],
                       if (order.status == 'PENDING_REVIEW') ...[const SizedBox(height: 16), _LeftWithPhoto(order: order, detailKey: key)],
@@ -478,6 +484,7 @@ class _Receipt extends StatelessWidget {
                   ),
               ]),
             ),
+          AdjustmentChanges(adjustments: order.adjustments),
           Divider(height: 24, color: AppColors.ink.withValues(alpha: 0.12)),
           _Row(label: l10n.ordersProducts, value: formatPesos(order.itemsCents, language)),
           _Row(label: l10n.ordersDelivery(order.zoneName), value: formatPesos(order.feeCents, language)),

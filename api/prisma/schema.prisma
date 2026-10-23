@@ -324,6 +324,8 @@ model User {
   cashMovementsCreated   CashMovement[]
   preparationDelays      OrderPreparationDelay[]
   deliveryCodeAttempts   DeliveryCodeAttempt[]
+  adjustmentsReported    OrderAdjustmentRequest[]
+  adjustmentsDecided     OrderItemAdjustment[]
 
   @@index([statusId])
   @@map("users")
@@ -1351,40 +1353,42 @@ model StatusChangeSource {
 
 /// El pedido guarda solo lo suyo: totales, comisión en pesos y domiciliario se calculan (v_order_amounts, E07).
 model Order {
-  id                String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  code              String                  @unique @db.VarChar(12)
-  customerUserId    String                  @map("customer_user_id") @db.Uuid
-  establishmentId   String                  @map("establishment_id") @db.Uuid
-  deliveryAddressId String                  @map("delivery_address_id") @db.Uuid
-  recipientId       String?                 @map("recipient_id") @db.Uuid
-  deliveryZoneFeeId String                  @map("delivery_zone_fee_id") @db.Uuid
-  commissionRateId  String                  @map("commission_rate_id") @db.Uuid
-  paymentMethodId   Int                     @map("payment_method_id") @db.SmallInt
-  fulfillmentModeId Int                     @map("fulfillment_mode_id") @db.SmallInt
+  id                 String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code               String                   @unique @db.VarChar(12)
+  customerUserId     String                   @map("customer_user_id") @db.Uuid
+  establishmentId    String                   @map("establishment_id") @db.Uuid
+  deliveryAddressId  String                   @map("delivery_address_id") @db.Uuid
+  recipientId        String?                  @map("recipient_id") @db.Uuid
+  deliveryZoneFeeId  String                   @map("delivery_zone_fee_id") @db.Uuid
+  commissionRateId   String                   @map("commission_rate_id") @db.Uuid
+  paymentMethodId    Int                      @map("payment_method_id") @db.SmallInt
+  fulfillmentModeId  Int                      @map("fulfillment_mode_id") @db.SmallInt
   /// Estado actual: solo lo escribe el disparador de order_status_history.
-  statusId          Int                     @map("status_id") @db.SmallInt
-  customerNotes     String?                 @map("customer_notes") @db.VarChar(500)
-  createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
-  customer          User                    @relation(fields: [customerUserId], references: [id], onDelete: Restrict)
-  establishment     Establishment           @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
-  deliveryAddress   Address                 @relation(fields: [deliveryAddressId, customerUserId], references: [id, ownerUserId], onDelete: Restrict)
-  recipient         CustomerRecipient?      @relation(fields: [recipientId, customerUserId], references: [id, ownerUserId], onDelete: Restrict)
-  deliveryZoneFee   DeliveryZoneFee         @relation(fields: [deliveryZoneFeeId], references: [id], onDelete: Restrict)
-  commissionRate    CommissionRate          @relation(fields: [commissionRateId], references: [id], onDelete: Restrict)
-  paymentMethod     PaymentMethod           @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
-  fulfillmentMode   FulfillmentMode         @relation(fields: [fulfillmentModeId], references: [id], onDelete: Restrict)
-  status            OrderStatus             @relation(fields: [statusId], references: [id], onDelete: Restrict)
-  items             OrderItem[]
-  statusHistory     OrderStatusHistory[]
-  notifications     Notification[]
-  offers            OrderOffer[]
-  assignments       OrderAssignment[]
-  cashMovements     CashMovement[]
-  purchase          OrderPurchase?
-  preparationDelays OrderPreparationDelay[]
-  deliveryCode      OrderDeliveryCode?
-  deliveryAttempts  DeliveryCodeAttempt[]
-  deliveryProof     OrderDeliveryProof?
+  statusId           Int                      @map("status_id") @db.SmallInt
+  customerNotes      String?                  @map("customer_notes") @db.VarChar(500)
+  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  customer           User                     @relation(fields: [customerUserId], references: [id], onDelete: Restrict)
+  establishment      Establishment            @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  deliveryAddress    Address                  @relation(fields: [deliveryAddressId, customerUserId], references: [id, ownerUserId], onDelete: Restrict)
+  recipient          CustomerRecipient?       @relation(fields: [recipientId, customerUserId], references: [id, ownerUserId], onDelete: Restrict)
+  deliveryZoneFee    DeliveryZoneFee          @relation(fields: [deliveryZoneFeeId], references: [id], onDelete: Restrict)
+  commissionRate     CommissionRate           @relation(fields: [commissionRateId], references: [id], onDelete: Restrict)
+  paymentMethod      PaymentMethod            @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
+  fulfillmentMode    FulfillmentMode          @relation(fields: [fulfillmentModeId], references: [id], onDelete: Restrict)
+  status             OrderStatus              @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  items              OrderItem[]
+  statusHistory      OrderStatusHistory[]
+  notifications      Notification[]
+  offers             OrderOffer[]
+  assignments        OrderAssignment[]
+  cashMovements      CashMovement[]
+  purchase           OrderPurchase?
+  preparationDelays  OrderPreparationDelay[]
+  deliveryCode       OrderDeliveryCode?
+  deliveryAttempts   DeliveryCodeAttempt[]
+  deliveryProof      OrderDeliveryProof?
+  adjustmentRequests OrderAdjustmentRequest[]
+  cancellation       OrderCancellation?
 
   @@index([customerUserId, createdAt(sort: Desc)])
   @@index([customerUserId, statusId])
@@ -1395,13 +1399,17 @@ model Order {
 
 /// Línea del pedido: nombre, precio y tiempo se leen de la versión del producto (no se copian).
 model OrderItem {
-  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderId          String         @map("order_id") @db.Uuid
-  productVersionId String         @map("product_version_id") @db.Uuid
-  quantity         Int            @db.SmallInt
-  notes            String?        @db.VarChar(200)
-  order            Order          @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  productVersion   ProductVersion @relation(fields: [productVersionId], references: [id], onDelete: Restrict)
+  id                 String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId            String                @map("order_id") @db.Uuid
+  productVersionId   String                @map("product_version_id") @db.Uuid
+  quantity           Int                   @db.SmallInt
+  notes              String?               @db.VarChar(200)
+  /// E09: línea sustituta, nacida de la decisión "cambiar por" de esta consulta.
+  originAdjustmentId String?               @unique @map("origin_adjustment_id") @db.Uuid
+  order              Order                 @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  productVersion     ProductVersion        @relation(fields: [productVersionId], references: [id], onDelete: Restrict)
+  originAdjustment   OrderItemAdjustment?  @relation("SubstituteLine", fields: [originAdjustmentId], references: [id], onDelete: Restrict)
+  adjustments        OrderItemAdjustment[] @relation("AdjustedLine")
 
   @@unique([id, orderId])
   @@index([orderId])
@@ -1803,4 +1811,100 @@ model OrderDeliveryProof {
   file    File   @relation(fields: [fileId], references: [id], onDelete: Restrict)
 
   @@map("order_delivery_proofs")
+}
+
+// ─────────────── E09 · Producto faltante ───────────────
+
+/// UNAVAILABLE, PRICE_CHANGED. requires_price: la línea consultada lleva el precio nuevo.
+model AdjustmentReason {
+  id            Int                   @id @default(autoincrement()) @db.SmallInt
+  code          String                @unique @db.VarChar(40)
+  sortOrder     Int                   @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?             @map("deactivated_at") @db.Timestamptz(6)
+  requiresPrice Boolean               @map("requires_price")
+  adjustments   OrderItemAdjustment[]
+
+  @@map("adjustment_reasons")
+}
+
+/// SUBSTITUTE, REMOVE_ITEM, ACCEPT_PRICE, CANCEL_ORDER, EXPIRED_REMOVED: lo que hace cada decisión, como datos.
+model AdjustmentDecision {
+  id                Int                   @id @default(autoincrement()) @db.SmallInt
+  code              String                @unique @db.VarChar(40)
+  sortOrder         Int                   @map("sort_order") @db.SmallInt
+  deactivatedAt     DateTime?             @map("deactivated_at") @db.Timestamptz(6)
+  removesItem       Boolean               @map("removes_item")
+  usesReportedPrice Boolean               @map("uses_reported_price")
+  createsSubstitute Boolean               @map("creates_substitute")
+  cancelsOrder      Boolean               @map("cancels_order")
+  /// La toma el sistema (vencimiento): sin usuario.
+  isAutomatic       Boolean               @map("is_automatic")
+  adjustments       OrderItemAdjustment[]
+
+  @@map("adjustment_decisions")
+}
+
+/// Una consulta del domiciliario al cliente: mueve el pedido a AWAITING_CUSTOMER y tiene el plazo común.
+model OrderAdjustmentRequest {
+  id               String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId          String                @map("order_id") @db.Uuid
+  reportedByUserId String                @map("reported_by_user_id") @db.Uuid
+  reportedAt       DateTime              @default(dbgenerated("clock_timestamp()")) @map("reported_at") @db.Timestamptz(6)
+  /// reported_at + adjustments.timeout_seconds del municipio del local.
+  expiresAt        DateTime              @map("expires_at") @db.Timestamptz(6)
+  order            Order                 @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  reportedBy       User                  @relation(fields: [reportedByUserId], references: [id], onDelete: Restrict)
+  lines            OrderItemAdjustment[]
+
+  @@unique([id, orderId])
+  @@index([orderId, reportedAt])
+  @@map("order_adjustment_requests")
+}
+
+/// Una línea consultada y la decisión del cliente (o del sistema al vencer), en la misma fila.
+model OrderItemAdjustment {
+  id                String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requestId         String                 @map("request_id") @db.Uuid
+  /// Solo para las llaves compuestas: la línea es del mismo pedido que la consulta.
+  orderId           String                 @map("order_id") @db.Uuid
+  orderItemId       String                 @map("order_item_id") @db.Uuid
+  reasonId          Int                    @map("reason_id") @db.SmallInt
+  reportedUnitPrice Decimal?               @map("reported_unit_price") @db.Decimal(12, 2)
+  decisionId        Int?                   @map("decision_id") @db.SmallInt
+  decidedByUserId   String?                @map("decided_by_user_id") @db.Uuid
+  decidedAt         DateTime?              @map("decided_at") @db.Timestamptz(6)
+  request           OrderAdjustmentRequest @relation(fields: [requestId, orderId], references: [id, orderId], onDelete: Restrict)
+  orderItem         OrderItem              @relation("AdjustedLine", fields: [orderItemId, orderId], references: [id, orderId], onDelete: Restrict)
+  reason            AdjustmentReason       @relation(fields: [reasonId], references: [id], onDelete: Restrict)
+  decision          AdjustmentDecision?    @relation(fields: [decisionId], references: [id], onDelete: Restrict)
+  decidedBy         User?                  @relation(fields: [decidedByUserId], references: [id], onDelete: Restrict)
+  substitute        OrderItem?             @relation("SubstituteLine")
+
+  @@index([requestId])
+  @@index([orderItemId])
+  @@index([orderId])
+  @@map("order_item_adjustments")
+}
+
+/// E10 (aquí porque una consulta puede terminar el pedido): CUSTOMER_REQUEST, ALL_ITEMS_UNAVAILABLE, ...
+model CancellationReason {
+  id            Int                 @id @default(autoincrement()) @db.SmallInt
+  code          String              @unique @db.VarChar(40)
+  sortOrder     Int                 @map("sort_order") @db.SmallInt
+  deactivatedAt DateTime?           @map("deactivated_at") @db.Timestamptz(6)
+  isAutomatic   Boolean             @map("is_automatic")
+  cancellations OrderCancellation[]
+
+  @@map("cancellation_reasons")
+}
+
+/// Por qué se canceló. Quién y cuándo están en la fila → CANCELLED del historial.
+model OrderCancellation {
+  orderId              String             @id @map("order_id") @db.Uuid
+  cancellationReasonId Int                @map("cancellation_reason_id") @db.SmallInt
+  notes                String?            @db.VarChar(500)
+  order                Order              @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  reason               CancellationReason @relation(fields: [cancellationReasonId], references: [id], onDelete: Restrict)
+
+  @@map("order_cancellations")
 }

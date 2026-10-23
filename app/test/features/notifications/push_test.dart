@@ -53,6 +53,15 @@ class _MemoryStorage implements FlutterSecureStorage {
 
 void main() {
   group('Aviso tocado (H06.2: tocar la notificación abre el pedido)', () {
+    test('E09: la pregunta va al pedido del cliente; la respuesta y la cancelación, al pedido en curso del domiciliario', () {
+      expect(const PushTap(type: 'ADJUSTMENT_REQUESTED', orderCode: 'RC-7K3M').route, '/pedidos/RC-7K3M');
+      expect(const PushTap(type: 'ADJUSTMENT_REQUESTED', orderCode: 'RC-7K3M').forCourier, isFalse);
+      expect(const PushTap(type: 'ADJUSTMENT_RESOLVED', orderCode: 'RC-7K3M').route, '/turno/pedido/RC-7K3M');
+      expect(const PushTap(type: 'TRIP_CANCELLED', orderCode: 'RC-7K3M').route, '/turno/pedido/RC-7K3M?cancelado=1');
+      expect(const PushTap(type: 'ADJUSTMENT_RESOLVED').forCourier, isTrue);
+      expect(const PushTap(type: 'TRIP_CANCELLED').forCourier, isTrue);
+    });
+
     test('FCM trae los datos tal cual; Huawei, como extras rc_* del intent', () {
       final fcm = PushTap.fromData({'type': 'ORDER_STATUS_CHANGED', 'notificationId': 'n-1', 'orderCode': 'RC-7K3M', 'status': 'ON_THE_WAY'})!;
       final hms = PushTap.fromData({'rc_type': 'ORDER_STATUS_CHANGED', 'rc_notificationId': 'n-1', 'rc_orderCode': 'RC-7K3M'})!;

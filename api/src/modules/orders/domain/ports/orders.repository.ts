@@ -1,5 +1,6 @@
 import { ContentLanguage } from '../../../catalog/domain/catalog.codes';
 import { GeoPoint } from '../../../catalog/domain/value-objects/geo-point';
+import { AdjustmentRequestView } from '../../../fulfillment/domain/ports/adjustments';
 import { NewAddress } from './address-book';
 
 export interface NewOrder {
@@ -67,6 +68,8 @@ export interface OrderDetail extends OrderSummary {
    * la foto si entregó sin código, y hasta cuándo puede reclamar antes de que se cierre solo.
    */
   delivery: { code: string | null; proofFileId: string | null; reviewClosesAt: Date | null };
+  /** E09: las consultas del domiciliario (la abierta es la que el cliente responde) y lo que se decidió en cada una. */
+  adjustments: AdjustmentRequestView[];
 }
 
 export abstract class OrdersRepository {

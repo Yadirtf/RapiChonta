@@ -5,6 +5,7 @@ import 'package:rapichonta/core/error/failure.dart';
 import 'package:rapichonta/features/establishments/domain/entities/cart.dart';
 import 'package:rapichonta/features/establishments/domain/entities/establishment.dart';
 import 'package:rapichonta/features/establishments/presentation/providers/establishments_providers.dart';
+import 'package:rapichonta/features/orders/domain/entities/adjustment.dart';
 import 'package:rapichonta/features/orders/domain/entities/order.dart';
 import 'package:rapichonta/features/orders/domain/repositories/order_repository.dart';
 import 'package:rapichonta/features/orders/presentation/pages/checkout_page.dart';
@@ -110,11 +111,62 @@ final _leftWithPhoto = OrderDetail(
   delivery: OrderDelivery(reviewClosesAt: DateTime.utc(2026, 10, 21, 22, 7)),
 );
 
+/// E09: el domiciliario pregunta desde el local. La gaseosa se acabó y la hamburguesa subió de precio.
+OrderDetail _awaiting({required DateTime expiresAt}) => OrderDetail(
+      code: 'RC-7K3M',
+      establishmentId: 'e1',
+      establishmentName: 'Burger Demo',
+      createdAt: _at,
+      status: 'AWAITING_CUSTOMER',
+      statusAt: _at,
+      active: true,
+      itemCount: 3,
+      totalCents: 2300000,
+      lines: const [
+        OrderLine(productId: 'p1', name: 'Hamburguesa sencilla', unitCents: 1400000, quantity: 1),
+        OrderLine(productId: 'p2', name: 'Gaseosa', unitCents: 300000, quantity: 2),
+      ],
+      itemsCents: 2000000,
+      feeCents: 300000,
+      prepMinutes: 15,
+      zoneName: 'Centro',
+      address: const SavedAddress(id: '', label: 'Casa', location: GeoPoint(1.03, -76.61)),
+      paymentMethod: 'CASH',
+      timeline: [TimelineEntry('PENDING_ASSIGNMENT', _at), TimelineEntry('AT_ESTABLISHMENT', _at), TimelineEntry('AWAITING_CUSTOMER', _at)],
+      journey: _journey,
+      adjustments: [
+        OrderAdjustment(id: 'req-1', reportedAt: expiresAt.subtract(const Duration(minutes: 3)), expiresAt: expiresAt, open: true, lines: const [
+          AdjustmentLine(id: 'adj-gaseosa', orderItemId: 'i2', name: 'Gaseosa', quantity: 2, unitCents: 300000, reason: 'UNAVAILABLE', options: ['SUBSTITUTE', 'REMOVE_ITEM', 'CANCEL_ORDER']),
+          AdjustmentLine(
+            id: 'adj-burger',
+            orderItemId: 'i1',
+            name: 'Hamburguesa sencilla',
+            quantity: 1,
+            unitCents: 1400000,
+            reason: 'PRICE_CHANGED',
+            reportedUnitCents: 1600000,
+            options: ['ACCEPT_PRICE', 'REMOVE_ITEM', 'CANCEL_ORDER'],
+          ),
+        ]),
+      ],
+    );
+
 class _Orders implements OrderRepository {
   _Orders({this.missing = false, this.detail});
   final bool missing;
   final OrderDetail? detail;
   final closed = <String>[];
+  final decisions = <String>[];
+
+  @override
+  Future<List<SubstituteOption>> substitutes(String code, String adjustmentId, {required String language}) async => const [
+        SubstituteOption(productId: 'p3', productVersionId: 'v-lulo', name: 'Jugo de lulo', priceCents: 350000, sameSection: true),
+        SubstituteOption(productId: 'p4', productVersionId: 'v-papas', name: 'Papas a la francesa', priceCents: 600000, sameSection: false),
+      ];
+
+  @override
+  Future<void> decideAdjustment(String code, String adjustmentId, {required String decision, String? productVersionId}) async =>
+      decisions.add([adjustmentId, decision, ?productVersionId].join(' '));
 
   @override
   Future<void> confirmReceived(String code) async => closed.add('received $code');
@@ -170,6 +222,13 @@ Widget _app(Widget home, {OrderRepository? orders, CartStore? cart}) => Provider
       ),
     );
 
+/// La ruta late y la mecha corre: no hay "settle", se dejan pasar las animaciones de hojas y diálogos.
+Future<void> _sheet(WidgetTester tester) async {
+  for (var i = 0; i < 8; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
+
 void main() {
   setUp(() => TestWidgetsFlutterBinding.ensureInitialized());
 
@@ -212,6 +271,8 @@ void main() {
 
     expect(find.text('Hay alta demanda en Burger Demo'), findsOneWidget);
     expect(find.text('Listo hacia las 3:45 p. m.'), findsOneWidget);
+    // H09.1: el fogón de la parada "Preparando", ya cumplido y con retraso avisado.
+    expect(find.text('Alta demanda: sigue en preparación'), findsOneWidget);
     expect(find.text(r'Tu domiciliario pagó $ 14.500 en el local.'), findsOneWidget);
     expect(find.text('Ver factura'), findsOneWidget);
   });
@@ -296,5 +357,123 @@ void main() {
     await tester.pump();
     expect(find.text('¿Con cuánto pagas?'), findsOneWidget);
     expect(find.text(r'$ 30.000'), findsOneWidget);
+  });
+
+  group('E09: la pregunta del domiciliario', () {
+    testWidgets('cada producto trae solo sus opciones, con lo que cambia el total, y la mecha con el tiempo', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 3000));
+      final orders = _Orders(detail: _awaiting(expiresAt: DateTime.now().add(const Duration(minutes: 2, seconds: 30))));
+      await tester.pumpWidget(_app(const OrderDetailPage(code: 'RC-7K3M'), orders: orders));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('PREGUNTA DE TU DOMICILIARIO'), findsOneWidget);
+      expect(find.text('En Burger Demo hay 2 cambios en tu pedido'), findsOneWidget);
+      expect(find.textContaining(RegExp(r'^2:(2|3)\d$')), findsOneWidget);
+      expect(find.text('Se acabó en el local'), findsOneWidget);
+      expect(find.text(r'$ 16.000 c/u'), findsOneWidget);
+      expect(find.text(r'+$ 2.000'), findsOneWidget);
+      expect(find.text(r'−$ 6.000'), findsOneWidget);
+
+      await tester.tap(find.text('Pagar el nuevo precio'));
+      await tester.pump();
+      expect(orders.decisions, ['adj-burger ACCEPT_PRICE']);
+
+      await tester.tap(find.text('Cambiar por otro'));
+      await _sheet(tester);
+      expect(find.text('Cambia Gaseosa por…'), findsOneWidget);
+      expect(find.text('Llevamos 2 del que elijas, al precio del menú.'), findsOneWidget);
+      expect(find.text('PARECIDOS'), findsOneWidget);
+      expect(find.text('MÁS DEL LOCAL'), findsOneWidget);
+      expect(find.text(r'+$ 1.000'), findsOneWidget);
+      await tester.tap(find.text('Jugo de lulo'));
+      await _sheet(tester);
+      expect(orders.decisions.last, 'adj-gaseosa SUBSTITUTE v-lulo');
+
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('cancelar todo pide confirmación y responde por toda la pregunta', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 3000));
+      final orders = _Orders(detail: _awaiting(expiresAt: DateTime.now().add(const Duration(minutes: 2))));
+      await tester.pumpWidget(_app(const OrderDetailPage(code: 'RC-7K3M'), orders: orders));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tap(find.text('Cancelar todo el pedido'));
+      await _sheet(tester);
+      expect(find.text('El domiciliario no compra nada en Burger Demo y el pedido termina aquí. No se te cobra nada.'), findsOneWidget);
+      await tester.tap(find.text('Sí, cancelar'));
+      await _sheet(tester);
+      expect(orders.decisions, ['adj-gaseosa CANCEL_ORDER']);
+
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('con el tiempo cumplido no deja elegir y dice qué pasa con lo pendiente', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 3000));
+      final orders = _Orders(detail: _awaiting(expiresAt: DateTime.now().subtract(const Duration(seconds: 1))));
+      await tester.pumpWidget(_app(const OrderDetailPage(code: 'RC-7K3M'), orders: orders));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('0:00'), findsOneWidget);
+      expect(find.text('Se acabó el tiempo: estamos quitando lo pendiente para seguir con la compra.'), findsOneWidget);
+      expect(find.text('Cancelar todo el pedido'), findsNothing);
+      await tester.tap(find.text('Quitarlo').first);
+      await tester.pump();
+      expect(orders.decisions, isEmpty);
+
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('el recibo cuenta lo que cambió por las preguntas ya respondidas', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 2600));
+      final detail = OrderDetail(
+        code: 'RC-W9W5',
+        establishmentId: 'e1',
+        establishmentName: 'Burger Demo',
+        createdAt: _at,
+        status: 'DELIVERED',
+        statusAt: _at,
+        active: false,
+        itemCount: 2,
+        totalCents: 2400000,
+        lines: const [OrderLine(productId: 'p1', name: 'Hamburguesa sencilla', unitCents: 1600000, quantity: 1)],
+        itemsCents: 2100000,
+        feeCents: 300000,
+        prepMinutes: 15,
+        zoneName: 'Centro',
+        address: const SavedAddress(id: '', label: 'Casa', location: GeoPoint(1.03, -76.61)),
+        paymentMethod: 'CASH',
+        timeline: [TimelineEntry('PENDING_ASSIGNMENT', _at), TimelineEntry('DELIVERED', _at)],
+        journey: _journey,
+        adjustments: [
+          OrderAdjustment(id: 'req-1', reportedAt: _at, expiresAt: _at, open: false, lines: const [
+            AdjustmentLine(
+              id: 'a1',
+              orderItemId: 'i2',
+              name: 'Gaseosa',
+              quantity: 2,
+              unitCents: 300000,
+              reason: 'UNAVAILABLE',
+              decision: 'SUBSTITUTE',
+              substitute: (name: 'Jugo de lulo', quantity: 2, unitCents: 350000),
+            ),
+            AdjustmentLine(id: 'a2', orderItemId: 'i1', name: 'Hamburguesa sencilla', quantity: 1, unitCents: 1400000, reason: 'PRICE_CHANGED', reportedUnitCents: 1600000, decision: 'ACCEPT_PRICE'),
+            AdjustmentLine(id: 'a3', orderItemId: 'i3', name: 'Papas', quantity: 1, unitCents: 600000, reason: 'UNAVAILABLE', decision: 'EXPIRED_REMOVED'),
+          ]),
+        ],
+      );
+      await tester.pumpWidget(_app(const OrderDetailPage(code: 'RC-W9W5'), orders: _Orders(detail: detail)));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('CAMBIOS EN TU PEDIDO'), findsOneWidget);
+      expect(find.text('→ Jugo de lulo'), findsOneWidget);
+      expect(find.text(r'Nuevo precio $ 16.000 c/u'), findsOneWidget);
+      expect(find.text('Quitado por tiempo'), findsOneWidget);
+      expect(find.text('PREGUNTA DE TU DOMICILIARIO'), findsNothing);
+    });
   });
 }

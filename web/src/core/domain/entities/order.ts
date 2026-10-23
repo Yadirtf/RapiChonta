@@ -1,4 +1,5 @@
 import type { GeoPoint } from "./establishment";
+import { toCents } from "./money";
 
 /** Medios de pago contra entrega (RF-22). El código lo traduce la vista; el catálogo lo da la API. */
 export type PaymentMethodCode = "CASH" | "NEQUI" | "DAVIPLATA" | "BANK_TRANSFER" | (string & {});
@@ -92,7 +93,70 @@ export interface OrderDetail extends OrderSummary {
   purchase: OrderPurchase | null;
   /** Cierre de la entrega (E10): el código mientras va en camino, y la foto si el domiciliario lo dejó sin código. */
   delivery: OrderDelivery;
+  /** E09: las preguntas del domiciliario (la abierta es la que el cliente responde), de la más reciente a la más vieja. */
+  adjustments: OrderAdjustment[];
 }
+
+/** Por qué pregunta el domiciliario: no lo hay, o el local pide otro precio. */
+export type AdjustmentReason = "UNAVAILABLE" | "PRICE_CHANGED" | (string & {});
+/** Las opciones cerradas (EXPIRED_REMOVED la toma el sistema cuando se acaba el tiempo). */
+export type AdjustmentDecision = "SUBSTITUTE" | "REMOVE_ITEM" | "ACCEPT_PRICE" | "CANCEL_ORDER" | "EXPIRED_REMOVED" | (string & {});
+
+export interface OrderAdjustmentLine {
+  id: string;
+  orderItemId: string;
+  name: string;
+  quantity: number;
+  unitPrice: string;
+  reason: AdjustmentReason;
+  reportedUnitPrice: string | null;
+  decision: AdjustmentDecision | null;
+  decidedAt: string | null;
+  substitute: { name: string; quantity: number; unitPrice: string } | null;
+  /** Lo que puede elegir el cliente, en orden (vacío si ya decidió). */
+  options: AdjustmentDecision[];
+}
+
+export interface OrderAdjustment {
+  id: string;
+  reportedAt: string;
+  expiresAt: string;
+  open: boolean;
+  lines: OrderAdjustmentLine[];
+}
+
+/** Un producto del mismo local para "Cambiar por". */
+export interface SubstituteOption {
+  productId: string;
+  productVersionId: string;
+  name: string;
+  price: string;
+  imageUrl: string | null;
+  /** De la misma sección del menú que el que falta. */
+  sameSection: boolean;
+}
+
+/**
+ * Cuánto cambia el total de productos con una decisión, en centavos (negativo: baja). Cambiar por otro se calcula
+ * con el producto elegido; cancelar no tiene diferencia (el pedido no sigue).
+ */
+export function decisionDeltaCents(line: OrderAdjustmentLine, decision: AdjustmentDecision, substitutePrice?: string): number | null {
+  const current = toCents(line.unitPrice) * line.quantity;
+  switch (decision) {
+    case "REMOVE_ITEM":
+    case "EXPIRED_REMOVED":
+      return -current;
+    case "ACCEPT_PRICE":
+      return line.reportedUnitPrice ? toCents(line.reportedUnitPrice) * line.quantity - current : null;
+    case "SUBSTITUTE":
+      return substitutePrice ? toCents(substitutePrice) * line.quantity - current : null;
+    default:
+      return null;
+  }
+}
+
+/** La pregunta abierta del domiciliario, si hay una. */
+export const openAdjustment = (order: Pick<OrderDetail, "adjustments">) => order.adjustments.find((a) => a.open) ?? null;
 
 export interface OrderDelivery {
   /** Solo en camino o llegando: el cliente se lo dicta al domiciliario y con eso queda entregado. */

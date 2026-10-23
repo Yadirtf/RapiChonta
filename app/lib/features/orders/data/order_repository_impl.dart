@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../../core/config/env.dart';
 import '../../../core/network/api_failure.dart';
 import '../../establishments/domain/entities/establishment.dart';
+import '../domain/entities/adjustment.dart';
 import '../domain/entities/order.dart';
 import '../domain/repositories/order_repository.dart';
 
@@ -84,6 +85,33 @@ class OrderRepositoryImpl implements OrderRepository {
 
   @override
   Future<void> reportNotReceived(String code) => _call(() => _authed.post<void>('/orders/${Uri.encodeComponent(code)}/not-received'));
+
+  @override
+  Future<List<SubstituteOption>> substitutes(String code, String adjustmentId, {required String language}) => _call(() async {
+        final response = await _authed.get<Map<String, dynamic>>(
+          '/orders/${Uri.encodeComponent(code)}/adjustments/${Uri.encodeComponent(adjustmentId)}/substitutes',
+          queryParameters: {'lang': language},
+        );
+        return [
+          for (final s in (response.data?['items'] as List? ?? const []).cast<Map<String, dynamic>>())
+            SubstituteOption(
+              productId: s['productId'] as String,
+              productVersionId: s['productVersionId'] as String,
+              name: s['name'] as String,
+              priceCents: _cents(s['price']),
+              imageUrl: Env.resolveAsset(s['imageUrl'] as String?),
+              sameSection: s['sameSection'] as bool? ?? false,
+            ),
+        ];
+      });
+
+  @override
+  Future<void> decideAdjustment(String code, String adjustmentId, {required String decision, String? productVersionId}) => _call(
+        () => _authed.post<void>(
+          '/orders/${Uri.encodeComponent(code)}/adjustments/${Uri.encodeComponent(adjustmentId)}/decision',
+          data: {'decision': decision, 'productVersionId': ?productVersionId},
+        ),
+      );
 
   @override
   Future<List<SavedAddress>> addresses() => _call(() async {
@@ -190,5 +218,33 @@ OrderDetail detailFromJson(Map<String, dynamic> json) {
       proofUrl: Env.resolveAsset(delivery['proofUrl'] as String?),
       reviewClosesAt: delivery['reviewClosesAt'] is String ? DateTime.parse(delivery['reviewClosesAt'] as String) : null,
     ),
+    adjustments: [for (final a in (json['adjustments'] as List? ?? const []).cast<Map<String, dynamic>>()) adjustmentFromJson(a)],
   );
 }
+
+/// Una consulta de E09 (la misma forma en el pedido del cliente y en el del domiciliario).
+OrderAdjustment adjustmentFromJson(Map<String, dynamic> json) => OrderAdjustment(
+      id: json['id'] as String,
+      reportedAt: DateTime.parse(json['reportedAt'] as String),
+      expiresAt: DateTime.parse(json['expiresAt'] as String),
+      open: json['open'] as bool? ?? false,
+      lines: [
+        for (final l in (json['lines'] as List? ?? const []).cast<Map<String, dynamic>>())
+          AdjustmentLine(
+            id: l['id'] as String,
+            orderItemId: l['orderItemId'] as String,
+            name: l['name'] as String,
+            quantity: (l['quantity'] as num).toInt(),
+            unitCents: _cents(l['unitPrice']),
+            reason: l['reason'] as String,
+            reportedUnitCents: l['reportedUnitPrice'] == null ? null : _cents(l['reportedUnitPrice']),
+            decision: l['decision'] as String?,
+            decidedAt: l['decidedAt'] is String ? DateTime.parse(l['decidedAt'] as String) : null,
+            substitute: switch (l['substitute']) {
+              final Map<String, dynamic> s => (name: s['name'] as String, quantity: (s['quantity'] as num).toInt(), unitCents: _cents(s['unitPrice'])),
+              _ => null,
+            },
+            options: (l['options'] as List? ?? const []).cast<String>(),
+          ),
+      ],
+    );

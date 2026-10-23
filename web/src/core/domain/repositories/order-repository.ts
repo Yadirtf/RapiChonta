@@ -1,4 +1,5 @@
 import type {
+  AdjustmentDecision,
   CheckoutItem,
   DeliveryChoice,
   MyOrdersPage,
@@ -9,6 +10,7 @@ import type {
   RecipientChoice,
   SavedAddress,
   SavedRecipient,
+  SubstituteOption,
 } from "../entities/order";
 
 export interface PlaceOrderInput {
@@ -33,6 +35,10 @@ export interface OrderRepository {
   confirmReceived(code: string): Promise<void>;
   /** "No lo recibí", después de una entrega con foto: queda en revisión. */
   reportNotReceived(code: string): Promise<void>;
+  /** E09: productos del mismo local para cambiar el que falta (primero los parecidos). */
+  substitutes(code: string, adjustmentId: string, language: string): Promise<SubstituteOption[]>;
+  /** E09: la decisión sobre una línea; cancelar responde por toda la pregunta. */
+  decideAdjustment(code: string, adjustmentId: string, input: { decision: AdjustmentDecision; productVersionId?: string }): Promise<void>;
 
   addresses(): Promise<SavedAddress[]>;
   archiveAddress(id: string): Promise<void>;

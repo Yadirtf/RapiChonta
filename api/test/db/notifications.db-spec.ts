@@ -116,6 +116,7 @@ describe('Notificaciones en PostgreSQL', () => {
     await inTransaction(async (tx) => {
       const s = await scenario(tx);
       await history(tx, s.orderId, null, 'PENDING_ASSIGNMENT', s.customerId, 'CUSTOMER');
+      await tx.$executeRaw`INSERT INTO order_cancellations (order_id, cancellation_reason_id) VALUES (${s.orderId}::uuid, ${id('cancellation_reasons', 'INCIDENT_RESOLUTION')})`;
       await history(tx, s.orderId, 'PENDING_ASSIGNMENT', 'CANCELLED', s.staffId, 'OPERATOR');
       expect((await notified(tx, s.orderId)).map((n) => n.status)).toEqual(['CANCELLED']);
     });
@@ -154,6 +155,7 @@ describe('Notificaciones en PostgreSQL', () => {
       await addToken(tx, old.id, 'fcm-token-4444444444');
       await tx.$executeRaw`UPDATE notifications SET dispatched_at = now() WHERE dispatched_at IS NULL`;
       await history(tx, s.orderId, null, 'PENDING_ASSIGNMENT', s.customerId, 'CUSTOMER');
+      await tx.$executeRaw`INSERT INTO order_cancellations (order_id, cancellation_reason_id) VALUES (${s.orderId}::uuid, ${id('cancellation_reasons', 'INCIDENT_RESOLUTION')})`;
       await history(tx, s.orderId, 'PENDING_ASSIGNMENT', 'CANCELLED', s.staffId, 'OPERATOR');
 
       const outbox = outboxOn(tx);

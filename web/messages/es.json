@@ -173,7 +173,10 @@
     "DELIVERY_CODE_LOCKED": "Se acabaron los intentos del código. Entrega con foto.",
     "DELIVERY_PROOF_TOO_EARLY": "Todavía no puedes entregar con foto. Espera unos minutos en el punto.",
     "DELIVERY_PROOF_INVALID": "La foto de la entrega no es válida. Tómala de nuevo.",
-    "DELIVERY_STEP_NOT_ALLOWED": "El pedido ya cambió de estado. Actualiza para ver cómo va."
+    "DELIVERY_STEP_NOT_ALLOWED": "El pedido ya cambió de estado. Actualiza para ver cómo va.",
+    "ADJUSTMENT_CLOSED": "Esa pregunta ya se respondió. Actualizamos tu pedido.",
+    "ADJUSTMENT_OPTION_INVALID": "Esa opción no aplica a este producto.",
+    "SUBSTITUTE_UNAVAILABLE": "Ese producto ya no se puede pedir: elige otro."
   },
   "auth": {
     "signInTitle": "Entra con tu celular",
@@ -1311,7 +1314,60 @@
     "notReceivedConfirmTitle": "¿No te llegó el pedido?",
     "notReceivedConfirmBody": "Abrimos un caso y RapiChonta revisa la entrega con el domiciliario.",
     "notReceivedConfirm": "Sí, no lo recibí",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "prepLeft": "Listo en",
+    "prepLeftLabel": "Listo en {time}",
+    "prepAlmost": "Ya casi sale",
+    "prepBusy": "Alta demanda: sigue en preparación",
+    "prepProgress": "Avance de la preparación"
+  },
+  "adjustments": {
+    "kicker": "Pregunta de tu domiciliario",
+    "title": "{count, plural, one {En {store} hay un cambio en tu pedido} other {En {store} hay # cambios en tu pedido}}",
+    "body": "Tu domiciliario está en el local esperando. Elige qué hacemos con cada producto.",
+    "timeLeft": "Quedan {time} para decidir",
+    "timeoutRule": "Si no respondes a tiempo, quitamos lo pendiente y seguimos con el resto. Si no queda nada, el pedido se cancela.",
+    "timeoutNow": "Se acabó el tiempo: estamos quitando lo pendiente para seguir con la compra.",
+    "perUnit": "{price} c/u",
+    "reason": {
+      "UNAVAILABLE": "Se acabó en el local",
+      "PRICE_CHANGED": "Cambió de precio"
+    },
+    "option": {
+      "SUBSTITUTE": "Cambiar por otro",
+      "REMOVE_ITEM": "Quitarlo",
+      "ACCEPT_PRICE": "Pagar el nuevo precio"
+    },
+    "hint": {
+      "SUBSTITUTE": "Te mostramos parecidos"
+    },
+    "decided": {
+      "SUBSTITUTE": "Lo cambias por {name} ({price})",
+      "REMOVE_ITEM": "Lo quitas del pedido",
+      "ACCEPT_PRICE": "Pagas el nuevo precio",
+      "CANCEL_ORDER": "Cancelaste el pedido",
+      "EXPIRED_REMOVED": "Se acabó el tiempo: lo quitamos"
+    },
+    "pickTitle": "Cambia {name} por…",
+    "pickBody": "{quantity, plural, one {Llevamos # del que elijas, al precio del menú.} other {Llevamos # del que elijas, al precio del menú.}}",
+    "pickSimilar": "Parecidos",
+    "pickOthers": "Más del local",
+    "pickEmpty": "No hay con qué cambiarlo",
+    "pickEmptyBody": "El local no tiene otros productos disponibles ahora. Puedes quitarlo y seguir con el resto.",
+    "samePrice": "Mismo precio",
+    "cancelOrder": "Cancelar todo el pedido",
+    "cancelTitle": "¿Cancelar el pedido?",
+    "cancelBody": "El domiciliario no compra nada en {store} y el pedido termina aquí. No se te cobra nada.",
+    "keepOrder": "Seguir con el pedido",
+    "cancelConfirm": "Sí, cancelar",
+    "close": "Cerrar",
+    "changesTitle": "Cambios en tu pedido",
+    "change": {
+      "SUBSTITUTE": "→ {name}",
+      "REMOVE_ITEM": "Quitado",
+      "ACCEPT_PRICE": "Nuevo precio {price} c/u",
+      "EXPIRED_REMOVED": "Quitado por tiempo"
+    }
   },
   "coverage": {
     "title": "Cobertura",

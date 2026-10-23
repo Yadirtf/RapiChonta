@@ -1,4 +1,6 @@
 import { GeoPoint } from '../../../catalog/domain/value-objects/geo-point';
+import { ReportedLine } from '../adjustments';
+import { AdjustmentRequestView } from './adjustments';
 
 /** El pedido en curso, lo justo para decidir si una acción aplica. */
 export interface TripRef {
@@ -17,7 +19,8 @@ export interface Trip extends TripRef {
   acceptedAt: Date;
   establishment: { name: string; addressLine: string; phone: string | null; location: GeoPoint; area: GeoPoint[] };
   zone: { name: string; kind: string };
-  lines: { name: string; quantity: number; notes: string | null }[];
+  /** Líneas efectivas (sin las quitadas): `id` es la línea del pedido, para reportar un faltante. */
+  lines: { id: string; name: string; quantity: number; unitPrice: string; notes: string | null }[];
   itemsTotal: string;
   deliveryFee: string;
   customerTotal: string;
@@ -38,6 +41,8 @@ export interface Trip extends TripRef {
    * equivocados le quedan. Nulo en los demás pasos.
    */
   delivery: { arrivedAt: Date | null; proofAvailableAt: Date | null; codeAttemptsLeft: number } | null;
+  /** E09, en el local: la última consulta al cliente (con su cuenta regresiva o ya decidida). */
+  adjustment?: AdjustmentRequestView | null;
 }
 
 export interface TripCommand {
@@ -52,7 +57,7 @@ export interface TripCommand {
  * Rechazos que se detectan dentro de la transacción (con el pedido bloqueado). CODE: código equivocado (el intento
  * queda guardado); CODE_LOCKED: sin intentos; PROOF_EARLY: aún no puede entregar con foto; PROOF: foto inválida.
  */
-export type TripFailure = 'STEP' | 'RECEIPT' | 'CODE' | 'CODE_LOCKED' | 'PROOF_EARLY' | 'PROOF';
+export type TripFailure = 'STEP' | 'RECEIPT' | 'CODE' | 'CODE_LOCKED' | 'PROOF_EARLY' | 'PROOF' | 'LINES';
 export type TripResult =
   | { ok: true }
   | { ok: false; reason: TripFailure; status: string; attemptsLeft?: number; availableAt?: Date };
@@ -66,6 +71,11 @@ export abstract class CourierTrips {
   abstract replayedOrderCode(clientEventId: string): Promise<string | null>;
   /** AT_ESTABLISHMENT → PREPARING en una transacción: movimiento PURCHASE, order_purchases y la fila del historial. */
   abstract registerPurchase(command: TripCommand & { amount: string; receiptFileId: string }): Promise<TripResult>;
+  /**
+   * H09.2 "Falta algo": AT_ESTABLISHMENT → AWAITING_CUSTOMER con la consulta (plazo adjustments.timeout_seconds), sus
+   * líneas y el aviso al cliente. LINES: alguna línea no es del pedido o ya se quitó.
+   */
+  abstract openAdjustment(command: TripCommand & { lines: readonly ReportedLine[] }): Promise<TripResult>;
   /** "Ya está listo": PREPARING → ON_THE_WAY. */
   abstract markReady(command: TripCommand): Promise<TripResult>;
   /** "Sigue en preparación": una fila en order_preparation_delays. */

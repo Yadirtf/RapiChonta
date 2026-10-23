@@ -4,6 +4,7 @@ import '../../../../app/theme.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../domain/entities/order.dart';
 import 'order_visuals.dart';
+import 'prep_clock.dart';
 
 /// Línea de tiempo del pedido (RF-50) como la ruta de la moto: paradas cumplidas en chontaduro, la actual
 /// latiendo en amarillo y las que faltan en punteado. Nunca muestra dónde está el domiciliario.
@@ -62,6 +63,8 @@ class OrderRoute extends StatelessWidget {
                             padding: const EdgeInsets.only(top: 2),
                             child: Text(statusBody(l10n, stops[i].status)!, style: TextStyle(fontSize: 13, color: AppColors.ink.withValues(alpha: 0.6))),
                           ),
+                        // H09.1: mientras se prepara, la parada lleva su fogón con la cuenta regresiva.
+                        if (stops[i].state == StopState.current && stops[i].status == 'PREPARING' && order.preparation != null) PrepStove(order: order),
                       ],
                     ),
                   ),

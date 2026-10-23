@@ -20,6 +20,8 @@ export const NOTIFICATION_TYPES = {
   INCIDENT_OPENED: 'INCIDENT_OPENED',
   INCIDENT_RESOLVED: 'INCIDENT_RESOLVED',
   DELIVERY_PROOF_PENDING: 'DELIVERY_PROOF_PENDING',
+  /** Al domiciliario: el pedido que llevaba se canceló (E09). */
+  TRIP_CANCELLED: 'TRIP_CANCELLED',
 } as const;
 export type NotificationTypeCode = (typeof NOTIFICATION_TYPES)[keyof typeof NOTIFICATION_TYPES];
 

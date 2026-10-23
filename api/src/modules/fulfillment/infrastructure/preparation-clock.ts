@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import { Notifier } from '../../notifications/application/notifier';
 import { PreparationSignal } from '../application/preparation-signal';
+import { OrderAdjustments } from '../domain/ports/adjustments';
 import { DeliveryReviewWatch, PreparationWatch } from '../domain/ports/courier-trips';
 
 export interface PreparationClockOptions {
@@ -22,7 +23,8 @@ const earliest = (a: Date | null, b: Date | null) => (a && b ? (a < b ? a : b) :
 /**
  * Reloj del pedido en curso, como el del despacho: duerme hasta la próxima hora de "ya debería estar listo"
  * (H08.5, encola el aviso al domiciliario) o hasta que vence la revisión de una entrega con foto (la cierra como
- * entregada). Cualquier paso del domiciliario lo despierta.
+ * entregada) o hasta que vence una consulta al cliente sobre un producto faltante (E09: quita lo pendiente y el
+ * pedido sigue o se cancela). Cualquier paso del domiciliario o decisión del cliente lo despierta.
  */
 @Injectable()
 export class PreparationClock extends PreparationSignal implements OnApplicationBootstrap, OnApplicationShutdown {
@@ -37,6 +39,7 @@ export class PreparationClock extends PreparationSignal implements OnApplication
     private readonly notifier: Notifier,
     private readonly options: PreparationClockOptions,
     private readonly review?: DeliveryReviewWatch,
+    private readonly adjustments?: Pick<OrderAdjustments, 'expireDue' | 'nextDueAt'>,
   ) {
     super();
   }
@@ -68,9 +71,13 @@ export class PreparationClock extends PreparationSignal implements OnApplication
         this.again = false;
         const queued = await this.watch.notifyDue();
         const closed = this.review ? await this.review.closeDue() : 0;
-        if (queued || closed) this.notifier.kick();
+        const expired = this.adjustments ? await this.adjustments.expireDue() : 0;
+        if (queued || closed || expired) this.notifier.kick();
       } while (this.again);
-      const next = earliest(await this.watch.nextCheckAt(), this.review ? await this.review.nextDueAt() : null);
+      const next = earliest(
+        earliest(await this.watch.nextCheckAt(), this.review ? await this.review.nextDueAt() : null),
+        this.adjustments ? await this.adjustments.nextDueAt() : null,
+      );
       this.schedule(nextPreparationDelay(next, now(), this.options));
     } catch (error) {
       this.logger.error(`Reloj del pedido en curso: ${(error as Error).message}`);

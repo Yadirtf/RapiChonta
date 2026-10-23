@@ -1,7 +1,30 @@
 import { Injectable } from '@nestjs/common';
 import { GeoPoint } from '../../../catalog/domain/value-objects/geo-point';
 import { FileUrls } from '../../../files/application/file-urls';
+import { SubstituteCandidate } from '../../domain/adjustments';
+import { AdjustmentRequestView } from '../../domain/ports/adjustments';
 import { Trip } from '../../domain/ports/courier-trips';
+
+/** Una consulta de E09 tal como la ven la web y la app (la misma forma para el cliente y el domiciliario). */
+export const adjustmentView = (r: AdjustmentRequestView) => ({
+  id: r.id,
+  reportedAt: r.reportedAt.toISOString(),
+  expiresAt: r.expiresAt.toISOString(),
+  open: r.open,
+  lines: r.lines.map((l) => ({
+    id: l.id,
+    orderItemId: l.orderItemId,
+    name: l.name,
+    quantity: l.quantity,
+    unitPrice: l.unitPrice,
+    reason: l.reason,
+    reportedUnitPrice: l.reportedUnitPrice,
+    decision: l.decision,
+    decidedAt: l.decidedAt?.toISOString() ?? null,
+    substitute: l.substitute,
+    options: l.options,
+  })),
+});
 
 const geo = (p: GeoPoint) => ({ latitude: p.latitude, longitude: p.longitude });
 
@@ -56,6 +79,18 @@ export class FulfillmentPresenter {
             codeAttemptsLeft: t.delivery.codeAttemptsLeft,
           }
         : null,
+      adjustment: t.adjustment ? adjustmentView(t.adjustment) : null,
+    };
+  }
+
+  substitute(c: SubstituteCandidate & { sameSection: boolean }) {
+    return {
+      productId: c.productId,
+      productVersionId: c.productVersionId,
+      name: c.name,
+      price: c.price,
+      imageUrl: this.urls.url(c.imageFileId),
+      sameSection: c.sameSection,
     };
   }
 }

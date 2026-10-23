@@ -34,14 +34,17 @@ final myOrdersProvider = FutureProvider.autoDispose<OrderHistory>((ref) async {
   return page;
 });
 
-/// Mientras el pedido está activo, su estado se vuelve a pedir cada 15 s.
+/// Mientras el pedido está activo, su estado se vuelve a pedir cada 15 s; con el domiciliario en el local, cada
+/// 4 s: una pregunta suya (E09) tiene minutos para responderse y no todos los teléfonos reciben push.
 const _detailRefresh = Duration(seconds: 15);
+const _atStoreRefresh = Duration(seconds: 4);
 
 /// Detalle de un pedido: (código, idioma).
 final orderDetailProvider = FutureProvider.autoDispose.family<OrderDetail, (String, String)>((ref, key) async {
   final order = await ref.watch(orderRepositoryProvider).find(key.$1, language: key.$2);
   if (order.active) {
-    final timer = Timer(_detailRefresh, ref.invalidateSelf);
+    final atStore = order.status == 'AT_ESTABLISHMENT' || order.status == 'AWAITING_CUSTOMER';
+    final timer = Timer(atStore ? _atStoreRefresh : _detailRefresh, ref.invalidateSelf);
     ref.onDispose(timer.cancel);
   }
   return order;

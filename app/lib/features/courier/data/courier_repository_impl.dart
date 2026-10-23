@@ -6,6 +6,8 @@ import 'package:dio/dio.dart';
 import '../../../core/config/env.dart';
 import '../../../core/network/api_failure.dart';
 import '../../establishments/domain/entities/establishment.dart';
+import '../../orders/data/order_repository_impl.dart' show adjustmentFromJson;
+import '../../orders/domain/entities/adjustment.dart';
 import '../domain/courier.dart';
 
 /// Adaptador HTTP del modo domiciliario: /courier (E07) y /courier/trip (E08).
@@ -113,6 +115,10 @@ class CourierRepositoryImpl implements CourierRepository {
   Future<StepOutcome> delay(String code, TripStepEvent event) => _step(code, 'delay', event.toJson());
 
   @override
+  Future<StepOutcome> reportAdjustment(String code, TripStepEvent event, {required List<ReportedLine> lines}) =>
+      _step(code, 'adjustments', {...event.toJson(), 'lines': [for (final l in lines) l.toJson()]});
+
+  @override
   Future<StepOutcome> arrived(String code, TripStepEvent event) => _step(code, 'arrived', event.toJson());
 
   @override
@@ -135,7 +141,13 @@ DateTime? _date(Object? value) => value is String ? DateTime.parse(value) : null
 
 List<TripLine> _lines(Object? json) => [
       for (final l in (json as List? ?? const []).cast<Map<String, dynamic>>())
-        TripLine(name: l['name'] as String, quantity: (l['quantity'] as num).toInt(), notes: l['notes'] as String?),
+        TripLine(
+          id: l['id'] as String?,
+          name: l['name'] as String,
+          quantity: (l['quantity'] as num).toInt(),
+          notes: l['notes'] as String?,
+          unitCents: _cents(l['unitPrice']),
+        ),
     ];
 
 CourierStatus statusFromJson(Map<String, dynamic> json) {
@@ -217,5 +229,9 @@ Trip tripFromJson(Map<String, dynamic> json) {
             proofAvailableAt: _date(delivery['proofAvailableAt']),
             codeAttemptsLeft: (delivery['codeAttemptsLeft'] as num?)?.toInt() ?? 5,
           ),
+    adjustment: switch (json['adjustment']) {
+      final Map<String, dynamic> a => adjustmentFromJson(a),
+      _ => null,
+    },
   );
 }

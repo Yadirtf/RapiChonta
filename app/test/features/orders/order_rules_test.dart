@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rapichonta/features/establishments/domain/entities/establishment.dart';
 import 'package:rapichonta/features/orders/data/order_repository_impl.dart';
+import 'package:rapichonta/features/orders/domain/entities/adjustment.dart';
 import 'package:rapichonta/features/orders/domain/entities/order.dart';
 import 'package:rapichonta/features/orders/presentation/checkout_draft.dart';
 
@@ -107,5 +108,86 @@ void main() {
     expect(order.lines.single.subtotalCents, 2000000);
     expect(order.address.location, const GeoPoint(1.03, -76.61));
     expect(order.journey.length, 7);
+  });
+
+  group('AdjustmentRules (E09)', () {
+    const soda = AdjustmentLine(id: 'a1', orderItemId: 'i1', name: 'Gaseosa', quantity: 2, unitCents: 300000, reason: 'UNAVAILABLE');
+    const burger = AdjustmentLine(id: 'a2', orderItemId: 'i2', name: 'Hamburguesa', quantity: 1, unitCents: 1400000, reason: 'PRICE_CHANGED', reportedUnitCents: 1600000);
+
+    test('la diferencia de cada opción sobre el total de productos', () {
+      expect(AdjustmentRules.deltaCents(soda, 'REMOVE_ITEM'), -600000);
+      expect(AdjustmentRules.deltaCents(soda, 'EXPIRED_REMOVED'), -600000);
+      expect(AdjustmentRules.deltaCents(burger, 'ACCEPT_PRICE'), 200000);
+      expect(AdjustmentRules.deltaCents(soda, 'SUBSTITUTE', substituteCents: 350000), 100000);
+      expect(AdjustmentRules.deltaCents(soda, 'SUBSTITUTE'), isNull);
+      expect(AdjustmentRules.deltaCents(burger, 'CANCEL_ORDER'), isNull);
+    });
+
+    test('la pregunta abierta y los cambios para el recibo (cancelar no cuenta)', () {
+      final open = OrderAdjustment(id: 'r2', reportedAt: t0, expiresAt: t0, open: true, lines: const [soda]);
+      final closed = OrderAdjustment(id: 'r1', reportedAt: t0, expiresAt: t0, open: false, lines: const [
+        AdjustmentLine(id: 'a3', orderItemId: 'i3', name: 'Papas', quantity: 1, unitCents: 600000, reason: 'UNAVAILABLE', decision: 'REMOVE_ITEM'),
+        AdjustmentLine(id: 'a4', orderItemId: 'i4', name: 'Postre', quantity: 1, unitCents: 500000, reason: 'UNAVAILABLE', decision: 'CANCEL_ORDER'),
+      ]);
+      expect(AdjustmentRules.openOf([open, closed]), open);
+      expect(AdjustmentRules.openOf([closed]), isNull);
+      expect(AdjustmentRules.changes([open, closed]).map((l) => l.id), ['a3']);
+    });
+
+    test('lo que marca el domiciliario: algo marcado, con precio nuevo y distinto al de antes', () {
+      final prices = {'i1': 300000, 'i2': 1400000};
+      expect(AdjustmentRules.reportProblem(const [], prices), 'EMPTY');
+      expect(AdjustmentRules.reportProblem(const [ReportedLine(orderItemId: 'i2', reason: 'PRICE_CHANGED')], prices), 'PRICE_REQUIRED');
+      expect(AdjustmentRules.reportProblem(const [ReportedLine(orderItemId: 'i2', reason: 'PRICE_CHANGED', unitPesos: 14000)], prices), 'PRICE_UNCHANGED');
+      expect(
+        AdjustmentRules.reportProblem(const [ReportedLine(orderItemId: 'i1', reason: 'UNAVAILABLE'), ReportedLine(orderItemId: 'i2', reason: 'PRICE_CHANGED', unitPesos: 16000)], prices),
+        isNull,
+      );
+      expect(const ReportedLine(orderItemId: 'i2', reason: 'PRICE_CHANGED', unitPesos: 16000).toJson(), {'orderItemId': 'i2', 'reason': 'PRICE_CHANGED', 'unitPrice': '16000'});
+    });
+
+    test('el pedido trae sus preguntas con los montos en centavos', () {
+      final order = detailFromJson({
+        'code': 'RC-7K3M',
+        'establishment': {'id': 'e1', 'name': 'Burger Demo'},
+        'createdAt': '2026-10-21T20:00:00.000Z',
+        'status': 'AWAITING_CUSTOMER',
+        'statusAt': '2026-10-21T20:30:00.000Z',
+        'active': true,
+        'itemCount': 1,
+        'total': '17000.00',
+        'address': {'latitude': 1.03, 'longitude': -76.61},
+        'paymentMethod': 'CASH',
+        'adjustments': [
+          {
+            'id': 'r1',
+            'reportedAt': '2026-10-21T20:30:00.000Z',
+            'expiresAt': '2026-10-21T20:33:00.000Z',
+            'open': true,
+            'lines': [
+              {
+                'id': 'a1',
+                'orderItemId': 'i1',
+                'name': 'Hamburguesa',
+                'quantity': 1,
+                'unitPrice': '14000.00',
+                'reason': 'PRICE_CHANGED',
+                'reportedUnitPrice': '16000.00',
+                'decision': null,
+                'decidedAt': null,
+                'substitute': null,
+                'options': ['ACCEPT_PRICE', 'REMOVE_ITEM', 'CANCEL_ORDER'],
+              },
+            ],
+          },
+        ],
+      });
+      final line = order.adjustments.single.lines.single;
+      expect(order.adjustments.single.span, const Duration(minutes: 3));
+      expect(line.unitCents, 1400000);
+      expect(line.reportedUnitCents, 1600000);
+      expect(line.pending, isTrue);
+      expect(line.options, ['ACCEPT_PRICE', 'REMOVE_ITEM', 'CANCEL_ORDER']);
+    });
   });
 }

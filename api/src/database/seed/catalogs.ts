@@ -365,8 +365,60 @@ export const CATALOGS: CatalogSeed[] = [
           ['INCIDENT_OPENED', true],
           ['INCIDENT_RESOLVED', false],
           ['DELIVERY_PROOF_PENDING', true],
+          // E09: al domiciliario, el pedido que llevaba se canceló (desde la consulta al cliente).
+          ['TRIP_CANCELLED', true],
         ] as const
       ).map(([code, high]) => ({ code, is_high_priority: high })),
+    ),
+  },
+  // ─────────────── E09 · Producto faltante ───────────────
+  {
+    table: 'adjustment_reasons',
+    key: 'code',
+    rows: ordered([
+      { code: 'UNAVAILABLE', requires_price: false },
+      { code: 'PRICE_CHANGED', requires_price: true },
+    ]),
+  },
+  {
+    // Lo que hace cada decisión es dato: el caso de uso y la vista v_order_lines leen estas columnas, no el código.
+    table: 'adjustment_decisions',
+    key: 'code',
+    rows: ordered(
+      (
+        [
+          // code, quita la línea, usa el precio nuevo, crea sustituta, cancela el pedido, automática
+          ['SUBSTITUTE', true, false, true, false, false],
+          ['REMOVE_ITEM', true, false, false, false, false],
+          ['ACCEPT_PRICE', false, true, false, false, false],
+          ['CANCEL_ORDER', false, false, false, true, false],
+          ['EXPIRED_REMOVED', true, false, false, false, true],
+        ] as const
+      ).map(([code, removes, price, substitute, cancels, automatic]) => ({
+        code,
+        removes_item: removes,
+        uses_reported_price: price,
+        creates_substitute: substitute,
+        cancels_order: cancels,
+        is_automatic: automatic,
+      })),
+    ),
+  },
+  // E10: por qué se canceló un pedido (E09 usa CUSTOMER_REQUEST y ALL_ITEMS_UNAVAILABLE).
+  {
+    table: 'cancellation_reasons',
+    key: 'code',
+    rows: ordered(
+      (
+        [
+          ['CUSTOMER_REQUEST', false],
+          ['NO_COURIER_AVAILABLE', false],
+          ['ESTABLISHMENT_CLOSED', false],
+          ['ALL_ITEMS_UNAVAILABLE', true],
+          ['CUSTOMER_UNREACHABLE', false],
+          ['INCIDENT_RESOLUTION', false],
+        ] as const
+      ).map(([code, automatic]) => ({ code, is_automatic: automatic })),
     ),
   },
   {

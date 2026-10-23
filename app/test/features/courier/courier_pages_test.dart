@@ -12,6 +12,7 @@ import 'package:rapichonta/features/courier/presentation/courier_providers.dart'
 import 'package:rapichonta/features/courier/presentation/pages/courier_home_page.dart';
 import 'package:rapichonta/features/courier/presentation/pages/trip_page.dart';
 import 'package:rapichonta/features/courier/presentation/widgets/duty_widgets.dart';
+import 'package:rapichonta/features/orders/domain/entities/adjustment.dart';
 import 'package:rapichonta/l10n/app_localizations.dart';
 
 import 'courier_fakes.dart';
@@ -35,7 +36,10 @@ class _Session extends SessionController {
 Widget _app(String location, FakeCourierRepository repository) {
   final router = GoRouter(initialLocation: location, routes: [
     GoRoute(path: '/turno', builder: (_, _) => const CourierHomePage()),
-    GoRoute(path: '/turno/pedido/:code', builder: (_, state) => TripPage(code: state.pathParameters['code']!)),
+    GoRoute(
+      path: '/turno/pedido/:code',
+      builder: (_, state) => TripPage(code: state.pathParameters['code']!, cancelled: state.uri.queryParameters['cancelado'] == '1'),
+    ),
     GoRoute(path: '/cuenta', builder: (_, _) => const SizedBox()),
   ]);
   return ProviderScope(
@@ -220,5 +224,95 @@ void main() {
     expect(find.text('Entregar pedido'), findsNothing);
     final button = tester.widget<OutlinedButton>(find.ancestor(of: find.text('Entregar con foto'), matching: find.byWidgetPredicate((w) => w is OutlinedButton)));
     expect(button.onPressed, isNotNull);
+  });
+
+  group('E09: producto faltante o precio distinto', () {
+    testWidgets('en el local marca lo que falta y el precio nuevo, y le pregunta al cliente en una sola consulta', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 2400));
+      final repository = FakeCourierRepository(currentTrip: tripFromJson(tripJson(status: 'AT_ESTABLISHMENT')));
+      await tester.pumpWidget(_app('/turno/pedido/RC-7K3M', repository));
+      await _settle(tester);
+
+      await tester.tap(find.text('Falta algo o cambió un precio'));
+      await _settle(tester);
+      expect(find.text('¿Qué pasó en el local?'), findsOneWidget);
+      expect(find.text('Marca al menos un producto'), findsOneWidget);
+
+      // La gaseosa se acabó; el pollo, otro precio (primero el mismo de antes: no cuenta como cambio).
+      await tester.tap(find.text('No hay').last);
+      await tester.tap(find.text('Otro precio').first);
+      await tester.pump();
+      await tester.enterText(find.byType(TextField).last, '32500');
+      await tester.pump();
+      await tester.tap(find.text('Preguntar al cliente por 2 productos'));
+      await _settle(tester);
+      expect(find.text('Es el mismo precio de antes.'), findsOneWidget);
+      expect(repository.reported, isEmpty);
+
+      await tester.enterText(find.byType(TextField).last, '34500');
+      await tester.pump();
+      await tester.tap(find.text('Preguntar al cliente por 2 productos'));
+      await _settle(tester);
+      expect(repository.steps.single.kind, 'adjustments');
+      expect(repository.steps.single.queued, isFalse);
+      expect(repository.reported.single, const [
+        ReportedLine(orderItemId: 'item-gaseosa', reason: 'UNAVAILABLE'),
+        ReportedLine(orderItemId: 'item-pollo', reason: 'PRICE_CHANGED', unitPesos: 34500),
+      ]);
+      expect(find.text('¿Qué pasó en el local?'), findsNothing);
+    });
+
+    testWidgets('sin señal la pregunta no se encola: lo dice y deja intentarlo de nuevo', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 2400));
+      final repository = FakeCourierRepository(currentTrip: tripFromJson(tripJson(status: 'AT_ESTABLISHMENT')))..offlineSteps = true;
+      await tester.pumpWidget(_app('/turno/pedido/RC-7K3M', repository));
+      await _settle(tester);
+
+      await tester.tap(find.text('Falta algo o cambió un precio'));
+      await _settle(tester);
+      await tester.tap(find.text('No hay').first);
+      await tester.pump();
+      await tester.tap(find.text('Preguntar al cliente por 1 producto'));
+      await _settle(tester);
+      expect(find.text('Sin señal no se le puede preguntar al cliente. Intenta de nuevo cuando vuelva.'), findsOneWidget);
+      expect(repository.reported, isEmpty);
+    });
+
+    testWidgets('esperando al cliente: el reloj y lo que ya respondió línea por línea', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 2400));
+      final repository = FakeCourierRepository(
+        currentTrip: tripFromJson(tripJson(status: 'AWAITING_CUSTOMER', adjustment: adjustmentJson(open: true, gaseosa: 'SUBSTITUTE'))),
+      );
+      await tester.pumpWidget(_app('/turno/pedido/RC-7K3M', repository));
+      await _settle(tester);
+
+      expect(find.text('Esperando al cliente'), findsOneWidget);
+      expect(find.text('Le preguntamos por 2 productos. Ve comprando lo demás.'), findsOneWidget);
+      expect(find.text('Cómpralo cambiado: 2× Jugo de lulo 1 L'), findsOneWidget);
+      expect(find.text('Esperando respuesta'), findsOneWidget);
+      expect(find.text('0:00'), findsOneWidget);
+    });
+
+    testWidgets('de vuelta en el local: qué decidió el cliente', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 2600));
+      final repository = FakeCourierRepository(
+        currentTrip: tripFromJson(tripJson(status: 'AT_ESTABLISHMENT', adjustment: adjustmentJson(open: false, gaseosa: 'REMOVE_ITEM', pollo: 'ACCEPT_PRICE'))),
+      );
+      await tester.pumpWidget(_app('/turno/pedido/RC-7K3M', repository));
+      await _settle(tester);
+
+      expect(find.text('El cliente respondió'), findsOneWidget);
+      expect(find.text('No lo compres'), findsOneWidget);
+      expect(find.text('Cómpralo al precio nuevo'), findsOneWidget);
+    });
+
+    testWidgets('el aviso de cancelación abre el pedido y dice que no compre nada', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 1600));
+      await tester.pumpWidget(_app('/turno/pedido/RC-7K3M?cancelado=1', FakeCourierRepository()));
+      await _settle(tester);
+
+      expect(find.text('El pedido se canceló'), findsOneWidget);
+      expect(find.text('No compres nada. Ya quedas libre para tomar otro pedido.'), findsOneWidget);
+    });
   });
 }

@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../../../establishments/domain/entities/establishment.dart';
+import 'adjustment.dart';
 
 /// Pedido del cliente (E04). Los montos van en centavos; los estados y medios de pago son códigos del
 /// catálogo de la API que la app traduce (uno nuevo se ve con su código hasta tener texto propio).
@@ -201,6 +202,7 @@ class OrderDetail extends OrderSummary {
     this.preparation,
     this.purchase,
     this.delivery = const OrderDelivery(),
+    this.adjustments = const [],
   });
 
   final List<OrderLine> lines;
@@ -226,8 +228,11 @@ class OrderDetail extends OrderSummary {
   /// El cierre: el código para el domiciliario, la foto si entregó sin código y hasta cuándo se puede reclamar.
   final OrderDelivery delivery;
 
+  /// Las preguntas del domiciliario desde el local (E09), de la más reciente a la más vieja.
+  final List<OrderAdjustment> adjustments;
+
   @override
-  List<Object?> get props => [...super.props, timeline, preparation, purchase, delivery];
+  List<Object?> get props => [...super.props, timeline, preparation, purchase, delivery, adjustments];
 }
 
 /// El cierre de la entrega visto por el cliente.

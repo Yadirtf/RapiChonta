@@ -9,6 +9,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../auth/data/storage/session_storage.dart' show uuidV4;
 import '../../auth/domain/entities/account.dart';
 import '../../auth/presentation/providers/auth_providers.dart';
+import '../../orders/domain/entities/adjustment.dart';
 import '../data/courier_repository_impl.dart';
 import '../data/location_tracker.dart';
 import '../data/pending_steps_store.dart';
@@ -56,12 +57,13 @@ final courierOffersProvider = FutureProvider.autoDispose.family<List<CourierOffe
   return ref.watch(courierRepositoryProvider).offers(language: language);
 });
 
-/// El pedido en curso. Mientras exista se refresca cada 15 s (las llegadas las marca el servidor).
+/// El pedido en curso. Mientras exista se refresca cada 15 s (las llegadas las marca el servidor); esperando la
+/// respuesta del cliente (E09), cada 4 s, para ver lo que decide sin depender del push.
 final courierTripProvider = FutureProvider.autoDispose.family<Trip?, String>((ref, language) async {
   if (!ref.watch(courierModeProvider)) return null;
   final trip = await ref.watch(courierRepositoryProvider).trip(language: language);
   if (trip != null) {
-    final timer = Timer(const Duration(seconds: 15), ref.invalidateSelf);
+    final timer = Timer(Duration(seconds: trip.status == 'AWAITING_CUSTOMER' ? 4 : 15), ref.invalidateSelf);
     ref.onDispose(timer.cancel);
   }
   return trip;
@@ -173,6 +175,19 @@ class PendingStepsController extends Notifier<PendingState> {
     final event = TripStepEvent(clientEventId: uuidV4(), occurredAt: DateTime.now(), queued: false);
     try {
       await _repository.deliver(orderCode, event, deliveryCode: deliveryCode);
+    } finally {
+      ref.invalidate(courierTripProvider);
+      ref.invalidate(courierStatusProvider);
+    }
+  }
+
+  /// La pregunta al cliente tampoco se encola: tiene minutos para responderse y él necesita verla ya. Primero
+  /// sale lo pendiente; sin señal se lanza el error (el domiciliario lo intenta de nuevo).
+  Future<void> reportAdjustment(String orderCode, List<ReportedLine> lines) async {
+    await flush();
+    final event = TripStepEvent(clientEventId: uuidV4(), occurredAt: DateTime.now(), queued: false);
+    try {
+      await _repository.reportAdjustment(orderCode, event, lines: lines);
     } finally {
       ref.invalidate(courierTripProvider);
       ref.invalidate(courierStatusProvider);

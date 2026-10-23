@@ -14,9 +14,10 @@
     "OFFER_WITHDRAWN": { "title": "El pedido {code} ya no está disponible", "body": "Lo tomó otro domiciliario o se canceló." },
     "PREPARATION_TIME_REACHED": { "title": "¿Ya está listo el pedido {code}?", "body": "Se cumplió el tiempo de preparación en {store}. Toca para responder." },
     "ADJUSTMENT_REQUESTED": { "title": "Tu domiciliario necesita que decidas", "body": "Algo de tu pedido {code} no está o cambió de precio. Responde pronto." },
-    "ADJUSTMENT_RESOLVED": { "title": "El cliente ya respondió", "body": "Revisa la decisión para el pedido {code}." },
+    "ADJUSTMENT_RESOLVED": { "title": "Ya hay respuesta para el pedido {code}", "body": "Mira qué quedó en la lista y sigue con la compra." },
     "INCIDENT_OPENED": { "title": "Novedad en el pedido {code}", "body": "Abrimos un caso y te contamos en cuanto se resuelva." },
     "INCIDENT_RESOLVED": { "title": "Novedad resuelta", "body": "Ya cerramos el caso del pedido {code}." },
-    "DELIVERY_PROOF_PENDING": { "title": "Falta la prueba de entrega", "body": "Toma la foto de la entrega del pedido {code}." }
+    "DELIVERY_PROOF_PENDING": { "title": "Falta la prueba de entrega", "body": "Toma la foto de la entrega del pedido {code}." },
+    "TRIP_CANCELLED": { "title": "El pedido {code} se canceló", "body": "Ya no tienes que comprarlo. Quedas libre para otro pedido." }
   }
 }

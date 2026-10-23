@@ -7,6 +7,7 @@ import { GeoPoint } from '../../catalog/domain/value-objects/geo-point';
 import { FULFILLMENT_MODES, STATUS_CHANGE_SOURCES } from '../domain/orders.codes';
 import { ClientRequestReplayed, NewOrder, OrderCodeTaken, OrderDetail, OrdersRepository, OrderSummary } from '../domain/ports/orders.repository';
 import { insertAddress } from './address-sql';
+import { readOrderAdjustments } from '../../fulfillment/infrastructure/adjustment-read';
 
 type Tx = Prisma.TransactionClient;
 
@@ -193,7 +194,7 @@ export class PrismaOrdersRepository extends OrdersRepository {
       LEFT JOIN order_delivery_proofs dp ON dp.order_id = o.id`;
     if (!row) return null;
 
-    const [lines, timeline, journey] = await Promise.all([
+    const [lines, timeline, journey, adjustments] = await Promise.all([
       this.prisma.$queryRaw<{ product_id: string; name: string; unit_price: string; quantity: number; notes: string | null; prep_minutes: number }[]>`
         SELECT l.product_id, COALESCE(tl.name, te.name) AS name, l.unit_price::text AS unit_price, l.quantity, l.notes, l.prep_minutes
         FROM v_order_lines l
@@ -208,6 +209,7 @@ export class PrismaOrdersRepository extends OrdersRepository {
         JOIN order_statuses s ON s.id = h.to_status_id AND s.is_visible_to_customer
         WHERE h.order_id = ${row.id}::uuid ORDER BY h.recorded_at`,
       this.journey(),
+      readOrderAdjustments(this.prisma, row.id, language),
     ]);
 
     return {
@@ -226,6 +228,7 @@ export class PrismaOrdersRepository extends OrdersRepository {
       preparation: row.estimated_ready_at ? { estimatedReadyAt: row.estimated_ready_at, delayed: row.is_delayed === true } : null,
       purchase: row.purchase_amount && row.receipt_file_id ? { amount: row.purchase_amount, receiptFileId: row.receipt_file_id } : null,
       delivery: { code: row.delivery_code, proofFileId: row.proof_file_id, reviewClosesAt: row.review_closes_at },
+      adjustments,
     };
   }
 
