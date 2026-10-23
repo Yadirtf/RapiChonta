@@ -55,7 +55,7 @@ El workflow `App iOS` (`.github/workflows/app-ios.yml`) hace lo mismo en macOS y
 
 ## Huawei
 
-El mapa usa `flutter_map` con teselas de OpenStreetMap y la ubicación usa `geolocator`, que funciona con el `LocationManager` de Android cuando no hay Google Play Services. Así la misma APK se publica en Google Play y en Huawei AppGallery. Las notificaciones push van por un canal intercambiable (`lib/features/notifications`): FCM en teléfonos con Google y Huawei Push Kit en los que no lo tienen. Firebase se configura con `--dart-define=FIREBASE_*` (sin `google-services.json`) y Huawei con `agconnect-services.json` y `--dart-define=HMS_PUSH_ENABLED=true`; ver "Notificaciones push" en `Docs/11-despliegue-snapdeploy.md` (aplica igual a Render). El ícono de la barra (`ic_stat_rapichonta`) lo genera `Docs/marca/generar_icono_aviso.py`.
+El mapa usa MapLibre (`maplibre_gl`) con datos de OpenStreetMap y el estilo de la web (OpenFreeMap, sin clave; otro con `--dart-define=MAP_STYLE_URL=...`) y la ubicación usa `geolocator`, que funciona con el `LocationManager` de Android cuando no hay Google Play Services. Así la misma APK se publica en Google Play y en Huawei AppGallery. Las notificaciones push van por un canal intercambiable (`lib/features/notifications`): FCM en teléfonos con Google y Huawei Push Kit en los que no lo tienen. Firebase se configura con `--dart-define=FIREBASE_*` (sin `google-services.json`) y Huawei con `agconnect-services.json` y `--dart-define=HMS_PUSH_ENABLED=true`; ver "Notificaciones push" en `Docs/11-despliegue-snapdeploy.md` (aplica igual a Render). El ícono de la barra (`ic_stat_rapichonta`) lo genera `Docs/marca/generar_icono_aviso.py`.
 
 ## Pruebas
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 
 import '../../../../app/theme.dart';
+import '../../../../core/map/brand_map.dart' show MapHandle;
 import '../../../../l10n/app_localizations.dart';
 import '../../../auth/presentation/widgets/phone_field.dart';
 import '../../../business/domain/business.dart' show CoverageArea;
@@ -90,7 +90,7 @@ class DeliverySection extends StatelessWidget {
   final List<SavedAddress> addresses;
   final ZoneState zone;
   final GeoPoint mapCenter;
-  final MapController mapController;
+  final MapHandle mapController;
   final VoidCallback? onLocateMe;
   final TextEditingController referenceController;
   final TextEditingController lineController;

@@ -547,6 +547,8 @@
   "tripDoneBody": "This order is no longer in your hands. Good job!",
   "tripGoToStore": "Head to the store",
   "tripDirections": "Directions",
+  "map3dView": "Show the map in 3D",
+  "mapFlatView": "Show the flat map",
   "tripCallStore": "Call the store",
   "tripAutoArrival": "When you enter the yellow area on the map, your arrival is marked for you. No need to tap anything.",
   "tripShoppingList": "Shopping list",

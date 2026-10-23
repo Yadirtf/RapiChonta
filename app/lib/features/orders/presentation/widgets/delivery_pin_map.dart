@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../../app/theme.dart';
-import '../../../../core/config/env.dart';
+import '../../../../core/map/brand_map.dart';
+import '../../../../core/map/map_images.dart';
 import '../../../business/domain/business.dart';
 import '../../../business/presentation/coverage_layers.dart';
 import '../../../establishments/domain/entities/establishment.dart';
-import '../../../establishments/presentation/widgets/nearby_map.dart' show PlacePin, brandTint;
+import '../../../establishments/presentation/widgets/nearby_map.dart' show PlacePin;
 
 /// Mapa de entrega (H04.2) con el pin fijo en el centro: el cliente arrastra el mapa hasta su puerta.
 /// El pin se levanta mientras el mapa se mueve y cae al soltar; solo entonces se cotiza la zona.
-/// Con [interactive] en false es la vista quieta del detalle del pedido.
+/// Con [interactive] en false es la vista quieta del detalle del pedido. Siempre plano: aquí importa el punto
+/// exacto, y con el mapa inclinado se apunta peor.
 class DeliveryPinMap extends StatefulWidget {
   const DeliveryPinMap({super.key, required this.center, this.onPick, this.label, this.store, this.controller, this.interactive = true, this.coverage = const []});
 
@@ -21,7 +22,7 @@ class DeliveryPinMap extends StatefulWidget {
   /// Rótulo sobre el pin: tarifa de la zona o el aviso de fuera de cobertura.
   final Widget? label;
   final GeoPoint? store;
-  final MapController? controller;
+  final MapHandle? controller;
   final bool interactive;
 
   /// Hasta dónde llegamos: el cliente ve el área iluminada donde puede soltar el pin (H03.5).
@@ -32,46 +33,75 @@ class DeliveryPinMap extends StatefulWidget {
 }
 
 class _DeliveryPinMapState extends State<DeliveryPinMap> {
+  static const _store = 'rapichonta-store';
+
+  MapLibreMapController? _map;
   bool _moving = false;
+
+  /// Solo un arrastre del cliente elige el punto; los movimientos de la app (su ubicación, el arranque) no.
+  bool _touched = false;
+  double _pixelRatio = 2;
+
+  @override
+  void didUpdateWidget(DeliveryPinMap old) {
+    super.didUpdateWidget(old);
+    final map = _map;
+    if (map != null && old.coverage != widget.coverage) CoverageLayers.update(map, widget.coverage).ignore();
+  }
+
+  Future<void> _onStyleLoaded(MapLibreMapController map) async {
+    _map = map;
+    widget.controller?.attach(map);
+    await CoverageLayers.add(map, widget.coverage, dim: 0.22);
+    final store = widget.store;
+    if (store == null) return;
+    await MapImages.add(map, 'pin-store', MapImages.pinSize, () => MapImages.pin(const PlacePin(icon: 'store', open: true)), _pixelRatio);
+    await map.addGeoJsonSource(_store, {
+      'type': 'FeatureCollection',
+      'features': [
+        {
+          'type': 'Feature',
+          'properties': <String, dynamic>{},
+          'geometry': {'type': 'Point', 'coordinates': [store.lng, store.lat]},
+        },
+      ],
+    });
+    await map.addSymbolLayer(
+      _store,
+      _store,
+      SymbolLayerProperties(iconImage: 'pin-store', iconSize: MapImages.iconSize(_pixelRatio), iconAnchor: 'bottom', iconAllowOverlap: true),
+      enableInteraction: false,
+    );
+  }
+
+  void _onCameraMove(CameraPosition _) {
+    if (!widget.interactive || !_touched || _moving) return;
+    setState(() => _moving = true);
+  }
+
+  void _onCameraIdle(CameraPosition? camera) {
+    if (!widget.interactive || !_touched) return;
+    _touched = false;
+    setState(() => _moving = false);
+    if (camera != null) widget.onPick?.call(geoPointOf(camera.target));
+  }
 
   @override
   Widget build(BuildContext context) {
+    _pixelRatio = MediaQuery.devicePixelRatioOf(context);
     return Stack(
       children: [
-        FlutterMap(
-          mapController: widget.controller,
-          options: MapOptions(
-            initialCenter: LatLng(widget.center.lat, widget.center.lng),
-            initialZoom: 17,
-            interactionOptions: InteractionOptions(flags: widget.interactive ? InteractiveFlag.all & ~InteractiveFlag.rotate : InteractiveFlag.none),
-            onMapEvent: (event) {
-              if (!widget.interactive) return;
-              if (event is MapEventMoveStart || event is MapEventFlingAnimationStart) {
-                if (!_moving) setState(() => _moving = true);
-              } else if (event is MapEventMoveEnd || event is MapEventFlingAnimationEnd || event is MapEventFlingAnimationNotStarted) {
-                setState(() => _moving = false);
-                widget.onPick?.call(GeoPoint(event.camera.center.latitude, event.camera.center.longitude));
-              }
-            },
+        Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (_) => _touched = true,
+          child: BrandMap(
+            center: widget.center,
+            zoom: 17,
+            interactive: widget.interactive,
+            onStyleLoaded: _onStyleLoaded,
+            onCameraMove: widget.interactive ? _onCameraMove : null,
+            onCameraIdle: widget.interactive ? _onCameraIdle : null,
           ),
-          children: [
-            TileLayer(
-              urlTemplate: Env.mapTilesUrl,
-              userAgentPackageName: 'com.rapichonta.app',
-              tileBuilder: (context, tile, _) => ColorFiltered(colorFilter: brandTint, child: tile),
-            ),
-            ...coverageLayers(widget.coverage, dim: 0.22),
-            if (widget.store != null)
-              MarkerLayer(markers: [
-                Marker(
-                  point: LatLng(widget.store!.lat, widget.store!.lng),
-                  width: 48,
-                  height: 52,
-                  alignment: Alignment.topCenter,
-                  child: const PlacePin(icon: 'store', open: true),
-                ),
-              ]),
-          ],
         ),
         // La sombra marca el punto exacto (centro del mapa); la punta de la gota cae sobre ella.
         IgnorePointer(

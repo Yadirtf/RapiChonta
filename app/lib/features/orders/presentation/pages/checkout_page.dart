@@ -3,13 +3,12 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:latlong2/latlong.dart';
 
 import '../../../../app/theme.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/map/brand_map.dart' show MapHandle;
 import '../../../../l10n/app_localizations.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../auth/presentation/widgets/error_text.dart';
@@ -86,7 +85,7 @@ class _Checkout extends ConsumerStatefulWidget {
 
 class _CheckoutState extends ConsumerState<_Checkout> {
   late CheckoutDraft _draft = CheckoutDraft.start(widget.addresses);
-  final _map = MapController();
+  final _map = MapHandle();
   final _reference = TextEditingController();
   final _line = TextEditingController();
   final _customLabel = TextEditingController();
@@ -135,7 +134,6 @@ class _CheckoutState extends ConsumerState<_Checkout> {
     for (final c in [_reference, _line, _customLabel, _recipientName, _recipientPhone, _notes]) {
       c.dispose();
     }
-    _map.dispose();
     super.dispose();
   }
 
@@ -149,11 +147,8 @@ class _CheckoutState extends ConsumerState<_Checkout> {
   }
 
   void _moveMap(GeoPoint point) {
-    try {
-      _map.move(LatLng(point.lat, point.lng), 17);
-    } catch (_) {
-      // El mapa aún no se ha dibujado: arrancará en el punto del borrador.
-    }
+    // Si el mapa aún no se ha dibujado, arrancará en el punto del borrador.
+    _map.move(point, 17).ignore();
   }
 
   /// Se cotiza al soltar el pin o cambiar la canasta (las notas de los productos no cambian el valor).
