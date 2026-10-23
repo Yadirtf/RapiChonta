@@ -7,7 +7,7 @@ import { PushProviderCode } from './notifications.codes';
 export interface PushMessage {
   title: string;
   body: string;
-  data: { type: string; notificationId: string; orderCode?: string; status?: string };
+  data: { type: string; notificationId: string; orderCode?: string; status?: string; audience?: string };
   highPriority: boolean;
   /** Avisos con la misma etiqueta se reemplazan en la bandeja del teléfono (un aviso vivo por pedido). */
   tag?: string;

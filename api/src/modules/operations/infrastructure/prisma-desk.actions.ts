@@ -4,7 +4,7 @@ import { CatalogIds } from '../../../shared/infrastructure/prisma/catalog-ids';
 import { PrismaService } from '../../../shared/infrastructure/prisma/prisma.service';
 import { CANCELLATION_REASONS } from '../../fulfillment/domain/adjustments';
 import { CANCELLED_RELEASE, TRIP_CANCELLED_NOTICE, TRIP_SOURCES, TRIP_STATUSES } from '../../fulfillment/domain/fulfillment.codes';
-import { INCIDENT_NOTICES, INCIDENT_RESOLUTIONS, INCIDENT_STATUSES, resolutionFits } from '../../fulfillment/domain/incidents';
+import { INCIDENT_NOTICES, INCIDENT_RESOLUTIONS, INCIDENT_STATUSES, NOTICE_AUDIENCES, resolutionFits } from '../../fulfillment/domain/incidents';
 import { PROOF_OUTCOMES, ProofOutcome } from '../domain/operations.codes';
 import { DeskActions, DeskResult, StaffActor } from '../domain/ports/desk';
 
@@ -136,7 +136,8 @@ export class PrismaDeskActions extends DeskActions {
     }
     await tx.$executeRaw`
       INSERT INTO notifications (recipient_user_id, notification_type_id, order_id, params)
-      SELECT x.user_id, t.id, o.id, ${JSON.stringify({ variant: resolution })}::jsonb
+      SELECT x.user_id, t.id, o.id,
+             jsonb_build_object('variant', ${resolution}::text, 'audience', CASE WHEN x.user_id = o.customer_user_id THEN ${NOTICE_AUDIENCES.CUSTOMER}::text ELSE ${NOTICE_AUDIENCES.COURIER}::text END)
       FROM orders o
       CROSS JOIN LATERAL (SELECT o.customer_user_id AS user_id
                           UNION SELECT oc.courier_user_id FROM v_order_courier oc WHERE oc.order_id = o.id) x

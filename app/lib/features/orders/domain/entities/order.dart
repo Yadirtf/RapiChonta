@@ -203,6 +203,8 @@ class OrderDetail extends OrderSummary {
     this.purchase,
     this.delivery = const OrderDelivery(),
     this.adjustments = const [],
+    this.incident,
+    this.cancellationReason,
   });
 
   final List<OrderLine> lines;
@@ -231,9 +233,35 @@ class OrderDetail extends OrderSummary {
   /// Las preguntas del domiciliario desde el local (E09), de la más reciente a la más vieja.
   final List<OrderAdjustment> adjustments;
 
+  /// H10.3: el caso abierto por "No lo recibí" (o por el operador al revisar la foto), con cómo va.
+  final OrderIncident? incident;
+
+  /// Código de cancellation_reasons si se canceló (lo explica la app con su texto).
+  final String? cancellationReason;
+
   @override
-  List<Object?> get props => [...super.props, timeline, preparation, purchase, delivery, adjustments];
+  List<Object?> get props => [...super.props, timeline, preparation, purchase, delivery, adjustments, incident, cancellationReason];
 }
+
+/// Un caso del pedido: cuándo se reportó, cuándo alguien de RapiChonta lo tomó y cómo terminó.
+class OrderIncident extends Equatable {
+  const OrderIncident({required this.status, required this.reportedAt, this.reviewStartedAt, this.resolvedAt, this.resolution});
+
+  /// OPEN, IN_REVIEW o RESOLVED (incident_statuses).
+  final String status;
+  final DateTime reportedAt;
+  final DateTime? reviewStartedAt;
+  final DateTime? resolvedAt;
+
+  /// RESOLVED_AS_DELIVERED, RESOLVED_AS_CANCELLED o NO_ORDER_CHANGE (incident_resolution_types).
+  final String? resolution;
+
+  @override
+  List<Object?> get props => [status, reviewStartedAt, resolvedAt, resolution];
+}
+
+/// Lo que el cliente puede contar al decir "No lo recibí" (la API recorta lo demás).
+const maxNotReceivedDescription = 500;
 
 /// El cierre de la entrega visto por el cliente.
 class OrderDelivery extends Equatable {

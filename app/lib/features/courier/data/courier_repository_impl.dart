@@ -128,6 +128,46 @@ class CourierRepositoryImpl implements CourierRepository {
   @override
   Future<StepOutcome> proof(String code, TripStepEvent event, {required String fileId}) => _step(code, 'proof', {...event.toJson(), 'fileId': fileId});
 
+  @override
+  Future<StepOutcome> collect(String code, TripStepEvent event, {required List<CollectedPayment> payments}) => _call(() async {
+        final response = await _authed.post<Map<String, dynamic>>('/courier/orders/${Uri.encodeComponent(code)}/collection', data: {
+          ...event.toJson(),
+          'payments': [for (final p in payments) p.toJson()],
+        });
+        return (status: null, replayed: response.data?['replayed'] as bool? ?? false);
+      });
+
+  @override
+  Future<List<CollectionAccount>> collectionAccounts() => _call(() async {
+        final response = await _authed.get<Map<String, dynamic>>('/courier/collection-accounts');
+        return [for (final a in (response.data?['accounts'] as List? ?? const []).cast<Map<String, dynamic>>()) accountFromJson(a)];
+      });
+
+  @override
+  Future<List<PendingCollection>> pendingCollections() => _call(() async {
+        final response = await _authed.get<Map<String, dynamic>>('/courier/collections/pending');
+        return [
+          for (final o in (response.data?['orders'] as List? ?? const []).cast<Map<String, dynamic>>())
+            PendingCollection(
+              code: o['code'] as String,
+              status: o['status'] as String,
+              storeName: o['storeName'] as String,
+              customerTotalCents: _cents(o['customerTotal']),
+              paymentMethod: o['paymentMethod'] as String,
+              closedAt: DateTime.parse(o['closedAt'] as String),
+            ),
+        ];
+      });
+
+  @override
+  Future<CollectionAccount> setAccountQr(String accountId, ReceiptPhoto photo) async {
+    final fileId = await _uploadPhoto(photo, 'COLLECTION_QR');
+    return _call(() async {
+      final response = await _authed.put<Map<String, dynamic>>('/courier/collection-accounts/${Uri.encodeComponent(accountId)}/qr', data: {'fileId': fileId});
+      return accountFromJson(response.data!);
+    });
+  }
+
   Future<StepOutcome> _step(String code, String action, Map<String, dynamic> body) => _call(() async {
         final response = await _authed.post<Map<String, dynamic>>('/courier/trip/${Uri.encodeComponent(code)}/$action', data: body);
         final json = response.data ?? const {};
@@ -149,6 +189,16 @@ List<TripLine> _lines(Object? json) => [
           unitCents: _cents(l['unitPrice']),
         ),
     ];
+
+CollectionAccount accountFromJson(Map<String, dynamic> json) => CollectionAccount(
+      id: json['id'] as String,
+      paymentMethod: json['paymentMethod'] as String,
+      bank: json['bank'] as String?,
+      accountType: json['accountType'] as String?,
+      accountNumber: json['accountNumber'] as String,
+      holderName: json['holderName'] as String,
+      qrUrl: Env.resolveAsset(json['qrUrl'] as String?),
+    );
 
 CourierStatus statusFromJson(Map<String, dynamic> json) {
   final active = json['activeOrder'] as Map<String, dynamic>?;
@@ -231,6 +281,16 @@ Trip tripFromJson(Map<String, dynamic> json) {
           ),
     adjustment: switch (json['adjustment']) {
       final Map<String, dynamic> a => adjustmentFromJson(a),
+      _ => null,
+    },
+    collection: switch (json['collection']) {
+      final Map<String, dynamic> c => TripCollection(
+          totalCents: _cents(c['total']),
+          payments: [
+            for (final p in (c['payments'] as List? ?? const []).cast<Map<String, dynamic>>())
+              CollectedPayment(paymentMethod: p['paymentMethod'] as String, amountCents: _cents(p['amount'])),
+          ],
+        ),
       _ => null,
     },
   );

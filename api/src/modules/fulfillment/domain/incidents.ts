@@ -25,6 +25,9 @@ export type IncidentResolutionCode = (typeof INCIDENT_RESOLUTIONS)[keyof typeof 
 
 export const INCIDENT_NOTICES = { OPENED: 'INCIDENT_OPENED', RESOLVED: 'INCIDENT_RESOLVED' } as const;
 
+/** El cierre del caso les llega al cliente y al domiciliario (notifications.params.audience): cada app abre lo suyo. */
+export const NOTICE_AUDIENCES = { CUSTOMER: 'CUSTOMER', COURIER: 'COURIER' } as const;
+
 /** Lo que cuenta el cliente o el operador al abrirla (incidents.description). */
 export const MAX_INCIDENT_DESCRIPTION = 500;
 

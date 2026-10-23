@@ -683,8 +683,8 @@ describe('Cobro, novedades y panel de pedidos (E10)', () => {
     const order = (await deskReader.board(await villagarzon(), 'ADMIN')).find((o) => o.code === s.orderCode);
     return order ? order.alerts.map((a) => a.code).sort() : null;
   };
-  const noticesOf = (s: Scenario, type: string) => prisma.$queryRaw<{ recipient: string; variant: string | null }[]>`
-    SELECT n.recipient_user_id AS recipient, n.params->>'variant' AS variant
+  const noticesOf = (s: Scenario, type: string) => prisma.$queryRaw<{ recipient: string; variant: string | null; audience: string | null }[]>`
+    SELECT n.recipient_user_id AS recipient, n.params->>'variant' AS variant, n.params->>'audience' AS audience
     FROM notifications n JOIN notification_types t ON t.id = n.notification_type_id AND t.code = ${type}
     WHERE n.order_id = ${s.orderId}::uuid ORDER BY n.created_at`;
   const totalOf = async (s: Scenario) =>
@@ -786,6 +786,8 @@ describe('Cobro, novedades y panel de pedidos (E10)', () => {
       const resolved = await noticesOf(s, 'INCIDENT_RESOLVED');
       expect(resolved.map((n) => n.recipient).sort()).toEqual([s.customerId, s.courierId].sort());
       expect(new Set(resolved.map((n) => n.variant))).toEqual(new Set(['RESOLVED_AS_DELIVERED']));
+      // Cada quien abre su pantalla al tocarlo: el cliente su pedido, el domiciliario su turno.
+      expect(Object.fromEntries(resolved.map((n) => [n.recipient, n.audience]))).toEqual({ [s.customerId]: 'CUSTOMER', [s.courierId]: 'COURIER' });
       // El cliente no recibe además el aviso genérico de "entregado" al salir de la disputa.
       const [generic] = await prisma.$queryRaw<{ n: number }[]>`
         SELECT count(*)::int AS n FROM notifications n JOIN order_status_history h ON h.id = n.order_status_history_id

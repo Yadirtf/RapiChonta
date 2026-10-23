@@ -172,7 +172,7 @@ class _Orders implements OrderRepository {
   Future<void> confirmReceived(String code) async => closed.add('received $code');
 
   @override
-  Future<void> reportNotReceived(String code) async => closed.add('not-received $code');
+  Future<void> reportNotReceived(String code, {String? description}) async => closed.add(['not-received $code', ?description].join(': '));
 
   @override
   Future<OrderDetail> find(String code, {required String language}) async => missing ? throw const Failure('', code: 'ORDER_NOT_FOUND') : detail ?? _delivered;
@@ -312,9 +312,61 @@ void main() {
     await tester.tap(find.text('No lo recibí'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
+    // Lo que cuenta llega al expediente del caso.
+    await tester.enterText(find.byType(TextField), '  Estuve en casa y nadie timbró ');
     await tester.tap(find.text('Sí, no lo recibí'));
     await tester.pump();
-    expect(orders.closed, ['not-received RC-7K3M']);
+    expect(orders.closed, ['not-received RC-7K3M: Estuve en casa y nadie timbró']);
+  });
+
+  testWidgets('H10.3: en revisión ve el expediente del caso; cerrado como cancelado, el motivo', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 2600));
+    OrderDetail disputed({required String status, required OrderIncident incident, String? reason}) => OrderDetail(
+          code: 'RC-7K3M',
+          establishmentId: 'e1',
+          establishmentName: 'Burger Demo',
+          createdAt: _at,
+          status: status,
+          statusAt: _at,
+          active: status == 'DISPUTED',
+          itemCount: 1,
+          totalCents: 1700000,
+          lines: const [OrderLine(productId: 'p1', name: 'Hamburguesa sencilla', unitCents: 1400000, quantity: 1)],
+          itemsCents: 1400000,
+          feeCents: 300000,
+          prepMinutes: 15,
+          zoneName: 'Centro',
+          address: const SavedAddress(id: '', label: 'Casa', location: GeoPoint(1.03, -76.61)),
+          paymentMethod: 'CASH',
+          timeline: [TimelineEntry('PENDING_REVIEW', _at), TimelineEntry(status, _at)],
+          journey: _journey,
+          incident: incident,
+          cancellationReason: reason,
+        );
+    await tester.pumpWidget(_app(
+      const OrderDetailPage(code: 'RC-7K3M'),
+      orders: _Orders(detail: disputed(status: 'DISPUTED', incident: OrderIncident(status: 'IN_REVIEW', reportedAt: _at, reviewStartedAt: _at))),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('CASO RC-7K3M'), findsOneWidget);
+    expect(find.text('RapiChonta está revisando tu caso'), findsOneWidget);
+    expect(find.text('Alguien del equipo ya lo tiene en sus manos y está hablando con el domiciliario.'), findsOneWidget);
+
+    await tester.pumpWidget(_app(
+      const OrderDetailPage(code: 'RC-7K3M'),
+      orders: _Orders(
+        detail: disputed(
+          status: 'CANCELLED',
+          incident: OrderIncident(status: 'RESOLVED', reportedAt: _at, reviewStartedAt: _at, resolvedAt: _at, resolution: 'RESOLVED_AS_CANCELLED'),
+          reason: 'INCIDENT_RESOLUTION',
+        ),
+      ),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Cerramos tu caso: cancelamos el pedido'), findsOneWidget);
+    expect(find.text('Lo resolvimos al revisar tu caso'), findsOneWidget);
   });
 
   testWidgets('un código que no es del cliente muestra cómo volver a sus pedidos', (tester) async {

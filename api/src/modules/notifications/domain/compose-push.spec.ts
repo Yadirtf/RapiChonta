@@ -42,6 +42,10 @@ describe('Texto de los avisos (H06.2)', () => {
     expect(resolved('RESOLVED_AS_CANCELLED').body).toBe('Lo cancelamos. Toca para ver el detalle del caso.');
     expect(resolved().body).toBe('Ya cerramos el caso. Toca para ver cómo quedó.');
     expect(resolved('NO_ORDER_CHANGE').title).toBe('Revisamos el pedido RC-7K3M');
+    // A quién va (cliente o domiciliario) viaja con el aviso para abrir la pantalla de cada uno.
+    const courier = composePush(pending({ type: 'INCIDENT_RESOLVED' as never, status: null, params: { variant: 'RESOLVED_AS_DELIVERED', audience: 'COURIER' } }), texts)!;
+    expect(courier.data).toMatchObject({ type: 'INCIDENT_RESOLVED', audience: 'COURIER' });
+    expect(resolved().data).not.toHaveProperty('audience');
   });
 
   it('un tipo sin plantilla no se envía al teléfono', () => {

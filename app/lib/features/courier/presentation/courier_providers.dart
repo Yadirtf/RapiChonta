@@ -98,23 +98,53 @@ final courierShiftProvider = Provider<void>((ref) {
   }
 });
 
+// ── Cobro contra entrega (H10.2) ──
+
+/// Sus cuentas de cobro con el QR. Cambian poco: se piden al abrir el cobro y al poner un QR.
+final collectionAccountsProvider = FutureProvider.autoDispose<List<CollectionAccount>>((ref) async {
+  if (!ref.watch(courierModeProvider)) return const [];
+  return ref.watch(courierRepositoryProvider).collectionAccounts();
+});
+
+/// Lo entregado sin cobro registrado. Se vuelve a pedir con el estado del turno (cada 30 s) y al salir la cola.
+final pendingCollectionsProvider = FutureProvider.autoDispose<List<PendingCollection>>((ref) async {
+  if (!ref.watch(courierModeProvider)) return const [];
+  ref.watch(courierStatusProvider);
+  return ref.watch(courierRepositoryProvider).pendingCollections();
+});
+
 // ── Cola sin señal (H08.8) ──
 
 final pendingStepsStoreProvider = Provider<PendingStepsStore>((ref) => platformPendingStepsStore());
 
 class PendingState {
-  const PendingState({this.steps = const [], this.sending = false, this.rejected});
+  const PendingState({this.steps = const [], this.sending = false, this.rejected, this.collected = const {}});
 
   final List<PendingStep> steps;
   final bool sending;
+
+  /// Cobros (H10.2) que ya llegaron a la API en esta sesión, por pedido: la pantalla los ve cobrados sin esperar
+  /// a que el pedido se vuelva a pedir.
+  final Map<String, List<CollectedPayment>> collected;
 
   /// El último paso que la API no aceptó (ya salió de la cola): se le muestra al domiciliario.
   final ({PendingStep step, Failure error})? rejected;
 
   Iterable<PendingStep> of(String orderCode) => steps.where((s) => s.orderCode == orderCode);
 
-  PendingState copyWith({List<PendingStep>? steps, bool? sending, ({PendingStep step, Failure error})? rejected, bool clearRejected = false}) =>
-      PendingState(steps: steps ?? this.steps, sending: sending ?? this.sending, rejected: clearRejected ? null : rejected ?? this.rejected);
+  PendingState copyWith({
+    List<PendingStep>? steps,
+    bool? sending,
+    ({PendingStep step, Failure error})? rejected,
+    bool clearRejected = false,
+    Map<String, List<CollectedPayment>>? collected,
+  }) =>
+      PendingState(
+        steps: steps ?? this.steps,
+        sending: sending ?? this.sending,
+        rejected: clearRejected ? null : rejected ?? this.rejected,
+        collected: collected ?? this.collected,
+      );
 }
 
 /// Los pasos del pedido pasan siempre por aquí: se guardan primero y luego se envían. Con señal salen al
@@ -142,7 +172,7 @@ class PendingStepsController extends Notifier<PendingState> {
 
   /// Registra el paso y trata de enviarlo. Devuelve true si ya llegó a la API, false si quedó en cola.
   /// Un rechazo de la API (el paso ya no aplica, la factura no sirve) se lanza como [Failure].
-  Future<bool> submit({required String orderCode, required StepKind kind, String? amount, ReceiptPhoto? receipt}) async {
+  Future<bool> submit({required String orderCode, required StepKind kind, String? amount, ReceiptPhoto? receipt, List<CollectedPayment>? payments}) async {
     if (PendingRules.duplicate(state.steps, orderCode, kind)) return false;
     final id = uuidV4();
     final step = PendingStep(
@@ -153,6 +183,7 @@ class PendingStepsController extends Notifier<PendingState> {
       amount: amount,
       receiptPath: receipt == null ? null : await _store.keepReceipt(id, receipt),
       receiptMime: receipt?.mimeType,
+      payments: payments,
     );
     await _persist([...state.steps, step]);
     state = state.copyWith(clearRejected: true);
@@ -204,6 +235,7 @@ class PendingStepsController extends Notifier<PendingState> {
         try {
           await _send(step);
           await _finish(step);
+          if (step.kind == StepKind.collection) state = state.copyWith(collected: {...state.collected, step.orderCode: step.payments!});
           changed = true;
         } catch (error) {
           if (PendingRules.retryable(error)) break;
@@ -217,6 +249,7 @@ class PendingStepsController extends Notifier<PendingState> {
       if (changed) {
         ref.invalidate(courierTripProvider);
         ref.invalidate(courierStatusProvider);
+        ref.invalidate(pendingCollectionsProvider);
       }
     }
   }
@@ -240,6 +273,8 @@ class PendingStepsController extends Notifier<PendingState> {
       case StepKind.proof:
         final current = await _uploaded(step, 'DELIVERY_PROOF_INVALID', _repository.uploadDeliveryProof);
         await _repository.proof(current.orderCode, event, fileId: current.receiptFileId!);
+      case StepKind.collection:
+        await _repository.collect(step.orderCode, event, payments: step.payments!);
     }
   }
 

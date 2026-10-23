@@ -83,6 +83,17 @@ String paymentLabel(AppLocalizations l10n, String method) => switch (method) {
       _ => method,
     };
 
+/// Por qué se canceló (código de cancellation_reasons). Uno nuevo sin texto se dice de forma general.
+String cancelReasonText(AppLocalizations l10n, String reason) => switch (reason) {
+      'CUSTOMER_REQUEST' => l10n.cancelReasonCustomerRequest,
+      'NO_COURIER_AVAILABLE' => l10n.cancelReasonNoCourier,
+      'ESTABLISHMENT_CLOSED' => l10n.cancelReasonStoreClosed,
+      'ALL_ITEMS_UNAVAILABLE' => l10n.cancelReasonAllUnavailable,
+      'CUSTOMER_UNREACHABLE' => l10n.cancelReasonUnreachable,
+      'INCIDENT_RESOLUTION' => l10n.cancelReasonIncident,
+      _ => l10n.cancelReasonOther,
+    };
+
 /// Estado en lenguaje claro ("Buscando domiciliario", "En camino") en una píldora del tono del estado.
 class StatusBadge extends StatelessWidget {
   const StatusBadge({super.key, required this.status, this.large = false});

@@ -45,6 +45,8 @@ export function composePush(notification: PendingNotification, texts: PushTexts)
       notificationId: notification.id,
       ...(notification.orderCode ? { orderCode: notification.orderCode } : {}),
       ...(notification.status ? { status: notification.status } : {}),
+      // Un mismo tipo puede llegar al cliente y al domiciliario (el cierre de un caso): la app abre la pantalla de cada uno.
+      ...(typeof notification.params?.audience === 'string' ? { audience: notification.params.audience } : {}),
     },
     highPriority: notification.highPriority,
     tag: notification.orderCode ?? undefined,

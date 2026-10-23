@@ -23,6 +23,7 @@ import '../widgets/duty_widgets.dart';
 import '../widgets/location_signal.dart';
 import '../widgets/offer_card.dart';
 import '../widgets/pending_ribbon.dart';
+import '../widgets/trip_collection.dart';
 
 /// Inicio del modo domiciliario (H08.1, H08.2): la palanca de Disponible, las ofertas que llegan y el pedido
 /// en curso. El paisaje de Villagarzón arriba, como el menú del cliente: es la misma app, vista desde la moto.
@@ -157,6 +158,7 @@ class _CourierHomePageState extends ConsumerState<CourierHomePage> with WidgetsB
                             _DutyPanel(status: status, busy: _switching, onChanged: status.verified ? _toggle : null),
                             const SizedBox(height: 14),
                             const PendingStepsRibbon(),
+                            const PendingCollectionsBanner(),
                             ..._body(context, status, language),
                             if (account != null && account.canSwitchMode) ...[
                               const SizedBox(height: 22),

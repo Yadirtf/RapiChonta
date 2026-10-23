@@ -158,6 +158,7 @@ class Trip extends Equatable {
     this.purchase,
     this.delivery,
     this.adjustment,
+    this.collection,
   });
 
   final String code;
@@ -188,8 +189,112 @@ class Trip extends Equatable {
   /// La última pregunta al cliente en este local (E09): abierta mientras espera, o con lo que decidió.
   final OrderAdjustment? adjustment;
 
+  /// H10.2: lo que el cliente pagó en la puerta, ya registrado (null mientras no se cobra).
+  final TripCollection? collection;
+
   @override
-  List<Object?> get props => [code, status, statusAt, lines, destination, preparation, purchase, delivery, adjustment];
+  List<Object?> get props => [code, status, statusAt, lines, destination, preparation, purchase, delivery, adjustment, collection];
+}
+
+// ── H10.2 · Cobro contra entrega ──
+
+/// Un pago tal como lo marca el domiciliario: el medio (código del catálogo) y cuánto, en centavos. Si el
+/// cliente pagó parte en efectivo y parte por Nequi, son dos pagos.
+class CollectedPayment extends Equatable {
+  const CollectedPayment({required this.paymentMethod, required this.amountCents});
+
+  final String paymentMethod;
+  final int amountCents;
+
+  /// Pesos en texto decimal para la API (RNF-05): "38500" o "38500.50".
+  Map<String, dynamic> toJson() => {
+        'paymentMethod': paymentMethod,
+        'amount': amountCents % 100 == 0 ? '${amountCents ~/ 100}' : '${amountCents ~/ 100}.${(amountCents % 100).toString().padLeft(2, '0')}',
+      };
+
+  @override
+  List<Object?> get props => [paymentMethod, amountCents];
+}
+
+class TripCollection extends Equatable {
+  const TripCollection({required this.totalCents, required this.payments});
+
+  final int totalCents;
+  final List<CollectedPayment> payments;
+
+  @override
+  List<Object?> get props => [totalCents, payments];
+}
+
+/// Una cuenta propia del domiciliario donde le pagan con QR (Nequi, Daviplata, transferencia). La crea el
+/// panel; desde la app solo se pone la imagen del QR que le dio su banco.
+class CollectionAccount extends Equatable {
+  const CollectionAccount({
+    required this.id,
+    required this.paymentMethod,
+    required this.accountNumber,
+    required this.holderName,
+    this.bank,
+    this.accountType,
+    this.qrUrl,
+  });
+
+  final String id;
+  final String paymentMethod;
+  final String? bank;
+  final String? accountType;
+  final String accountNumber;
+  final String holderName;
+
+  /// URL firmada de la imagen del QR (vence sola); null si aún no la sube.
+  final String? qrUrl;
+
+  @override
+  List<Object?> get props => [id, paymentMethod, accountNumber, qrUrl];
+}
+
+/// Lo que entregó en las últimas 24 horas sin decir cómo le pagaron: la caja del día no cierra sin eso.
+class PendingCollection extends Equatable {
+  const PendingCollection({
+    required this.code,
+    required this.status,
+    required this.storeName,
+    required this.customerTotalCents,
+    required this.paymentMethod,
+    required this.closedAt,
+  });
+
+  final String code;
+  final String status;
+  final String storeName;
+  final int customerTotalCents;
+
+  /// El medio que el cliente dijo que usaría al pedir (el más probable).
+  final String paymentMethod;
+  final DateTime closedAt;
+
+  @override
+  List<Object?> get props => [code, status, closedAt];
+}
+
+/// Reglas del cobro en la puerta, para la vista y las pruebas (la API las vuelve a revisar).
+abstract final class CollectionRules {
+  /// Efectivo + un medio de cuenta es lo normal; más de tres medios no tiene sentido en la puerta.
+  static const maxPayments = 3;
+
+  /// Los medios con los que puede cobrar: el efectivo siempre, los de cuenta solo si tiene la cuenta.
+  static List<String> methods(Iterable<CollectionAccount> accounts) => ['CASH', ...{for (final a in accounts) a.paymentMethod}];
+
+  /// Por qué no se puede registrar todavía (null si está bien): sin pagos, montos en cero o un medio repetido.
+  static String? problem(List<CollectedPayment> payments) {
+    if (payments.isEmpty) return 'EMPTY';
+    if (payments.length > maxPayments) return 'TOO_MANY';
+    if (payments.any((p) => p.amountCents <= 0)) return 'AMOUNT';
+    if (payments.map((p) => p.paymentMethod).toSet().length != payments.length) return 'REPEATED_METHOD';
+    return null;
+  }
+
+  static int total(Iterable<CollectedPayment> payments) => payments.fold(0, (sum, p) => sum + p.amountCents);
 }
 
 /// Una lectura del GPS tal como la entrega el teléfono.
@@ -258,6 +363,17 @@ abstract interface class CourierRepository {
 
   /// Entrega con foto cuando el cliente no dio el código.
   Future<StepOutcome> proof(String code, TripStepEvent event, {required String fileId});
+
+  /// H10.2: cómo le pagó el cliente. Sirve antes o después de entregar (el pedido no tiene que seguir con él).
+  Future<StepOutcome> collect(String code, TripStepEvent event, {required List<CollectedPayment> payments});
+
+  Future<List<CollectionAccount>> collectionAccounts();
+
+  /// Lo entregado en las últimas 24 horas sin cobro registrado.
+  Future<List<PendingCollection>> pendingCollections();
+
+  /// Sube la imagen del QR de su cuenta (propósito COLLECTION_QR) y la deja en la cuenta.
+  Future<CollectionAccount> setAccountQr(String accountId, ReceiptPhoto photo);
 }
 
 /// Id del paso (para no repetirlo si se reenvía) y, desde la cola sin señal, la hora en que ocurrió.
