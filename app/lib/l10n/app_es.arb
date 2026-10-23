@@ -784,6 +784,13 @@
   "tripDirections": "Cómo llegar",
   "map3dView": "Ver el mapa en 3D",
   "mapFlatView": "Ver el mapa plano",
+  "tripNavigate": "Navegar",
+  "tripOverview": "Vista general",
+  "tripRouteLeft": "{distance} · {minutes} min",
+  "@tripRouteLeft": {
+    "description": "Lo que falta por la ruta del domiciliario: distancia ya formateada y minutos.",
+    "placeholders": {"distance": {"type": "String"}, "minutes": {"type": "int"}}
+  },
   "tripCallStore": "Llamar al local",
   "tripAutoArrival": "Al entrar en la zona amarilla del mapa se marca tu llegada sola. No tienes que tocar nada.",
   "tripShoppingList": "Lista de compra",

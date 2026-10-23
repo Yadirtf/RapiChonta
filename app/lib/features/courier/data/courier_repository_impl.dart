@@ -73,6 +73,15 @@ class CourierRepositoryImpl implements CourierRepository {
       });
 
   @override
+  Future<TripRoute?> route(String code, GeoPoint from) => _call(() async {
+        final response = await _authed.get<Map<String, dynamic>>(
+          '/courier/trip/${Uri.encodeComponent(code)}/route',
+          queryParameters: {'lat': from.lat, 'lng': from.lng},
+        );
+        return tripRouteFromJson(response.data?['route'] as Map<String, dynamic>?);
+      });
+
+  @override
   Future<String> uploadReceipt(ReceiptPhoto photo) => _uploadPhoto(photo, 'PURCHASE_RECEIPT');
 
   @override

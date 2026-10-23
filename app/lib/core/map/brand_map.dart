@@ -18,7 +18,7 @@ GeoPoint geoPointOf(LatLng p) => GeoPoint(p.latitude, p.longitude);
 String mapColor(Color c) => 'rgba(${(c.r * 255).round()}, ${(c.g * 255).round()}, ${(c.b * 255).round()}, ${c.a.toStringAsFixed(3)})';
 
 /// Inclinación del modo 3D: se ven los edificios de pie y el relieve, sin perder la calle de enfrente.
-const _tilt3d = 55.0;
+const tilt3d = 55.0;
 
 /// Mapa base de RapiChonta (MapLibre, vectorial, en la GPU): mismo estilo de la web, botón 2D/3D opcional y
 /// Villagarzón guardado en el teléfono. Las capas propias de cada pantalla se agregan en [onStyleLoaded], que
@@ -32,6 +32,7 @@ class BrandMap extends ConsumerStatefulWidget {
     this.tiltToggle = false,
     this.toggleAlignment = Alignment.topRight,
     this.togglePadding = const EdgeInsets.all(12),
+    this.handle,
     this.onStyleLoaded,
     this.onFeatureTap,
     this.onCameraMove,
@@ -46,6 +47,9 @@ class BrandMap extends ConsumerStatefulWidget {
   final bool tiltToggle;
   final Alignment toggleAlignment;
   final EdgeInsets togglePadding;
+
+  /// Para mover el mapa desde afuera y saber si el usuario lo dejó en 3D.
+  final MapHandle? handle;
 
   final ValueChanged<MapLibreMapController>? onStyleLoaded;
 
@@ -64,6 +68,7 @@ class _BrandMapState extends ConsumerState<BrandMap> {
 
   void _onCreated(MapLibreMapController map) {
     _map = map;
+    widget.handle?.attach(map);
     map.onFeatureTapped.add(_onFeatureTapped);
   }
 
@@ -82,7 +87,8 @@ class _BrandMapState extends ConsumerState<BrandMap> {
     final map = _map;
     if (map == null) return;
     setState(() => _tilted = !_tilted);
-    await map.animateCamera(CameraUpdate.tiltTo(_tilted ? _tilt3d : 0), duration: const Duration(milliseconds: 600));
+    widget.handle?.tilted = _tilted;
+    await map.animateCamera(CameraUpdate.tiltTo(_tilted ? tilt3d : 0), duration: const Duration(milliseconds: 600));
     await map.setLayerVisibility(hillshadeLayerId, _tilted).catchError((_) {});
   }
 
@@ -159,6 +165,9 @@ class _BrandMapState extends ConsumerState<BrandMap> {
 /// Para mover el mapa desde la pantalla que lo contiene (por ejemplo, al usar la ubicación del teléfono).
 class MapHandle {
   MapLibreMapController? _map;
+
+  /// El usuario dejó el mapa en 3D con el botón.
+  bool tilted = false;
 
   // ignore: use_setters_to_change_properties
   void attach(MapLibreMapController map) => _map = map;

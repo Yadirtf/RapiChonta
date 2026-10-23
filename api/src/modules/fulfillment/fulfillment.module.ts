@@ -19,6 +19,9 @@ import { PrismaDeliveryReviewWatch } from './infrastructure/prisma-delivery-revi
 import { PrismaGeofenceProbe } from './infrastructure/prisma-geofence.probe';
 import { PrismaPreparationWatch } from './infrastructure/prisma-preparation.watch';
 import { PreparationClock } from './infrastructure/preparation-clock';
+import { HttpRoutePlanner } from './infrastructure/http-route-planner';
+import { RoutePlanner } from './domain/ports/route-planner';
+import { TripRouteUseCase } from './application/trip-route.use-case';
 import { CourierCollectionController, CourierTripController, CustomerAdjustmentController, CustomerDeliveryController } from './presentation/http/fulfillment.controller';
 import { FulfillmentPresenter } from './presentation/http/fulfillment-presenter';
 
@@ -71,6 +74,16 @@ const seconds = (config: ConfigService, key: string, fallback: number) => {
         new PreparationClock(watch, notifier, { idleMs: seconds(config, 'PREPARATION_IDLE_SWEEP_SECONDS', 300), minMs: 1_000 }, review, adjustments),
     },
     { provide: PreparationSignal, useExisting: PreparationClock },
+    {
+      provide: RoutePlanner,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) =>
+        new HttpRoutePlanner({
+          orsApiKey: config.get<string>('ORS_API_KEY') || undefined,
+          osrmUrl: config.get<string>('OSRM_URL') || 'https://router.project-osrm.org',
+        }),
+    },
+    TripRouteUseCase,
     FulfillmentCodesCheck,
     FulfillmentPresenter,
     CourierTripUseCase,
