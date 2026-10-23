@@ -184,6 +184,9 @@ class _Orders implements OrderRepository {
   Future<List<SavedAddress>> addresses() async => const [SavedAddress(id: 'a1', label: 'Casa', reference: 'Casa azul', location: GeoPoint(1.03, -76.61), isDefault: true)];
 
   @override
+  Future<SavedAddress?> lastAddress() async => const SavedAddress(id: 'a1', label: 'Casa', reference: 'Casa azul', location: GeoPoint(1.03, -76.61), isDefault: true);
+
+  @override
   Future<List<SavedRecipient>> recipients() async => const [];
 
   @override
@@ -209,8 +212,9 @@ class _MemoryCart implements CartStore {
   Future<void> write(Cart? cart) async => saved = cart;
 }
 
-Widget _app(Widget home, {OrderRepository? orders, CartStore? cart}) => ProviderScope(
+Widget _app(Widget home, {OrderRepository? orders, CartStore? cart, GeoPoint? gps}) => ProviderScope(
       overrides: [
+        preciseLocationProvider.overrideWith((ref) async => gps),
         orderRepositoryProvider.overrideWithValue(orders ?? _Orders()),
         cartStoreProvider.overrideWithValue(cart ?? _MemoryCart(null)),
       ],
@@ -385,7 +389,7 @@ void main() {
     expect(find.text(r'$ 23.000'), findsOneWidget);
   });
 
-  testWidgets('el pedido cotiza el lugar guardado y pide elegir el pago antes de confirmar', (tester) async {
+  testWidgets('sin GPS ofrece la dirección del último pedido, la cotiza y pide elegir el pago antes de confirmar', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 3200));
     final store = _MemoryCart(const Cart(establishmentId: 'e1', establishmentName: 'Burger Demo', lines: [
       CartLine(productId: 'p1', versionId: 'v1', name: 'Hamburguesa sencilla', priceCents: 1400000, quantity: 1),
@@ -409,6 +413,30 @@ void main() {
     await tester.pump();
     expect(find.text('¿Con cuánto pagas?'), findsOneWidget);
     expect(find.text(r'$ 30.000'), findsOneWidget);
+  });
+
+  testWidgets('con GPS arranca en el punto donde está el cliente y deja el último pedido al lado, sin elegirlo', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 3200));
+    final store = _MemoryCart(const Cart(establishmentId: 'e1', establishmentName: 'Burger Demo', lines: [
+      CartLine(productId: 'p1', versionId: 'v1', name: 'Hamburguesa sencilla', priceCents: 1400000, quantity: 1),
+    ]));
+    await tester.pumpWidget(_app(const CheckoutPage(), cart: store, gps: const GeoPoint(1.0301, -76.6172)));
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    expect(find.text('Donde estoy'), findsOneWidget);
+    expect(find.text('Según tu GPS'), findsOneWidget);
+    expect(find.text('ÚLTIMO PEDIDO'), findsOneWidget);
+    expect(find.text('Referencia para encontrarte'), findsOneWidget);
+    expect(find.text(r'Domicilio a Centro: $ 3.000'), findsNothing);
+
+    await tester.tap(find.text('ÚLTIMO PEDIDO'));
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.text('Referencia para encontrarte'), findsNothing);
+    expect(find.text(r'Domicilio a Centro: $ 3.000'), findsOneWidget);
   });
 
   group('E09: la pregunta del domiciliario', () {

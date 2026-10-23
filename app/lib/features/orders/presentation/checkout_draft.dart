@@ -49,11 +49,10 @@ class CheckoutDraft {
 
   static const minReference = 3;
 
-  /// El lugar predeterminado (o el primero) queda elegido; sin lugares, el punto nuevo se guarda como "Casa".
-  factory CheckoutDraft.start(List<SavedAddress> addresses) {
-    final preferred = addresses.where((a) => a.isDefault).firstOrNull ?? addresses.firstOrNull;
-    return CheckoutDraft(savedAddressId: preferred?.id, saveAs: addresses.isEmpty ? PlaceLabel.home : null);
-  }
+  /// Arranca marcando el punto: el GPS lo pone donde está el cliente ahora y la dirección del último pedido
+  /// queda al lado como opción, sin elegirla (pedir desde otro lugar no debe ir a la casa por descuido).
+  /// Sin lugares guardados, el punto nuevo se guarda como "Casa".
+  factory CheckoutDraft.start(List<SavedAddress> addresses) => CheckoutDraft(saveAs: addresses.isEmpty ? PlaceLabel.home : null);
 
   final String? savedAddressId;
   final GeoPoint? point;

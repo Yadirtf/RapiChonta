@@ -50,10 +50,11 @@ void main() {
   });
 
   group('CheckoutDraft', () {
-    test('arranca en el lugar predeterminado; sin lugares, el punto se guarda como Casa', () {
+    test('arranca marcando el punto (no en el lugar de antes); sin lugares, el punto se guarda como Casa', () {
       const home = SavedAddress(id: 'a', label: 'Casa', location: GeoPoint(1, -76));
       const work = SavedAddress(id: 'b', label: 'Trabajo', location: GeoPoint(1, -76), isDefault: true);
-      expect(CheckoutDraft.start([home, work]).savedAddressId, 'b');
+      expect(CheckoutDraft.start([home, work]).pickingPoint, isTrue);
+      expect(CheckoutDraft.start([home, work]).saveAs, isNull);
       expect(CheckoutDraft.start(const []).saveAs, PlaceLabel.home);
     });
 
