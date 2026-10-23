@@ -93,13 +93,17 @@ class _NearbyMapState extends State<NearbyMap> {
             for (final e in widget.establishments)
               Marker(
                 point: LatLng(e.location.lat, e.location.lng),
-                width: 48,
-                height: 52,
+                // Con logo, la gota es más grande y lleva la insignia de la categoría.
+                width: e.logoUrl == null ? 48 : 64,
+                height: e.logoUrl == null ? 52 : 62,
                 alignment: Alignment.topCenter,
                 child: Semantics(
                   button: true,
                   label: e.name,
-                  child: GestureDetector(onTap: () => widget.onSelect(e), child: PlacePin(icon: e.categoryIcon, open: e.acceptsOrders, selected: e.id == widget.selectedId)),
+                  child: GestureDetector(
+                    onTap: () => widget.onSelect(e),
+                    child: PlacePin(icon: e.categoryIcon, logoUrl: e.logoUrl, open: e.acceptsOrders, selected: e.id == widget.selectedId),
+                  ),
                 ),
               ),
           ],
@@ -117,10 +121,90 @@ const brandTint = ColorFilter.matrix(<double>[
   0, 0, 0, 1, 0,
 ]);
 
-/// Gota color chontaduro con el ícono de la categoría (igual que en la web y que el logo).
+/// Gota color chontaduro con el logo del local, o el ícono de la categoría si no tiene logo o no carga
+/// (igual que en la web). Con logo, la categoría queda en una insignia: el menú lateral filtra por ella.
 /// Apagada si el local no recibe pedidos.
 class PlacePin extends StatelessWidget {
-  const PlacePin({super.key, required this.icon, required this.open, this.selected = false});
+  const PlacePin({super.key, required this.icon, required this.open, this.logoUrl, this.selected = false});
+
+  final String icon;
+  final String? logoUrl;
+  final bool open;
+  final bool selected;
+
+  static const _closed = Color(0xFF6B6875);
+  static const _closedInk = Color(0xFFE9E7EE);
+
+  @override
+  Widget build(BuildContext context) {
+    final background = !open ? _closed : (selected ? AppColors.brand : AppColors.chonta);
+    final foreground = !open ? _closedInk : (selected ? AppColors.ink : Colors.white);
+    final logo = logoUrl;
+    final size = logo == null ? 38.0 : 44.0;
+    final categoryGlyph = Icon(categoryIcon(icon), size: 18, color: foreground);
+    Widget face = categoryGlyph;
+    if (logo != null) {
+      Widget image = Image.network(
+        logo,
+        fit: BoxFit.cover,
+        width: 33,
+        height: 33,
+        errorBuilder: (_, _, _) => ColoredBox(color: background, child: Center(child: categoryGlyph)),
+      );
+      if (!open) image = Opacity(opacity: 0.75, child: ColorFiltered(colorFilter: _grayscale, child: image));
+      face = Container(
+        width: 33,
+        height: 33,
+        clipBehavior: Clip.antiAlias,
+        decoration: const BoxDecoration(color: AppColors.cream, shape: BoxShape.circle),
+        child: image,
+      );
+    }
+    final pin = Transform.rotate(
+      angle: -math.pi / 4,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(size / 2),
+            topRight: Radius.circular(size / 2),
+            bottomRight: Radius.circular(size / 2),
+            bottomLeft: const Radius.circular(5),
+          ),
+          border: Border.all(color: selected ? AppColors.ink : (open ? Colors.white : foreground), width: 2.5),
+          boxShadow: [BoxShadow(color: AppColors.ink.withValues(alpha: 0.35), blurRadius: 10, offset: const Offset(0, 4))],
+        ),
+        child: Transform.rotate(angle: math.pi / 4, child: Center(child: face)),
+      ),
+    );
+    return AnimatedScale(
+      scale: selected ? 1.15 : 1,
+      duration: const Duration(milliseconds: 150),
+      alignment: Alignment.bottomCenter,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: logo == null
+            ? pin
+            : Padding(
+                // Espacio para la insignia, que sobresale por la esquina superior derecha.
+                padding: const EdgeInsets.only(top: 4),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    pin,
+                    Positioned(top: -6, right: -9, child: _CategoryBadge(icon: icon, open: open, selected: selected)),
+                  ],
+                ),
+              ),
+      ),
+    );
+  }
+}
+
+class _CategoryBadge extends StatelessWidget {
+  const _CategoryBadge({required this.icon, required this.open, required this.selected});
 
   final String icon;
   final bool open;
@@ -128,34 +212,26 @@ class PlacePin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final background = !open ? const Color(0xFF6B6875) : (selected ? AppColors.brand : AppColors.chonta);
-    final foreground = !open ? const Color(0xFFE9E7EE) : (selected ? AppColors.ink : Colors.white);
-    return AnimatedScale(
-      scale: selected ? 1.15 : 1,
-      duration: const Duration(milliseconds: 150),
-      alignment: Alignment.bottomCenter,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: Transform.rotate(
-          angle: -math.pi / 4,
-          child: Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: background,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(19),
-                topRight: Radius.circular(19),
-                bottomRight: Radius.circular(19),
-                bottomLeft: Radius.circular(5),
-              ),
-              border: Border.all(color: selected ? AppColors.ink : (open ? Colors.white : foreground), width: 2.5),
-              boxShadow: [BoxShadow(color: AppColors.ink.withValues(alpha: 0.35), blurRadius: 10, offset: const Offset(0, 4))],
-            ),
-            child: Transform.rotate(angle: math.pi / 4, child: Icon(categoryIcon(icon), size: 18, color: foreground)),
-          ),
-        ),
+    final background = !open ? PlacePin._closed : (selected ? AppColors.ink : AppColors.chontaStrong);
+    final foreground = !open ? PlacePin._closedInk : (selected ? AppColors.brand : Colors.white);
+    return Container(
+      width: 20,
+      height: 20,
+      decoration: BoxDecoration(
+        color: background,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+        boxShadow: [BoxShadow(color: AppColors.ink.withValues(alpha: 0.35), blurRadius: 6, offset: const Offset(0, 2))],
       ),
+      child: Icon(categoryIcon(icon), size: 11, color: foreground),
     );
   }
 }
+
+/// Escala de grises para el logo de un local que no recibe pedidos.
+const _grayscale = ColorFilter.matrix(<double>[
+  0.2126, 0.7152, 0.0722, 0, 0, //
+  0.2126, 0.7152, 0.0722, 0, 0, //
+  0.2126, 0.7152, 0.0722, 0, 0, //
+  0, 0, 0, 1, 0,
+]);

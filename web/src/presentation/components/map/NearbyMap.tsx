@@ -3,7 +3,7 @@
 import { maplibregl } from "./maplibre";
 import { type Map as MapLibreMap, type Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { CoverageArea } from "@/core/domain/entities/business";
 import type { Establishment, GeoPoint } from "@/core/domain/entities/establishment";
@@ -78,13 +78,7 @@ export function NearbyMap({ center, establishments, selectedId, onSelect, covera
       });
       // El ícono de la categoría es un componente de React dentro de un marcador de MapLibre.
       const root = createRoot(element);
-      root.render(
-        <span className="place-pin">
-          <span>
-            <CategoryIcon name={e.categoryIcon} className="size-[18px]" strokeWidth={2.4} />
-          </span>
-        </span>,
-      );
+      root.render(<PlacePin icon={e.categoryIcon} logoUrl={e.logoUrl} />);
       const marker = new maplibregl.Marker({ element, anchor: "bottom" }).setLngLat([e.location.lng, e.location.lat]).addTo(map);
       return { id: e.id, marker, root, element };
     });
@@ -114,4 +108,33 @@ export function NearbyMap({ center, establishments, selectedId, onSelect, covera
   }, [selectedId, establishments]);
 
   return <div ref={containerRef} className="h-full w-full" />;
+}
+
+/**
+ * Gota color chontaduro. Con logo, la gota lo enmarca como un medallón y la categoría queda en una
+ * insignia pequeña (el menú lateral filtra por categoría); sin logo, o si la imagen no carga, el ícono.
+ */
+function PlacePin({ icon, logoUrl }: { icon: string; logoUrl: string | null }) {
+  const [failed, setFailed] = useState(false);
+  const categoryIcon = <CategoryIcon name={icon} className="size-[18px]" strokeWidth={2.4} />;
+  if (!logoUrl || failed) {
+    return (
+      <span className="place-pin">
+        <span>{categoryIcon}</span>
+      </span>
+    );
+  }
+  return (
+    <>
+      <span className="place-pin with-logo">
+        <span className="place-logo">
+          {/* eslint-disable-next-line @next/next/no-img-element -- URL firmada del almacenamiento, sin optimizador */}
+          <img src={logoUrl} alt="" draggable={false} onError={() => setFailed(true)} />
+        </span>
+      </span>
+      <span className="place-badge" aria-hidden>
+        <CategoryIcon name={icon} className="size-[11px]" strokeWidth={2.8} />
+      </span>
+    </>
+  );
 }
