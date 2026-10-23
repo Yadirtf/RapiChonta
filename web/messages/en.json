@@ -768,6 +768,18 @@
         "TOO_SMALL": "Too small (minimum {min} m²)",
         "TOO_LARGE": "Too large (maximum {max} m²)",
         "NOT_COVERING": "The store must be inside the area"
+      },
+      "here": {
+        "button": "My location",
+        "locating": "Locating…",
+        "again": "Refresh",
+        "found": "You are here",
+        "accuracy": "Accuracy ±{meters} m",
+        "rough": "Weak signal: ±{meters} m, adjust by hand",
+        "placeHere": "Place the store here",
+        "dot": "Your current location",
+        "denied": "The browser has no location permission. Turn it on from the lock in the address bar.",
+        "unavailable": "Couldn't get your location. Check the GPS and try again."
       }
     },
     "status": {

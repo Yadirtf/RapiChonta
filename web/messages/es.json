@@ -768,6 +768,18 @@
         "TOO_SMALL": "Muy pequeña (mínimo {min} m²)",
         "TOO_LARGE": "Muy grande (máximo {max} m²)",
         "NOT_COVERING": "El local debe quedar dentro del área"
+      },
+      "here": {
+        "button": "Mi ubicación",
+        "locating": "Buscando…",
+        "again": "Actualizar",
+        "found": "Estás aquí",
+        "accuracy": "Precisión ±{meters} m",
+        "rough": "Señal débil: ±{meters} m, ajusta a mano",
+        "placeHere": "Ubicar el local aquí",
+        "dot": "Tu ubicación actual",
+        "denied": "El navegador no tiene permiso de ubicación. Actívalo en el candado de la barra de direcciones.",
+        "unavailable": "No se pudo obtener tu ubicación. Revisa el GPS e inténtalo de nuevo."
       }
     },
     "status": {

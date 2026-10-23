@@ -239,6 +239,52 @@ body {
   cursor: grab;
 }
 
+/* "Estás aquí" en el editor del local: semilla de chontaduro con halo que late, distinta del pin del local. */
+.here-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: var(--color-chonta);
+  border: 3px solid var(--color-cream);
+  box-shadow: 0 2px 6px rgb(20 18 31 / 0.35);
+  animation: here-pulse 2s ease-out infinite;
+  pointer-events: none;
+}
+
+/* El local y las esquinas quedan encima del punto: se agregan antes al mapa pero son lo que se arrastra. */
+.store-pin,
+.area-vertex,
+.area-midpoint {
+  z-index: 1;
+}
+
+@keyframes here-pulse {
+  0% {
+    box-shadow: 0 2px 6px rgb(20 18 31 / 0.35), 0 0 0 0 rgb(228 87 46 / 0.55);
+  }
+  100% {
+    box-shadow: 0 2px 6px rgb(20 18 31 / 0.35), 0 0 0 16px rgb(228 87 46 / 0);
+  }
+}
+
+.here-card {
+  animation: here-card-in 220ms ease-out;
+}
+
+@keyframes here-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .here-dot,
+  .here-card {
+    animation: none;
+  }
+}
+
 .no-scrollbar {
   scrollbar-width: none;
 }
