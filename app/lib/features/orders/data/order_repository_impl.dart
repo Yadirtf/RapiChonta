@@ -23,9 +23,12 @@ class OrderRepositoryImpl implements OrderRepository {
   }
 
   @override
-  Future<List<String>> paymentMethods() => _call(() async {
+  Future<List<PaymentOption>> paymentMethods() => _call(() async {
         final response = await _public.get<List<dynamic>>('/orders/payment-methods');
-        return [for (final m in (response.data ?? const []).cast<Map<String, dynamic>>()) m['code'] as String];
+        return [
+          for (final m in (response.data ?? const []).cast<Map<String, dynamic>>())
+            PaymentOption(m['code'] as String, imageUrl: Env.resolveAsset(m['imageUrl'] as String?)),
+        ];
       });
 
   @override

@@ -481,7 +481,7 @@ class PaymentSection extends StatelessWidget {
 
   final CheckoutDraft draft;
   final DraftChange onChange;
-  final List<String> methods;
+  final List<PaymentOption> methods;
   final int? totalCents;
   final TextEditingController notesController;
   final bool showErrors;
@@ -501,8 +501,11 @@ class PaymentSection extends StatelessWidget {
             spacing: 10,
             runSpacing: 10,
             children: [
-              for (final method in methods)
-                SizedBox(width: (constraints.maxWidth - 10) / 2, child: _PaymentTile(method: method, selected: draft.payment == method, onTap: () => onChange((d) => d.copyWith(payment: method)))),
+              for (final option in methods)
+                SizedBox(
+                  width: (constraints.maxWidth - 10) / 2,
+                  child: _PaymentTile(option: option, selected: draft.payment == option.code, onTap: () => onChange((d) => d.copyWith(payment: option.code))),
+                ),
             ],
           ),
         ),
@@ -567,9 +570,9 @@ class PaymentSection extends StatelessWidget {
 }
 
 class _PaymentTile extends StatelessWidget {
-  const _PaymentTile({required this.method, required this.selected, required this.onTap});
+  const _PaymentTile({required this.option, required this.selected, required this.onTap});
 
-  final String method;
+  final PaymentOption option;
   final bool selected;
   final VoidCallback onTap;
 
@@ -591,18 +594,13 @@ class _PaymentTile extends StatelessWidget {
               padding: const EdgeInsets.all(14),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(color: selected ? AppColors.ink : AppColors.cream, borderRadius: BorderRadius.circular(14)),
-                    child: Icon(paymentIcon(method), color: selected ? AppColors.brand : AppColors.chonta, size: 20),
-                  ),
+                  PaymentMark(option: option, selected: selected),
                   const Spacer(),
                   if (selected)
                     const CircleAvatar(radius: 11, backgroundColor: AppColors.ink, child: Icon(Icons.check_rounded, size: 14, color: AppColors.brand)),
                 ]),
                 const SizedBox(height: 12),
-                Text(paymentLabel(AppLocalizations.of(context), method), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                Text(paymentLabel(AppLocalizations.of(context), option.code), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
               ]),
             ),
           ),

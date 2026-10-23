@@ -83,12 +83,10 @@ export class PrismaCheckoutReader extends CheckoutReader {
   }
 
   async paymentMethods(): Promise<string[]> {
-    const rows = await this.prisma.paymentMethod.findMany({
-      where: { deactivatedAt: null, isCashOnDelivery: true },
-      orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
-      select: { code: true },
-    });
+    const rows = await this.prisma.$queryRaw<{ code: string }[]>`
+      SELECT pm.code FROM checkout_payment_methods c JOIN payment_methods pm ON pm.id = c.payment_method_id
+      WHERE c.hidden_at IS NULL AND pm.deactivated_at IS NULL AND pm.is_cash_on_delivery
+      ORDER BY c.sort_order, pm.id`;
     return rows.map((r) => r.code);
   }
 }
-

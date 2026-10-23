@@ -4,6 +4,20 @@ import { toCents } from "./money";
 /** Medios de pago contra entrega (RF-22). El código lo traduce la vista; el catálogo lo da la API. */
 export type PaymentMethodCode = "CASH" | "NEQUI" | "DAVIPLATA" | "BANK_TRANSFER" | (string & {});
 
+/** Un medio en "¿Cómo pagas al recibir?": el panel decide cuáles se ven, su orden y su imagen. */
+export interface PaymentOption {
+  code: PaymentMethodCode;
+  imageUrl: string | null;
+}
+
+/** Lo mismo, visto desde el panel: también los ocultos y qué es cada medio (lo define el sistema). */
+export interface AdminPaymentOption extends PaymentOption {
+  offered: boolean;
+  isAccountBased: boolean;
+  requiresBank: boolean;
+  imageFileId: string | null;
+}
+
 /** Estados que puede ver el cliente. La lista y su orden vienen de la API (`journey`); aquí solo se nombran. */
 export type OrderStatusCode =
   | "PENDING_ASSIGNMENT"

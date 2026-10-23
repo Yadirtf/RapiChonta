@@ -61,7 +61,7 @@ class CheckoutPage extends ConsumerWidget {
           ),
         ]),
       ),
-      data: (book) => _Checkout(cart: cart, addresses: book.addresses, recipients: book.recipients, methods: methods.value ?? const ['CASH']),
+      data: (book) => _Checkout(cart: cart, addresses: book.addresses, recipients: book.recipients, methods: methods.value ?? const [PaymentOption('CASH')]),
     );
   }
 
@@ -77,7 +77,7 @@ class _Checkout extends ConsumerStatefulWidget {
   final Cart cart;
   final List<SavedAddress> addresses;
   final List<SavedRecipient> recipients;
-  final List<String> methods;
+  final List<PaymentOption> methods;
 
   @override
   ConsumerState<_Checkout> createState() => _CheckoutState();

@@ -1,4 +1,5 @@
 import type { Account } from "@/core/domain/entities/account";
+import type { AdminPaymentOption, PaymentMethodCode } from "@/core/domain/entities/order";
 import type {
   BusinessOptions,
   BusinessStatus,
@@ -23,7 +24,7 @@ import type {
 } from "@/core/domain/entities/business";
 import type { LngLat } from "@/core/domain/entities/catalog-admin";
 import type { BusinessAdminRepository, BusinessPublicRepository } from "@/core/domain/repositories/business-repository";
-import { apiGet, apiRequest } from "../http/api-client";
+import { apiGet, apiRequest, resolveApiAsset } from "../http/api-client";
 
 const id = (value: string) => encodeURIComponent(value);
 const BASE = "/admin/business";
@@ -120,7 +121,22 @@ export class HttpBusinessAdminRepository implements BusinessAdminRepository {
   refreshExchangeRates() {
     return apiRequest<ExchangeRate[]>("POST", `${BASE}/exchange-rates/refresh`);
   }
+
+  async paymentOptions() {
+    return withPaymentImages(await apiRequest<AdminPaymentOption[]>("GET", PAYMENTS));
+  }
+
+  async reorderPaymentOptions(codes: PaymentMethodCode[]) {
+    return withPaymentImages(await apiRequest<AdminPaymentOption[]>("PUT", `${PAYMENTS}/order`, { body: { codes } }));
+  }
+
+  async updatePaymentOption(code: PaymentMethodCode, change: { offered?: boolean; imageFileId?: string | null }) {
+    return withPaymentImages(await apiRequest<AdminPaymentOption[]>("PATCH", `${PAYMENTS}/${encodeURIComponent(code)}`, { body: change }));
+  }
 }
+
+const PAYMENTS = "/admin/payment-methods";
+const withPaymentImages = (options: AdminPaymentOption[]) => options.map((o) => ({ ...o, imageUrl: resolveApiAsset(o.imageUrl) }));
 
 export class HttpBusinessPublicRepository implements BusinessPublicRepository {
   status(municipalityId?: number) {

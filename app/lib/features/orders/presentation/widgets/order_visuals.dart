@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../business/domain/business.dart';
+import '../../domain/entities/order.dart';
 
 /// Ícono, tono y texto de cada estado del pedido (mismos que la web). Los estados vienen del catálogo de
 /// la API: uno nuevo sin texto propio se muestra con su código y el ícono genérico.
@@ -74,6 +75,40 @@ IconData paymentIcon(String method) => switch (method) {
       'BANK_TRANSFER' => Icons.qr_code_2_rounded,
       _ => Icons.payments_rounded,
     };
+
+/// La marca del medio en su ficha: la imagen que subió el panel sobre una etiqueta blanca, o el ícono del
+/// medio si no hay imagen (o no carga).
+class PaymentMark extends StatelessWidget {
+  const PaymentMark({super.key, required this.option, this.selected = false});
+
+  final PaymentOption option;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(color: selected ? AppColors.ink : AppColors.cream, borderRadius: BorderRadius.circular(14)),
+      child: Icon(paymentIcon(option.code), color: selected ? AppColors.brand : AppColors.chonta, size: 20),
+    );
+    if (option.imageUrl == null) return icon;
+    return Container(
+      width: 40,
+      height: 40,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: selected ? AppColors.ink : AppColors.ink.withValues(alpha: 0.1), width: 2),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.network(option.imageUrl!, fit: BoxFit.contain, errorBuilder: (_, _, _) => Icon(paymentIcon(option.code), color: AppColors.chonta, size: 20)),
+      ),
+    );
+  }
+}
 
 String paymentLabel(AppLocalizations l10n, String method) => switch (method) {
       'CASH' => l10n.payCash,

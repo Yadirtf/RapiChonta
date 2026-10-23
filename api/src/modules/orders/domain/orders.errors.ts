@@ -1,4 +1,4 @@
-import { ConflictError, DomainError, NotFoundError, ServiceUnavailableError } from '../../../shared/domain/domain.error';
+import { ConflictError, DomainError, NotFoundError, PermissionDeniedError, ServiceUnavailableError } from '../../../shared/domain/domain.error';
 
 /** Errores del módulo de pedidos. El `code` es el contrato con la web y la app (lo traducen). */
 export const OrderErrors = {
@@ -17,6 +17,14 @@ export const OrderErrors = {
   newCustomerLimit: (limit: string, available: string) =>
     new DomainError('Tu primer pedido tiene un tope mientras recibes tu primera entrega', 'NEW_CUSTOMER_LIMIT', { limit, available }),
   paymentMethodUnavailable: () => new DomainError('Ese medio de pago no está disponible', 'PAYMENT_METHOD_UNAVAILABLE'),
+  paymentMethodNotFound: () => new NotFoundError('PAYMENT_METHOD_NOT_FOUND', 'Medio de pago no encontrado'),
+  /** El cliente siempre debe tener al menos un medio para pagar al recibir. */
+  lastPaymentMethod: () => new DomainError('Debe quedar al menos un medio de pago visible para los clientes', 'LAST_PAYMENT_METHOD'),
+  /** El nuevo orden debe traer cada medio una sola vez (alguien más pudo agregar o quitar uno). */
+  paymentOrderMismatch: () => new ConflictError('PAYMENT_ORDER_MISMATCH', 'La lista de medios cambió; recarga e intenta de nuevo'),
+  paymentImageNotUsable: () => new DomainError('La imagen no sirve para un medio de pago', 'FILE_NOT_USABLE'),
+  /** Los medios de pago son de todos los municipios: solo los cambia el administrador general. */
+  paymentMethodsGlobalOnly: () => new PermissionDeniedError('PAYMENT_METHODS_GLOBAL_ONLY', 'Solo el administrador general cambia los medios de pago'),
   /** Falta la comisión del municipio: el administrador debe configurarla antes de recibir pedidos. */
   ordersNotConfigured: () => new ServiceUnavailableError('ORDERS_NOT_CONFIGURED', 'El municipio aún no está listo para recibir pedidos'),
   referenceRequired: () => new DomainError('Escribe una referencia para encontrar el lugar', 'TEXT_REQUIRED', { field: 'reference' }),

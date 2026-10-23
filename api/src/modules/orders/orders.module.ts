@@ -4,16 +4,19 @@ import { PrismaService } from '../../shared/infrastructure/prisma/prisma.service
 import { BusinessConfigModule } from '../business-config/business-config.module';
 import { FilesModule } from '../files/files.module';
 import { ManageAddressesUseCase, ManageRecipientsUseCase } from './application/address-book.use-cases';
-import { CheckoutBuilder, CreateOrderUseCase, ListPaymentMethodsUseCase, QuoteOrderUseCase } from './application/checkout.use-cases';
+import { CheckoutBuilder, CreateOrderUseCase, QuoteOrderUseCase } from './application/checkout.use-cases';
+import { ListPaymentMethodsUseCase, ManagePaymentOptionsUseCase } from './application/payment-options.use-cases';
 import { GetMyOrderUseCase, ListMyOrdersUseCase } from './application/my-orders.use-cases';
 import { REQUIRED_ORDER_CODES } from './domain/orders.codes';
 import { AddressBook, RecipientBook } from './domain/ports/address-book';
 import { CheckoutReader } from './domain/ports/checkout.reader';
 import { OrdersRepository } from './domain/ports/orders.repository';
+import { PaymentOptionsRepository } from './domain/ports/payment-options';
 import { PrismaAddressBook, PrismaRecipientBook } from './infrastructure/prisma-address-book';
 import { PrismaCheckoutReader } from './infrastructure/prisma-checkout.reader';
 import { PrismaOrdersRepository } from './infrastructure/prisma-orders.repository';
-import { CustomerBookController, OrdersController } from './presentation/http/orders.controller';
+import { PrismaPaymentOptions } from './infrastructure/prisma-payment-options';
+import { AdminPaymentMethodsController, CustomerBookController, OrdersController } from './presentation/http/orders.controller';
 import { OrdersPresenter } from './presentation/http/orders-presenter';
 
 /** Al arrancar, verifica los códigos de catálogo y que exista el estado inicial del pedido. */
@@ -43,18 +46,20 @@ class OrderCodesCheck implements OnApplicationBootstrap {
  */
 @Module({
   imports: [BusinessConfigModule, FilesModule],
-  controllers: [OrdersController, CustomerBookController],
+  controllers: [OrdersController, CustomerBookController, AdminPaymentMethodsController],
   providers: [
     { provide: CheckoutReader, useClass: PrismaCheckoutReader },
     { provide: OrdersRepository, useClass: PrismaOrdersRepository },
     { provide: AddressBook, useClass: PrismaAddressBook },
     { provide: RecipientBook, useClass: PrismaRecipientBook },
+    { provide: PaymentOptionsRepository, useClass: PrismaPaymentOptions },
     OrderCodesCheck,
     OrdersPresenter,
     CheckoutBuilder,
     QuoteOrderUseCase,
     CreateOrderUseCase,
     ListPaymentMethodsUseCase,
+    ManagePaymentOptionsUseCase,
     ListMyOrdersUseCase,
     GetMyOrderUseCase,
     ManageAddressesUseCase,

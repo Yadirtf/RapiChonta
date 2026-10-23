@@ -6,6 +6,17 @@ import 'adjustment.dart';
 /// Pedido del cliente (E04). Los montos van en centavos; los estados y medios de pago son códigos del
 /// catálogo de la API que la app traduce (uno nuevo se ve con su código hasta tener texto propio).
 
+/// Un medio en "¿Cómo pagas al recibir?". El panel decide cuáles se ven, en qué orden y con qué imagen.
+class PaymentOption extends Equatable {
+  const PaymentOption(this.code, {this.imageUrl});
+
+  final String code;
+  final String? imageUrl;
+
+  @override
+  List<Object?> get props => [code, imageUrl];
+}
+
 class SavedAddress extends Equatable {
   const SavedAddress({required this.id, required this.location, this.label, this.line, this.reference, this.isDefault = false});
 

@@ -12,7 +12,7 @@ final orderRepositoryProvider = Provider<OrderRepository>(
   (ref) => OrderRepositoryImpl(public: buildApiClient(), authed: ref.watch(authedDioProvider)),
 );
 
-final paymentMethodsProvider = FutureProvider<List<String>>((ref) => ref.watch(orderRepositoryProvider).paymentMethods());
+final paymentMethodsProvider = FutureProvider<List<PaymentOption>>((ref) => ref.watch(orderRepositoryProvider).paymentMethods());
 
 /// Libreta del cliente: lugares guardados y personas a las que ya les envió. Se vuelve a pedir al abrir el pedido.
 final customerBookProvider = FutureProvider.autoDispose<({List<SavedAddress> addresses, List<SavedRecipient> recipients})>((ref) async {

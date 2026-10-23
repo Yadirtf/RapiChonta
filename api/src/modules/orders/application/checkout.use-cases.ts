@@ -165,13 +165,3 @@ export class CreateOrderUseCase {
     return { fullName, phoneE164: PhoneNumber.parse(input.phone).e164 };
   }
 }
-
-/** Medios de pago contra entrega que el cliente puede elegir (RF-22). */
-@Injectable()
-export class ListPaymentMethodsUseCase {
-  constructor(private readonly reader: CheckoutReader) {}
-
-  execute(): Promise<string[]> {
-    return this.reader.paymentMethods();
-  }
-}

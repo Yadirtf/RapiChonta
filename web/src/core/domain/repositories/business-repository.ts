@@ -22,6 +22,7 @@ import type {
 } from "../entities/business";
 import type { LngLat } from "../entities/catalog-admin";
 import type { Account } from "../entities/account";
+import type { AdminPaymentOption, PaymentMethodCode } from "../entities/order";
 
 /** Puerto del panel para zonas, horario, parámetros y comisión (E03). `municipalityId` opcional: el del alcance. */
 export interface BusinessAdminRepository {
@@ -53,6 +54,11 @@ export interface BusinessAdminRepository {
 
   exchangeRates(): Promise<ExchangeRate[]>;
   refreshExchangeRates(): Promise<ExchangeRate[]>;
+
+  /** "¿Cómo pagas al recibir?": cada cambio devuelve la lista completa, ya ordenada. */
+  paymentOptions(): Promise<AdminPaymentOption[]>;
+  reorderPaymentOptions(codes: PaymentMethodCode[]): Promise<AdminPaymentOption[]>;
+  updatePaymentOption(code: PaymentMethodCode, change: { offered?: boolean; imageFileId?: string | null }): Promise<AdminPaymentOption[]>;
 }
 
 /** Lo que ve el cliente: estado de atención, tarifa a un punto y tasas para el aproximado. */

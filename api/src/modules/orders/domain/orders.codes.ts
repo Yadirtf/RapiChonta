@@ -17,6 +17,11 @@ export const ORDER_PERMISSIONS = {
   READ_OWN: 'orders.read_own',
 } as const;
 
+/** Los medios de pago son parámetros del negocio: los administra quien tiene settings.manage. */
+export const PAYMENT_OPTIONS_PERMISSION = 'settings.manage';
+export const PAYMENT_METHOD_IMAGE_PURPOSE = 'PAYMENT_METHOD_IMAGE';
+export const PAYMENT_METHOD_CHANGED = 'PAYMENT_METHOD_CHANGED';
+
 /** Tope del carrito para clientes sin pedidos entregados (RF-22), por municipio. */
 export const NEW_CUSTOMER_LIMIT_SETTING = 'orders.new_customer_max_cop';
 
@@ -25,4 +30,6 @@ export const REQUIRED_ORDER_CODES: Record<string, readonly string[]> = {
   fulfillment_modes: Object.values(FULFILLMENT_MODES),
   status_change_sources: Object.values(STATUS_CHANGE_SOURCES),
   roles: ['CUSTOMER'],
+  file_purposes: [PAYMENT_METHOD_IMAGE_PURPOSE],
+  audit_actions: [PAYMENT_METHOD_CHANGED],
 };

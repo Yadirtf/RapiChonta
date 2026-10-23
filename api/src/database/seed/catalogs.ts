@@ -57,6 +57,7 @@ export const CATALOGS: CatalogSeed[] = [
         ['DELIVERY_PROOF', 8, ['image/jpeg', 'image/png', 'image/webp'], true],
         ['COURIER_DOCUMENT', 10, ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'], false],
         ['COLLECTION_QR', 2, ['image/jpeg', 'image/png', 'image/webp'], false],
+        ['PAYMENT_METHOD_IMAGE', 1, ['image/jpeg', 'image/png', 'image/webp'], false],
         ['LEGAL_DOCUMENT', 10, ['application/pdf'], false],
       ].map(([code, megabytes, mimeTypes, camera]) => ({
         code: code as string,
@@ -93,6 +94,7 @@ export const CATALOGS: CatalogSeed[] = [
         'ESTABLISHMENT_CHANGED',
         'CATEGORY_CHANGED',
         'MUNICIPALITY_CHANGED',
+        'PAYMENT_METHOD_CHANGED',
       ].map((code) => ({ code })),
     ),
   },

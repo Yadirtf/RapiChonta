@@ -4,6 +4,7 @@ import { Principal } from '../../src/modules/identity/domain/principal';
 import { CustomerExposure, MenuVersion } from '../../src/modules/orders/domain/checkout';
 import { AddressBook, NewAddress, RecipientBook, SavedAddress, SavedRecipient } from '../../src/modules/orders/domain/ports/address-book';
 import { CheckoutReader, OrderingEstablishment } from '../../src/modules/orders/domain/ports/checkout.reader';
+import { PaymentOption, PaymentOptionPatch, PaymentOptionsRepository } from '../../src/modules/orders/domain/ports/payment-options';
 import { ClientRequestReplayed, NewOrder, OrderCodeTaken, OrderDetail, OrdersRepository, OrderSummary } from '../../src/modules/orders/domain/ports/orders.repository';
 
 /** Dobles en memoria de los puertos de pedidos: los casos de uso se prueban sin base de datos. */
@@ -136,3 +137,35 @@ export class MemoryOrders extends OrdersRepository {
 }
 
 export const VILLAGARZON = GeoPoint.create(1.0294, -76.6165);
+
+export class MemoryPaymentOptions extends PaymentOptionsRepository {
+  options: PaymentOption[] = ['CASH', 'NEQUI', 'DAVIPLATA', 'BANK_TRANSFER'].map((code) => ({
+    code,
+    isAccountBased: code !== 'CASH',
+    requiresBank: code === 'BANK_TRANSFER',
+    offered: true,
+    imageFileId: null,
+  }));
+  images = new Set(['imagen-nequi']);
+
+  async list() {
+    return this.options.map((o) => ({ ...o }));
+  }
+
+  async reorder(codes: string[]) {
+    this.options = codes.map((c) => this.options.find((o) => o.code === c)!);
+  }
+
+  async update(code: string, patch: PaymentOptionPatch) {
+    const option = this.options.find((o) => o.code === code);
+    if (!option) return 'not_found' as const;
+    if (patch.offered === false && !this.options.some((o) => o.code !== code && o.offered)) return 'last_offered' as const;
+    if (patch.offered !== undefined) option.offered = patch.offered;
+    if (patch.imageFileId !== undefined) option.imageFileId = patch.imageFileId;
+    return 'updated' as const;
+  }
+
+  async isPaymentImage(fileId: string) {
+    return this.images.has(fileId);
+  }
+}

@@ -117,4 +117,4 @@ export interface CategoryInput {
   names: Translations<string>;
 }
 
-export type UploadPurpose = "PRODUCT_IMAGE" | "ESTABLISHMENT_LOGO";
+export type UploadPurpose = "PRODUCT_IMAGE" | "ESTABLISHMENT_LOGO" | "PAYMENT_METHOD_IMAGE";

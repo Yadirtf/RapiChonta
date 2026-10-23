@@ -4,12 +4,23 @@ import { adjustmentView } from '../../../fulfillment/presentation/http/fulfillme
 import { Quote } from '../../application/checkout.use-cases';
 import { SavedAddress, SavedRecipient } from '../../domain/ports/address-book';
 import { OrderDetail, OrderSummary } from '../../domain/ports/orders.repository';
+import { PaymentOption } from '../../domain/ports/payment-options';
 import { Money } from '../../domain/value-objects/money';
 
 /** Forma pública de los pedidos: montos en texto decimal (RNF-05) y códigos que la web y la app traducen. */
 @Injectable()
 export class OrdersPresenter {
   constructor(private readonly urls: FileUrls) {}
+
+  /** Lo que ve el cliente al pagar: el código (la web y la app lo traducen) y la imagen que subió el panel. */
+  paymentMethod(o: PaymentOption) {
+    return { code: o.code, imageUrl: this.urls.url(o.imageFileId) };
+  }
+
+  /** Panel: además, qué es el medio y si el cliente lo ve. */
+  paymentOption(o: PaymentOption) {
+    return { ...o, imageUrl: this.urls.url(o.imageFileId) };
+  }
 
   quote({ establishment, checkout, delivery }: Quote) {
     return {

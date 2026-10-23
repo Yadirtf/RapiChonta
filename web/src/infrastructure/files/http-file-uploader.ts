@@ -3,7 +3,7 @@ import type { FileUploader } from "@/core/domain/repositories/catalog-admin-repo
 import { ApiError, apiRequest, resolveApiAsset } from "../http/api-client";
 
 /** Lado mayor en píxeles: una foto de producto se ve en tarjetas de hasta ~600 px (x2 en pantallas densas). */
-const MAX_SIDE: Record<UploadPurpose, number> = { PRODUCT_IMAGE: 1400, ESTABLISHMENT_LOGO: 512 };
+const MAX_SIDE: Record<UploadPurpose, number> = { PRODUCT_IMAGE: 1400, ESTABLISHMENT_LOGO: 512, PAYMENT_METHOD_IMAGE: 320 };
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
 
 type UploadTicket =

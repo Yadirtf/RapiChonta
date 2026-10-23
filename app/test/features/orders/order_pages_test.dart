@@ -152,8 +152,9 @@ OrderDetail _awaiting({required DateTime expiresAt}) => OrderDetail(
     );
 
 class _Orders implements OrderRepository {
-  _Orders({this.missing = false, this.detail});
+  _Orders({this.missing = false, this.detail, this.methods = const [PaymentOption('CASH'), PaymentOption('NEQUI'), PaymentOption('DAVIPLATA'), PaymentOption('BANK_TRANSFER')]});
   final bool missing;
+  final List<PaymentOption> methods;
   final OrderDetail? detail;
   final closed = <String>[];
   final decisions = <String>[];
@@ -187,7 +188,7 @@ class _Orders implements OrderRepository {
   Future<List<SavedRecipient>> recipients() async => const [];
 
   @override
-  Future<List<String>> paymentMethods() async => const ['CASH', 'NEQUI', 'DAVIPLATA', 'BANK_TRANSFER'];
+  Future<List<PaymentOption>> paymentMethods() async => methods;
 
   @override
   Future<OrderQuote> quote({required String establishmentId, required List<Map<String, dynamic>> items, required DeliveryTarget delivery, required String language}) async =>
@@ -409,6 +410,23 @@ void main() {
     await tester.pump();
     expect(find.text('¿Con cuánto pagas?'), findsOneWidget);
     expect(find.text(r'$ 30.000'), findsOneWidget);
+  });
+
+  testWidgets('el pago muestra solo los medios que deja ver el panel, en su orden y con su imagen', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 3200));
+    final store = _MemoryCart(const Cart(establishmentId: 'e1', establishmentName: 'Burger Demo', lines: [
+      CartLine(productId: 'p1', versionId: 'v1', name: 'Hamburguesa sencilla', priceCents: 1400000, quantity: 1),
+    ]));
+    final orders = _Orders(methods: const [PaymentOption('NEQUI', imageUrl: 'https://example.test/nequi.png'), PaymentOption('CASH')]);
+    await tester.pumpWidget(_app(const CheckoutPage(), orders: orders, cart: store));
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    expect(find.text('Daviplata'), findsNothing);
+    expect(find.text('Transferencia'), findsNothing);
+    expect(tester.getTopLeft(find.text('Nequi')).dx, lessThan(tester.getTopLeft(find.text('Efectivo')).dx));
+    expect(find.byWidgetPredicate((w) => w is Image && w.image is NetworkImage && (w.image as NetworkImage).url == 'https://example.test/nequi.png'), findsOneWidget);
   });
 
   group('E09: la pregunta del domiciliario', () {

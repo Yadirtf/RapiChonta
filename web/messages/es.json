@@ -176,7 +176,11 @@
     "DELIVERY_STEP_NOT_ALLOWED": "El pedido ya cambió de estado. Actualiza para ver cómo va.",
     "ADJUSTMENT_CLOSED": "Esa pregunta ya se respondió. Actualizamos tu pedido.",
     "ADJUSTMENT_OPTION_INVALID": "Esa opción no aplica a este producto.",
-    "SUBSTITUTE_UNAVAILABLE": "Ese producto ya no se puede pedir: elige otro."
+    "SUBSTITUTE_UNAVAILABLE": "Ese producto ya no se puede pedir: elige otro.",
+    "LAST_PAYMENT_METHOD": "Debe quedar al menos un medio de pago visible para los clientes.",
+    "PAYMENT_ORDER_MISMATCH": "La lista de medios cambió mientras la ordenabas. Ya la recargamos: intenta de nuevo.",
+    "PAYMENT_METHOD_NOT_FOUND": "Ese medio de pago ya no existe.",
+    "PAYMENT_METHODS_GLOBAL_ONLY": "Solo el administrador general cambia los medios de pago."
   },
   "auth": {
     "signInTitle": "Entra con tu celular",
@@ -306,7 +310,8 @@
       "settings": "Configuración",
       "dispatch": "Despacho",
       "audit": "Auditoría",
-      "desk": "Pedidos en curso"
+      "desk": "Pedidos en curso",
+      "payments": "Medios de pago"
     },
     "viewSite": "Ver el sitio",
     "signOut": "Cerrar sesión",
@@ -1605,7 +1610,8 @@
       "CATEGORY_CHANGED": "cambió una categoría",
       "MUNICIPALITY_CHANGED": "cambió un municipio",
       "OTHER": "hizo {action}",
-      "INCIDENT_TAKEN": "tomó la novedad «{type}» del pedido"
+      "INCIDENT_TAKEN": "tomó la novedad «{type}» del pedido",
+      "PAYMENT_METHOD_CHANGED": "cambió los medios de pago"
     }
   },
   "desk": {
@@ -1823,5 +1829,30 @@
       "confirm": "Resolver novedad",
       "done": "Resolviste la novedad de {code}."
     }
+  },
+  "paymentsAdmin": {
+    "title": "Medios de pago",
+    "subtitle": "Lo que ve el cliente en «¿Cómo pagas al recibir?»: qué medios, en qué orden y con qué imagen.",
+    "emptyTitle": "No hay medios de pago contra entrega",
+    "orderHint": "Arrastra para cambiar el orden: el primero es el que el cliente ve primero. Los cambios se guardan solos.",
+    "drag": "Mover {name}",
+    "addImage": "Subir imagen de {name}",
+    "changeImage": "Cambiar la imagen de {name}",
+    "removeImage": "Quitar la imagen de {name}",
+    "position": "{position}º",
+    "positionTitle": "Lugar en la lista del cliente",
+    "kind": {
+      "cash": "Efectivo: el domiciliario lleva el cambio.",
+      "wallet": "A la cuenta del domiciliario: le muestra su QR o su número.",
+      "bank": "Transferencia a la cuenta bancaria del domiciliario."
+    },
+    "offered": "Lo ven",
+    "hidden": "Oculto",
+    "offeredLabel": "Los clientes ven {name}",
+    "hiddenHint": "Oculto al pagar. Si el cliente lo pide en la puerta, el domiciliario igual puede cobrarlo.",
+    "lastOffered": "Es el único medio visible: activa otro antes de ocultarlo.",
+    "previewTitle": "Así lo ve el cliente",
+    "previewStep": "¿Cómo pagas al recibir?",
+    "previewHint": "Sube el logo de cada medio (PNG o JPG, mejor cuadrado y con fondo blanco). Sin imagen se usa el ícono."
   }
 }
