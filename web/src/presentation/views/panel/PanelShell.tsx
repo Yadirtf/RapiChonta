@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Bike, BookOpenText, ClipboardList, Clock, LayoutDashboard, Loader2, LogOut, Map, MapPinned, Radar, ShieldAlert, SlidersHorizontal, Store, Tags, Users } from "lucide-react";
+import { Bike, BookOpenText, ClipboardList, Clock, LayoutDashboard, Loader2, LogOut, Map, MapPinned, Radar, ShieldAlert, Siren, SlidersHorizontal, Store, Tags, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -21,6 +21,7 @@ import { MunicipalitySwitcher, PanelMunicipalityProvider } from "./PanelMunicipa
 const NAV = [
   { href: "/panel", key: "home", icon: LayoutDashboard, permission: null },
   { href: "/panel/despacho", key: "dispatch", icon: ClipboardList, permission: PERMISSIONS.ASSIGN_ORDERS },
+  { href: "/panel/pedidos", key: "desk", icon: Siren, permission: PERMISSIONS.READ_ALL_ORDERS },
   { href: "/panel/establecimientos", key: "establishments", icon: Store, permission: PERMISSIONS.MANAGE_ESTABLISHMENTS },
   { href: "/panel/categorias", key: "categories", icon: Tags, permission: PERMISSIONS.MANAGE_CATEGORIES },
   { href: "/panel/domiciliarios", key: "couriers", icon: Bike, permission: PERMISSIONS.MANAGE_COURIERS },

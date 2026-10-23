@@ -305,7 +305,8 @@
       "hours": "Hours",
       "settings": "Settings",
       "dispatch": "Dispatch",
-      "audit": "Audit"
+      "audit": "Audit",
+      "desk": "Live orders"
     },
     "viewSite": "View site",
     "signOut": "Sign out",
@@ -1238,7 +1239,7 @@
     },
     "DISPUTED": {
       "label": "We're looking into it",
-      "body": "You told us you didn't get it. We'll contact you soon."
+      "body": "RapiChonta is reviewing your case. We'll let you know as soon as it's closed."
     },
     "DELIVERED": {
       "label": "Delivered",
@@ -1247,6 +1248,10 @@
     "CANCELLED": {
       "label": "Cancelled",
       "body": "This order was cancelled. You don't owe anything."
+    },
+    "OFFERED": {
+      "label": "Offered",
+      "body": "We let nearby couriers know."
     }
   },
   "orders": {
@@ -1319,7 +1324,43 @@
     "prepLeftLabel": "Ready in {time}",
     "prepAlmost": "Almost ready",
     "prepBusy": "Busy store: still preparing",
-    "prepProgress": "Preparation progress"
+    "prepProgress": "Preparation progress",
+    "notReceivedWhat": "What happened? (optional)",
+    "notReceivedWhatHint": "It helps us review it faster.",
+    "notReceivedWhatPlaceholder": "E.g.: I was home and nobody rang",
+    "cancelledBecause": "Reason",
+    "cancelReasons": {
+      "CUSTOMER_REQUEST": "You asked for it",
+      "NO_COURIER_AVAILABLE": "No courier was available",
+      "ESTABLISHMENT_CLOSED": "The store was closed",
+      "ALL_ITEMS_UNAVAILABLE": "None of the products were available",
+      "CUSTOMER_UNREACHABLE": "We couldn't reach you",
+      "INCIDENT_RESOLUTION": "We settled it while reviewing your case"
+    },
+    "case": {
+      "tab": "Case {code}",
+      "reviewTitle": "RapiChonta is reviewing your case",
+      "reviewBody": "We got your report. Someone on the team will pick it up shortly and talk to the courier.",
+      "reviewBodyTaken": "Someone on the team already has it and is talking to the courier.",
+      "resolvedTitle": {
+        "delivered": "Case closed: marked as delivered",
+        "cancelled": "Case closed: we cancelled the order",
+        "closed": "Case closed"
+      },
+      "resolvedBody": {
+        "delivered": "We confirmed it with the courier and the delivery photo. If something doesn't add up, write to us.",
+        "cancelled": "The order never reached you: we cancelled it and you have nothing to pay.",
+        "closed": "We reviewed what you told us. Thanks for letting us know."
+      },
+      "stepsLabel": "Where your case is",
+      "steps": {
+        "reported": "Received",
+        "review": "In review",
+        "resolved": "Closed"
+      },
+      "now": "now",
+      "contact": "If we need anything else we'll call the number on your account. Keep your phone at hand."
+    }
   },
   "adjustments": {
     "kicker": "Your courier is asking",
@@ -1549,7 +1590,7 @@
       "ROLE_GRANTED": "granted the {role} role",
       "ROLE_REVOKED": "revoked the {role} role",
       "COURIER_VERIFIED": "verified a courier",
-      "INCIDENT_RESOLVED": "resolved an incident",
+      "INCIDENT_RESOLVED": "resolved the issue as «{resolution}» on order",
       "DELIVERY_PROOF_REVIEWED": "reviewed a delivery proof",
       "CASH_BOX_OPENED": "opened a cash box",
       "CASH_BOX_CLOSED": "closed a cash box",
@@ -1563,7 +1604,224 @@
       "ESTABLISHMENT_CHANGED": "changed a store",
       "CATEGORY_CHANGED": "changed a category",
       "MUNICIPALITY_CHANGED": "changed a municipality",
-      "OTHER": "did {action}"
+      "OTHER": "did {action}",
+      "INCIDENT_TAKEN": "took the «{type}» issue of order"
+    }
+  },
+  "desk": {
+    "documentTitle": "Live orders · RapiChonta",
+    "live": "Live · every {seconds} s",
+    "title": "Live orders",
+    "subtitle": "Everything moving today in {municipality}, with what needs a look right now on top.",
+    "yourMunicipality": "your municipality",
+    "countPriority": "need a look",
+    "countLive": "in progress",
+    "bellOn": "Bell on",
+    "bellOff": "Bell muted",
+    "filtersLabel": "Filter by alert",
+    "filterAll": "All",
+    "emptyTitle": "The pass is clear",
+    "emptyBody": "Orders in progress in the municipality show up here, plus delivered ones that still owe something (the collection).",
+    "inStateTitle": "Time in this status",
+    "noCourier": "No courier",
+    "takenBy": "{name} has it",
+    "takenByFull": "{name} is reviewing it",
+    "nobodyYet": "Nobody has picked it up",
+    "close": "Close",
+    "back": "Back",
+    "since": "Since {time}",
+    "show": "Show",
+    "lanes": {
+      "dispatch": {
+        "title": "To assign",
+        "empty": "Every order has a courier"
+      },
+      "store": {
+        "title": "At the store",
+        "empty": "Nobody shopping now"
+      },
+      "road": {
+        "title": "On the way",
+        "empty": "Nobody on the road"
+      },
+      "review": {
+        "title": "To review",
+        "empty": "No photos or cases"
+      },
+      "closed": {
+        "title": "Closed with loose ends",
+        "empty": "Nothing pending",
+        "body": "Delivered or cancelled in the last 24 hours with the collection missing or off. They leave on their own once the cash box is right."
+      }
+    },
+    "alerts": {
+      "INCIDENT": {
+        "short": "Issue",
+        "body": "The customer says it never arrived, or someone opened a case. Take it, talk to both and resolve it."
+      },
+      "PROOF_REVIEW": {
+        "short": "Photo to review",
+        "body": "It was left with a photo because the code couldn't be used. Look at it and decide; if nobody does, it closes itself as delivered."
+      },
+      "NO_TAKERS": {
+        "short": "Nobody accepted",
+        "body": "The offer expired or everyone said no. Send it again from Dispatch."
+      },
+      "DECISION_EXPIRED": {
+        "short": "Customer didn't reply",
+        "body": "The customer didn't decide in time about the missing items and they were removed. Confirm the new total with them."
+      },
+      "PREPARATION_DELAYED": {
+        "short": "Slow preparation",
+        "body": "The estimate passed or the store said «Still preparing». Let the customer know if needed."
+      },
+      "UNASSIGNED": {
+        "short": "No courier",
+        "body": "Waiting for someone to take it. Offer it from Dispatch."
+      },
+      "COLLECTION_MISSING": {
+        "short": "Collection not logged",
+        "body": "Delivered, but the courier hasn't said how much they were paid or how. Without it the day's cash box can't close."
+      },
+      "COLLECTION_MISMATCH": {
+        "short": "Collection doesn't match",
+        "body": "What was collected differs from the order total. Check with the courier before closing the cash box."
+      }
+    },
+    "customer": "Customer",
+    "courier": "Courier",
+    "courierLeft": "Their part is done",
+    "incidentTypes": {
+      "NOT_RECEIVED": "Not received",
+      "WRONG_ORDER": "Wrong order",
+      "DAMAGED": "Arrived damaged",
+      "OTHER": "Other issue"
+    },
+    "incidentByCustomer": "{name} says it never arrived",
+    "incidentByStaff": "Case opened while reviewing the photo",
+    "take": "I'll take it",
+    "takenNotice": "You took the issue on {code}. Everyone else sees you have it.",
+    "resolve": "Resolve",
+    "resolutions": {
+      "RESOLVED_AS_DELIVERED": {
+        "label": "It was delivered",
+        "body": "The order is marked delivered. The customer and the courier get notified."
+      },
+      "RESOLVED_AS_CANCELLED": {
+        "label": "Not delivered: cancel",
+        "body": "The order is cancelled because of the issue and the customer pays nothing."
+      },
+      "NO_ORDER_CHANGE": {
+        "label": "Leave the order as is",
+        "body": "The issue is closed and the order stays as it is."
+      }
+    },
+    "proofTitle": "Delivery photo",
+    "proofAlt": "Photo the courier took when leaving order {code}",
+    "proofNoLocation": "The photo has no location",
+    "proofDistance": {
+      "near": "At the door · {distance} away",
+      "block": "On the block · {distance} away",
+      "far": "Far from the drop-off · {distance} away"
+    },
+    "proofOutcomes": {
+      "DELIVERED": {
+        "button": "Yes, delivered",
+        "title": "Approve the delivery of {code}",
+        "body": "The photo shows the order at the drop-off point. It's marked delivered.",
+        "placeholder": "E.g.: the bag is at the blue door from the reference",
+        "confirm": "Approve delivery",
+        "done": "{code} is delivered."
+      },
+      "INVESTIGATE": {
+        "button": "Open a case",
+        "title": "Open a case for {code}",
+        "body": "The order goes into review, the case is yours and the courier knows we're looking at it.",
+        "choice": "What do you suspect?",
+        "placeholder": "E.g.: the photo doesn't show the house; calling the customer",
+        "confirm": "Open case",
+        "done": "You opened the case for {code}. It's yours."
+      },
+      "CANCELLED": {
+        "button": "Not delivered",
+        "title": "Cancel {code} over the delivery",
+        "body": "The photo doesn't prove delivery. The order is cancelled because of the issue and the customer and courier get notified.",
+        "placeholder": "E.g.: the customer wasn't home and the courier took it back",
+        "confirm": "Cancel order",
+        "done": "{code} was cancelled over the issue."
+      }
+    },
+    "cancel": {
+      "title": "Cancel {code}",
+      "body": "Only before the purchase. If a courier is assigned, they're freed and notified.",
+      "choice": "Reason",
+      "placeholder": "E.g.: the customer called, they no longer need it",
+      "confirm": "Cancel order",
+      "done": "{code} was cancelled."
+    },
+    "cancelHint": "It can be cancelled while nobody has paid at the store.",
+    "cancelOrder": "Cancel order",
+    "cancelledFor": "Cancelled: {reason}",
+    "noteLabel": "Comment",
+    "noteHint": "Required (at least {min} letters). It goes into the timeline and the staff audit.",
+    "collectionTitle": "Cash on delivery",
+    "collectionMissing": "The courier hasn't logged how much they were paid or how.",
+    "collectionDue": "Order total",
+    "collectionGot": "Collected",
+    "collectionShort": "Collected {amount} less than the total",
+    "collectionOver": "Collected {amount} more than the total",
+    "linesTitle": "{count, plural, one {# product on the ticket} other {# products on the ticket}}",
+    "paidAtStore": "Paid {amount} at the store",
+    "timelineTitle": "Timeline",
+    "timeline": {
+      "label": "What happened to the order, newest first",
+      "empty": "No activity yet.",
+      "status": "Moved to «{status}»",
+      "sources": {
+        "USER_ACTION": "The system",
+        "OFFLINE_SYNC": "From the offline queue",
+        "GEOFENCE": "Geofence",
+        "TIMER": "On a timer",
+        "OFFERS_DECLINED": "Everyone said no"
+      },
+      "offerAll": "{count, plural, one {Called # courier} other {Called # couriers}}",
+      "offerOne": "Offered to {name}",
+      "recipient": {
+        "PENDING": "no reply",
+        "ACCEPTED": "accepted",
+        "REJECTED": "said no",
+        "EXPIRED": "didn't reply",
+        "WITHDRAWN": "withdrawn"
+      },
+      "release": {
+        "COURIER_RELEASED": "{name} dropped it",
+        "OPERATOR_REASSIGNED": "Taken away from {name}",
+        "ORDER_CANCELLED": "{name} was freed: cancelled",
+        "ORDER_COMPLETED": "{name} finished their part"
+      },
+      "delay": "The store said «Still preparing»",
+      "adjustment": "{count, plural, one {Asked about # product} other {Asked about # products}}",
+      "decision": {
+        "SUBSTITUTE": "swapped",
+        "REMOVE_ITEM": "removed",
+        "ACCEPT_PRICE": "price accepted",
+        "CANCEL_ORDER": "cancelled",
+        "EXPIRED_REMOVED": "removed on timeout"
+      },
+      "decisionPending": "waiting",
+      "codeAttempt": "{count, plural, one {Wrong delivery code} other {Wrong delivery code ×#}}",
+      "collection": "Collected {amount} by {method}",
+      "incidentOpened": "The «{type}» issue was opened",
+      "incidentTaken": "Took the issue",
+      "incidentResolved": "Resolved the issue: {resolution}"
+    },
+    "resolveDialog": {
+      "title": "Resolve the issue on {code}",
+      "body": "Say what you found out. The customer and the courier are told how it ended.",
+      "choice": "How does it end?",
+      "placeholder": "E.g.: called the customer; their sister got it at the shop next door",
+      "confirm": "Resolve issue",
+      "done": "You resolved the issue on {code}."
     }
   }
 }

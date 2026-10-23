@@ -23,6 +23,7 @@ const GROUPS: Record<string, Group> = {
   ORDER_STATUS_CHANGED: "order",
   ORDER_CANCELLED: "order",
   ORDER_REASSIGNED: "order",
+  INCIDENT_TAKEN: "order",
   INCIDENT_RESOLVED: "order",
   DELIVERY_PROOF_REVIEWED: "order",
   USER_CREATED: "people",
@@ -256,6 +257,7 @@ function useDetails(entry: StaffActivityEntry): { sentence: string; note: string
   const t = useTranslations("audit");
   const ts = useTranslations("orderStatus");
   const tr = useTranslations("roles");
+  const td = useTranslations("desk");
   const d = entry.details ?? {};
   const str = (key: string) => (typeof d[key] === "string" ? (d[key] as string) : null);
   const note = str("note");
@@ -275,6 +277,18 @@ function useDetails(entry: StaffActivityEntry): { sentence: string; note: string
       return { sentence: t("actions.ORDER_CANCELLED"), note, changes: [] };
     case "ORDER_REASSIGNED":
       return { sentence: t("actions.ORDER_REASSIGNED"), note: null, changes: [] };
+    case "INCIDENT_TAKEN": {
+      const type = str("type") ?? "";
+      return { sentence: t("actions.INCIDENT_TAKEN", { type: td.has(`incidentTypes.${type}`) ? td(`incidentTypes.${type}`) : type }), note: null, changes: [] };
+    }
+    case "INCIDENT_RESOLVED": {
+      const resolution = str("resolution") ?? "";
+      return {
+        sentence: t("actions.INCIDENT_RESOLVED", { resolution: td.has(`resolutions.${resolution}.label`) ? td(`resolutions.${resolution}.label`) : resolution }),
+        note,
+        changes: [],
+      };
+    }
     case "ROLE_GRANTED":
     case "ROLE_REVOKED": {
       const role = str("role");

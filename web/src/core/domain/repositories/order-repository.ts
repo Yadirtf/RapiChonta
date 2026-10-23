@@ -33,8 +33,8 @@ export interface OrderRepository {
   find(code: string, language: string): Promise<OrderDetail>;
   /** "Ya lo recibí": cierra la entrega y libera al domiciliario. */
   confirmReceived(code: string): Promise<void>;
-  /** "No lo recibí", después de una entrega con foto: queda en revisión. */
-  reportNotReceived(code: string): Promise<void>;
+  /** "No lo recibí", después de una entrega con foto: abre un caso con lo que cuente el cliente. */
+  reportNotReceived(code: string, description?: string): Promise<void>;
   /** E09: productos del mismo local para cambiar el que falta (primero los parecidos). */
   substitutes(code: string, adjustmentId: string, language: string): Promise<SubstituteOption[]>;
   /** E09: la decisión sobre una línea; cancelar responde por toda la pregunta. */

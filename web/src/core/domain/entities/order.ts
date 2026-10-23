@@ -95,7 +95,26 @@ export interface OrderDetail extends OrderSummary {
   delivery: OrderDelivery;
   /** E09: las preguntas del domiciliario (la abierta es la que el cliente responde), de la más reciente a la más vieja. */
   adjustments: OrderAdjustment[];
+  /** E10: el caso de "No lo recibí" (o el que abrió RapiChonta al revisar la foto). Sin las notas internas. */
+  incident: OrderIncident | null;
+  /** Por qué se canceló (código de cancellation_reasons), si se canceló. */
+  cancellationReason: string | null;
 }
+
+export type IncidentStatus = "OPEN" | "IN_REVIEW" | "RESOLVED" | (string & {});
+export type IncidentResolution = "RESOLVED_AS_DELIVERED" | "RESOLVED_AS_CANCELLED" | "NO_ORDER_CHANGE" | (string & {});
+
+/** Un caso del pedido: cuándo se reportó, cuándo alguien lo tomó y cómo terminó. */
+export interface OrderIncident {
+  status: IncidentStatus;
+  reportedAt: string;
+  reviewStartedAt: string | null;
+  resolvedAt: string | null;
+  resolution: IncidentResolution | null;
+}
+
+/** Lo que el cliente puede contar al decir "No lo recibí" (la API recorta lo demás). */
+export const MAX_NOT_RECEIVED_DESCRIPTION = 500;
 
 /** Por qué pregunta el domiciliario: no lo hay, o el local pide otro precio. */
 export type AdjustmentReason = "UNAVAILABLE" | "PRICE_CHANGED" | (string & {});

@@ -19,6 +19,7 @@ import { OrderRoute } from "../../components/orders/OrderRoute";
 import { PrepCountdown } from "../../components/orders/PrepClock";
 import { paymentIcon } from "../../components/orders/orderVisuals";
 import { DeliveryCodePass, LeftWithPhoto } from "../../components/orders/DeliveryClose";
+import { IncidentCase } from "../../components/orders/IncidentCase";
 import { HighDemandNote, ReceiptButton } from "../../components/orders/PurchaseReceipt";
 import { StatusBadge } from "../../components/orders/StatusBadge";
 import { Alert } from "../../components/ui/Alert";
@@ -111,7 +112,8 @@ function Detail({ code, placed }: { code: string; placed: boolean }) {
           {question && <AdjustmentDesk key={question.id} order={order} adjustment={question} onChanged={() => void reload()} />}
           {order.active && <DeliveryCodePass order={order} onClosed={() => void reload()} />}
           {order.status === "PENDING_REVIEW" && <LeftWithPhoto order={order} time={time} onClosed={() => void reload()} />}
-          {order.active && order.preparation?.delayed && <HighDemandNote store={order.establishment.name} />}
+          {order.incident && <IncidentCase order={order} incident={order.incident} time={time} />}
+          {order.status === "PREPARING" && order.preparation?.delayed && <HighDemandNote store={order.establishment.name} />}
           <section className="rounded-[28px] bg-white p-5 shadow-[0_12px_32px_-20px_rgb(20_18_31/0.35)] sm:p-6" aria-labelledby="route-title">
             <h2 id="route-title" className="mb-5 font-display text-xl font-extrabold">
               {t("route")}
@@ -177,6 +179,14 @@ function StatusTicket({ order }: { order: OrderDetail }) {
         <div className="mt-5">
           <StatusBadge status={order.status} className="!px-3 !py-1.5 !text-sm" />
           {ts.has(`${order.status}.body`) && <p className="mt-2.5 text-[15px] text-white/80">{ts(`${order.status}.body`)}</p>}
+          {order.status === "CANCELLED" && order.cancellationReason && (
+            <p className="mt-3 inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 text-sm">
+              <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/55">{t("cancelledBecause")}</span>
+              <span className="font-semibold text-brand">
+                {t.has(`cancelReasons.${order.cancellationReason}`) ? t(`cancelReasons.${order.cancellationReason}`) : order.cancellationReason}
+              </span>
+            </p>
+          )}
         </div>
       </div>
       <div className="flex items-center justify-between gap-3 border-t-2 border-dashed border-white/15 px-5 py-3 text-xs text-white/55 sm:px-6">
@@ -187,7 +197,7 @@ function StatusTicket({ order }: { order: OrderDetail }) {
         ) : (
           <span>{t("items", { count: order.itemCount })}</span>
         )}
-        {order.active && order.preparation ? (
+        {order.status === "PREPARING" && order.preparation ? (
           <span className="flex items-center gap-3">
             <PrepCountdown preparation={order.preparation} />
             <span className="hidden text-white/45 sm:inline">{t("readyAround", { time: time(order.preparation.estimatedReadyAt) })}</span>

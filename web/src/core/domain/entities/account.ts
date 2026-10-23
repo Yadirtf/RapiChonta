@@ -20,6 +20,10 @@ export const PERMISSIONS = {
   MANAGE_MUNICIPALITIES: "municipalities.manage",
   ASSIGN_ORDERS: "orders.assign",
   READ_AUDIT: "audit.read",
+  READ_ALL_ORDERS: "orders.read_all",
+  CANCEL_ORDERS: "orders.cancel",
+  REVIEW_DELIVERIES: "deliveries.review",
+  RESOLVE_INCIDENTS: "incidents.resolve",
 } as const;
 
 export interface LegalDocumentVersion {
