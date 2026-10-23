@@ -3,13 +3,12 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:latlong2/latlong.dart';
 
 import '../../../../app/theme.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/map/brand_map.dart' show MapHandle;
 import '../../../../l10n/app_localizations.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../auth/presentation/widgets/error_text.dart';
@@ -62,7 +61,7 @@ class CheckoutPage extends ConsumerWidget {
           ),
         ]),
       ),
-      data: (book) => _Checkout(cart: cart, addresses: book.addresses, recipients: book.recipients, methods: methods.value ?? const ['CASH']),
+      data: (book) => _Checkout(cart: cart, addresses: book.addresses, last: book.last, recipients: book.recipients, methods: methods.value ?? const ['CASH']),
     );
   }
 
@@ -73,10 +72,11 @@ class CheckoutPage extends ConsumerWidget {
 }
 
 class _Checkout extends ConsumerStatefulWidget {
-  const _Checkout({required this.cart, required this.addresses, required this.recipients, required this.methods});
+  const _Checkout({required this.cart, required this.addresses, required this.last, required this.recipients, required this.methods});
 
   final Cart cart;
   final List<SavedAddress> addresses;
+  final SavedAddress? last;
   final List<SavedRecipient> recipients;
   final List<String> methods;
 
@@ -86,7 +86,7 @@ class _Checkout extends ConsumerStatefulWidget {
 
 class _CheckoutState extends ConsumerState<_Checkout> {
   late CheckoutDraft _draft = CheckoutDraft.start(widget.addresses);
-  final _map = MapController();
+  final _map = MapHandle();
   final _reference = TextEditingController();
   final _line = TextEditingController();
   final _customLabel = TextEditingController();
@@ -102,6 +102,10 @@ class _CheckoutState extends ConsumerState<_Checkout> {
   Timer? _debounce;
   ({List<String> removed, List<String> repriced})? _notice;
   bool _showErrors = false;
+
+  /// Dónde dice el GPS que está el cliente ahora; [_locating] mientras responde.
+  GeoPoint? _gps;
+  bool _locating = true;
   bool _placing = false;
   String? _placeError;
 
@@ -117,13 +121,26 @@ class _CheckoutState extends ConsumerState<_Checkout> {
     _bind(_recipientName, (d, v) => d.copyWith(recipientName: v));
     _bind(_recipientPhone, (d, v) => d.copyWith(recipientPhone: v));
     _bind(_notes, (d, v) => d.copyWith(notes: v));
-    // Si el cliente comparte su ubicación, el mapa arranca en su puerta (salvo que ya haya movido el pin).
-    ref.read(userLocationProvider.future).then((point) {
-      if (!mounted || _draft.point != null) return;
-      _change((d) => d.copyWith(point: point));
-      if (_draft.pickingPoint) _moveMap(point);
-    }, onError: (_) => _change((d) => d.copyWith(point: defaultCenter)));
+    // El GPS va primero: el mapa arranca donde está el cliente ahora, no en la dirección del pedido anterior
+    // (que queda al lado como opción). Sin GPS, se ofrece esa dirección elegida y el mapa queda en el municipio.
+    ref.listenManual(preciseLocationProvider, (_, next) {
+      if (next.isLoading) return;
+      _onGps(next.value);
+    }, fireImmediately: true);
     WidgetsBinding.instance.addPostFrameCallback((_) => _requote());
+  }
+
+  void _onGps(GeoPoint? gps) {
+    if (!mounted || !_locating) return;
+    setState(() {
+      _locating = false;
+      _gps = gps;
+    });
+    if (_draft.point != null) return; // ya movió el pin
+    final start = usableLocation(gps, ref.read(coverageProvider).value ?? const []);
+    final last = widget.last;
+    _change((d) => d.copyWith(point: start, savedAddressId: gps == null && last != null && d.pickingPoint ? () => last.id : null));
+    if (_draft.pickingPoint) _moveMap(start);
   }
 
   void _bind(TextEditingController controller, CheckoutDraft Function(CheckoutDraft, String) apply) =>
@@ -135,7 +152,6 @@ class _CheckoutState extends ConsumerState<_Checkout> {
     for (final c in [_reference, _line, _customLabel, _recipientName, _recipientPhone, _notes]) {
       c.dispose();
     }
-    _map.dispose();
     super.dispose();
   }
 
@@ -149,11 +165,8 @@ class _CheckoutState extends ConsumerState<_Checkout> {
   }
 
   void _moveMap(GeoPoint point) {
-    try {
-      _map.move(LatLng(point.lat, point.lng), 17);
-    } catch (_) {
-      // El mapa aún no se ha dibujado: arrancará en el punto del borrador.
-    }
+    // Si el mapa aún no se ha dibujado, arrancará en el punto del borrador.
+    _map.move(point, 17).ignore();
   }
 
   /// Se cotiza al soltar el pin o cambiar la canasta (las notas de los productos no cambian el valor).
@@ -297,7 +310,7 @@ class _CheckoutState extends ConsumerState<_Checkout> {
     final status = ref.watch(businessStatusProvider).value;
     final store = ref.watch(establishmentDetailProvider((cart.establishmentId, language))).value;
     final location = ref.watch(userLocationProvider);
-    final device = ref.watch(deviceLocationProvider).value;
+    final here = _gps ?? ref.watch(deviceLocationProvider).value;
 
     final opening = status == null ? null : openingText(l10n, status, language);
     final storeClosed = store?.acceptsOrders == false;
@@ -352,10 +365,18 @@ class _CheckoutState extends ConsumerState<_Checkout> {
                     draft: _draft,
                     onChange: _change,
                     addresses: widget.addresses,
+                    last: widget.last,
+                    gps: _gps,
+                    locating: _locating,
                     zone: _zone,
                     mapCenter: location.value ?? defaultCenter,
                     mapController: _map,
-                    onLocateMe: device == null ? null : () => _moveMap(device),
+                    onLocateMe: here == null
+                        ? null
+                        : () {
+                            _change((d) => d.copyWith(point: here));
+                            _moveMap(here);
+                          },
                     coverage: ref.watch(coverageProvider).value ?? const [],
                     referenceController: _reference,
                     lineController: _line,

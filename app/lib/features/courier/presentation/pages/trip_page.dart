@@ -119,6 +119,7 @@ class _TripView extends ConsumerWidget {
             child: Stack(children: [
               Positioned.fill(
                 child: TripMap(
+                  code: trip.code,
                   store: trip.storeLocation,
                   area: trip.storeArea,
                   destination: trip.destination?.location,

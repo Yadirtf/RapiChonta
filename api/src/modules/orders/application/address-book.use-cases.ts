@@ -18,6 +18,11 @@ export class ManageAddressesUseCase {
     return this.addresses.list(principal.userId);
   }
 
+  /** Para ofrecerla al lado del GPS en un pedido nuevo, sin elegirla de antemano. */
+  lastUsed(principal: Principal): Promise<SavedAddress | null> {
+    return this.addresses.lastUsed(principal.userId);
+  }
+
   async create(principal: Principal, input: { label: string; line?: string | null; reference: string; latitude: number; longitude: number }): Promise<SavedAddress> {
     const label = clean(input.label, 40);
     if (!label) throw OrderErrors.labelRequired();

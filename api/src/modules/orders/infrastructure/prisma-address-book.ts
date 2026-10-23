@@ -24,6 +24,14 @@ export class PrismaAddressBook extends AddressBook {
     return row ? toAddress(row) : null;
   }
 
+  async lastUsed(ownerUserId: string): Promise<SavedAddress | null> {
+    const [row] = await this.prisma.$queryRaw<AddressRow[]>`
+      SELECT ${ADDRESS_COLUMNS} FROM orders o JOIN addresses a ON a.id = o.delivery_address_id
+      WHERE o.customer_user_id = ${ownerUserId}::uuid AND a.archived_at IS NULL
+      ORDER BY o.created_at DESC LIMIT 1`;
+    return row ? toAddress(row) : null;
+  }
+
   async create(ownerUserId: string, data: NewAddress): Promise<SavedAddress> {
     return this.prisma.$transaction(async (tx) => toAddress(await insertAddress(tx, ownerUserId, data)));
   }

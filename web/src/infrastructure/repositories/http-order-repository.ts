@@ -46,6 +46,10 @@ export class HttpOrderRepository implements OrderRepository {
     return apiRequest<SavedAddress[]>("GET", "/me/addresses");
   }
 
+  async lastAddress() {
+    return (await apiRequest<{ address: SavedAddress | null }>("GET", "/me/addresses/last")).address;
+  }
+
   archiveAddress(addressId: string) {
     return apiRequest<void>("DELETE", `/me/addresses/${id(addressId)}`);
   }

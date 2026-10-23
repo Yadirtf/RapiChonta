@@ -52,6 +52,7 @@ Variables opcionales, desde **Environment** del servicio (mismos valores y expli
 - Notificaciones push (E06): `FCM_SERVICE_ACCOUNT`, `HMS_APP_ID`, `HMS_CLIENT_SECRET`, `HMS_MESSAGE_CATEGORY`. Sin ellas los avisos quedan en la bandeja de la app.
 - SMS: `OTP_PROVIDER=twilio` con `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID`.
 - Fotos en R2: `FILE_STORAGE=s3` y las variables `S3_*`.
+- Ruta del domiciliario en la app: `ORS_API_KEY` (clave gratis de [OpenRouteService](https://openrouteservice.org/dev/#/signup), unas 2.000 rutas al día). Sin ella la API usa el servidor público de OSRM, que sirve para pruebas pero no garantiza servicio; antes de lanzar hay que poner la clave (o `OSRM_URL` con un OSRM propio).
 
 ### 3. Verificar
 

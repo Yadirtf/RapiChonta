@@ -2,9 +2,10 @@
 /// flutter run --dart-define=API_URL=https://rapichonta.example.com/api/v1
 class Env {
   static const apiUrl = String.fromEnvironment('API_URL', defaultValue: 'http://10.0.2.2:3000/api/v1');
-  static const mapTilesUrl = String.fromEnvironment(
-    'MAP_TILES_URL',
-    defaultValue: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  /// Estilo del mapa (MapLibre). Por defecto el mismo de la web: OpenFreeMap liberty, gratis y sin clave.
+  static const mapStyleUrl = String.fromEnvironment(
+    'MAP_STYLE_URL',
+    defaultValue: 'https://tiles.openfreemap.org/styles/liberty',
   );
 
   /// Sentry (H05.4): sin DSN la app no envía nada. Entorno: pruebas o produccion.

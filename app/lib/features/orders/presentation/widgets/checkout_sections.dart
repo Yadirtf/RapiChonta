@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 
 import '../../../../app/theme.dart';
+import '../../../../core/map/brand_map.dart' show MapHandle;
 import '../../../../l10n/app_localizations.dart';
 import '../../../auth/presentation/widgets/phone_field.dart';
 import '../../../business/domain/business.dart' show CoverageArea;
@@ -65,8 +65,9 @@ IconData savedPlaceIcon(AppLocalizations l10n, String? label) {
   return label == null ? Icons.place_rounded : Icons.sell_rounded;
 }
 
-/// Paso 1 (H04.2): un lugar guardado con un toque, u otro punto marcado en el mapa con una referencia de
-/// barrio ("casa azul frente al parque"), que es como se encuentra una puerta en Villagarzón.
+/// Paso 1 (H04.2): primero donde está el cliente según el GPS, con el pin en el mapa; al lado, la dirección del
+/// último pedido y los lugares guardados, a un toque. El punto del mapa lleva una referencia de barrio
+/// ("casa azul frente al parque"), que es como se encuentra una puerta en Villagarzón.
 class DeliverySection extends StatelessWidget {
   const DeliverySection({
     super.key,
@@ -74,6 +75,9 @@ class DeliverySection extends StatelessWidget {
     required this.onChange,
     required this.addresses,
     required this.zone,
+    this.last,
+    this.gps,
+    this.locating = false,
     required this.mapCenter,
     required this.mapController,
     required this.onLocateMe,
@@ -88,9 +92,16 @@ class DeliverySection extends StatelessWidget {
   final CheckoutDraft draft;
   final DraftChange onChange;
   final List<SavedAddress> addresses;
+
+  /// A dónde fue el último pedido; se ofrece al lado del GPS, sin elegirla de antemano.
+  final SavedAddress? last;
+
+  /// Lo que dijo el GPS al abrir el pedido (null sin permiso), y si aún está buscando.
+  final GeoPoint? gps;
+  final bool locating;
   final ZoneState zone;
   final GeoPoint mapCenter;
-  final MapController mapController;
+  final MapHandle mapController;
   final VoidCallback? onLocateMe;
   final TextEditingController referenceController;
   final TextEditingController lineController;
@@ -102,54 +113,58 @@ class DeliverySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final pinned = last ?? addresses.firstOrNull;
+    final rest = [for (final a in addresses) if (a.id != pinned?.id) a];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (addresses.isNotEmpty) ...[
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
+        // Lado a lado y enteros (en un carrusel el segundo quedaba cortado): el GPS y el último pedido, o el
+        // primer lugar guardado si aún no ha pedido; los demás lugares, en una fila deslizable debajo.
+        if (pinned != null) ...[
+          IntrinsicHeight(
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (final address in addresses)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(minWidth: 150, maxWidth: 220),
-                      child: ChoiceTile(
-                        selected: draft.savedAddressId == address.id,
-                        onTap: () => onChange((d) => d.copyWith(savedAddressId: () => address.id)),
-                        child: Row(
-                          children: [
-                            Icon(savedPlaceIcon(l10n, address.label), color: AppColors.chonta, size: 20),
-                            const SizedBox(width: 10),
-                            Flexible(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(address.label ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
-                                  Text(address.reference ?? address.line ?? '',
-                                      maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.ink.withValues(alpha: 0.55))),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ChoiceTile(
-                  selected: draft.pickingPoint,
-                  onTap: () => onChange((d) => d.copyWith(savedAddressId: () => null)),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
-                  child: Row(children: [const Icon(Icons.add_rounded, color: AppColors.chonta), const SizedBox(width: 6), Text(l10n.checkoutOtherPlace)]),
-                ),
+                Expanded(child: _HereTile(selected: draft.pickingPoint, locating: locating, gps: gps, point: draft.point, onTap: () => onChange((d) => d.copyWith(savedAddressId: () => null)))),
+                const SizedBox(width: 8),
+                Expanded(child: _placeTile(l10n, pinned, tag: last != null ? l10n.checkoutLastOrder : null)),
               ],
             ),
           ),
+          if (rest.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final address in rest)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ConstrainedBox(constraints: const BoxConstraints(minWidth: 150, maxWidth: 220), child: _placeTile(l10n, address)),
+                    ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
         ],
         if (draft.pickingPoint) ..._picker(context, l10n) else _ZoneLine(zone: zone),
       ],
+    );
+  }
+
+  Widget _placeTile(AppLocalizations l10n, SavedAddress address, {String? tag}) {
+    final title = address.label ?? address.reference ?? address.line ?? l10n.checkoutHereMoved;
+    final detail = address.label == null ? address.line : address.reference ?? address.line;
+    return ChoiceTile(
+      selected: draft.savedAddressId == address.id,
+      onTap: () => onChange((d) => d.copyWith(savedAddressId: () => address.id)),
+      child: _TileBody(
+        icon: Icon(tag != null ? Icons.history_rounded : savedPlaceIcon(l10n, address.label), color: AppColors.chonta, size: 20),
+        tag: tag,
+        title: title,
+        detail: detail,
+      ),
     );
   }
 
@@ -265,6 +280,69 @@ class DeliverySection extends StatelessWidget {
       ],
     ];
   }
+}
+
+/// "Donde estoy": el punto del mapa, que arranca en el GPS. Dice si el pin sigue en el GPS o ya lo movió.
+class _HereTile extends StatelessWidget {
+  const _HereTile({required this.selected, required this.locating, required this.gps, required this.point, required this.onTap});
+
+  final bool selected;
+  final bool locating;
+  final GeoPoint? gps;
+  final GeoPoint? point;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final onGps = gps != null && point == gps;
+    final (title, detail) = switch (gps) {
+      _ when locating => (l10n.checkoutHereNow, l10n.checkoutLocatingShort),
+      null => (l10n.checkoutPickOnMap, l10n.checkoutPickOnMapHint),
+      _ => (l10n.checkoutHereNow, onGps ? l10n.checkoutHereGps : l10n.checkoutHereMoved),
+    };
+    return ChoiceTile(
+      selected: selected,
+      onTap: onTap,
+      child: _TileBody(
+        icon: locating
+            ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2.4, color: AppColors.chonta))
+            : Icon(gps == null ? Icons.add_location_alt_rounded : Icons.my_location_rounded, color: onGps ? AppColors.leaf : AppColors.chonta, size: 20),
+        title: title,
+        detail: detail,
+      ),
+    );
+  }
+}
+
+/// Contenido de una opción de lugar: ícono, rótulo pequeño opcional ("ÚLTIMO PEDIDO"), nombre y detalle.
+class _TileBody extends StatelessWidget {
+  const _TileBody({required this.icon, required this.title, this.detail, this.tag});
+
+  final Widget icon;
+  final String title;
+  final String? detail;
+  final String? tag;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          icon,
+          const SizedBox(width: 10),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (tag != null)
+                  Text(tag!.toUpperCase(), maxLines: 1, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.2, color: AppColors.chontaStrong)),
+                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (detail != null && detail!.isNotEmpty)
+                  Text(detail!, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.ink.withValues(alpha: 0.55))),
+              ],
+            ),
+          ),
+        ],
+      );
 }
 
 class _ZoneLine extends StatelessWidget {

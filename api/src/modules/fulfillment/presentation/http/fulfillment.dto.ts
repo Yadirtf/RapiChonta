@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsISO8601, IsOptional, IsString, IsUUID, Matches, MaxLength, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsISO8601, IsLatitude, IsLongitude, IsOptional, IsString, IsUUID, Matches, MaxLength, ValidateNested } from 'class-validator';
 import { ADJUSTMENT_DECISIONS, ADJUSTMENT_REASONS, MAX_REPORTED_LINES } from '../../domain/adjustments';
 import { MAX_COLLECTION_PAYMENTS } from '../../domain/collection';
 import { MAX_INCIDENT_DESCRIPTION } from '../../domain/incidents';
@@ -36,6 +36,17 @@ export class TripQueryDto {
   @IsString()
   @MaxLength(5)
   lang?: string;
+}
+
+/** Donde está el domiciliario ahora (su GPS), para trazar la ruta. */
+export class RouteQueryDto {
+  @Type(() => Number)
+  @IsLatitude()
+  lat: number;
+
+  @Type(() => Number)
+  @IsLongitude()
+  lng: number;
 }
 
 export class DeliverDto extends TripEventDto {

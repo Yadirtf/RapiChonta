@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:rapichonta/core/error/failure.dart';
 import 'package:rapichonta/features/courier/domain/courier.dart';
+import 'package:rapichonta/features/establishments/domain/entities/establishment.dart' show GeoPoint;
 import 'package:rapichonta/features/orders/domain/entities/adjustment.dart';
 
 Uint8List bytesOf(List<int> bytes) => Uint8List.fromList(bytes);
@@ -80,6 +81,17 @@ class FakeCourierRepository implements CourierRepository {
 
   @override
   Future<void> reject(String offerId) async {}
+
+  /// La ruta que devuelve la API (null: sin ruta) y desde dónde se pidió cada vez.
+  TripRoute? currentRoute;
+  final routeRequests = <GeoPoint>[];
+
+  @override
+  Future<TripRoute?> route(String code, GeoPoint from) async {
+    routeRequests.add(from);
+    _online();
+    return currentRoute;
+  }
 
   @override
   Future<Trip?> trip({required String language}) async => currentTrip;
