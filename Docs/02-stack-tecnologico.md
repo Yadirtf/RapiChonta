@@ -14,7 +14,7 @@ Criterios usados para elegir: escalar sin reescribir, comunidad grande (fácil c
 | Estilos y animación | Tailwind CSS + Framer Motion + lucide-react | Tailwind 4 |
 | Mapa web | MapLibre GL JS + OpenFreeMap / MapTiler | MapLibre 5 |
 | App | Flutter + Riverpod + go_router + Dio | Flutter 3.35+, Riverpod 3 |
-| Mapa app | flutter_map (OpenStreetMap) | 8 |
+| Mapa app | maplibre_gl (MapLibre Native, OpenStreetMap) | 0.27 |
 | Idiomas web | next-intl con archivos `messages/<idioma>.json` | 4 |
 | Idiomas app | `flutter gen-l10n` con archivos `lib/l10n/app_<idioma>.arb` (JSON) | — |
 | Hosting de pruebas | SnapDeploy (un contenedor Docker con API y web) + Neon (PostgreSQL con PostGIS) | Render (`render.yaml`, mismo contenedor y misma base en Neon) |
@@ -51,7 +51,7 @@ Criterios usados para elegir: escalar sin reescribir, comunidad grande (fácil c
 
 ## App: Flutter
 
-**Por qué:** un solo código Dart genera Android, iOS, web y escritorio; el motor de dibujo propio hace que la app se vea igual en todos los dispositivos y permite animaciones fluidas a 60/120 fps. Para **Huawei** (sin Google Play Services) Flutter funciona sin cambios si se evitan dependencias de Google: por eso se usa `flutter_map` con OpenStreetMap y `geolocator` (que usa el LocationManager de Android). Para HarmonyOS NEXT existe el port de Flutter mantenido por la comunidad OpenHarmony, lo que deja la puerta abierta.
+**Por qué:** un solo código Dart genera Android, iOS, web y escritorio; el motor de dibujo propio hace que la app se vea igual en todos los dispositivos y permite animaciones fluidas a 60/120 fps. Para **Huawei** (sin Google Play Services) Flutter funciona sin cambios si se evitan dependencias de Google: por eso se usa MapLibre (`maplibre_gl`, el mismo motor de la web) con datos de OpenStreetMap y `geolocator` (que usa el LocationManager de Android). Para HarmonyOS NEXT existe el port de Flutter mantenido por la comunidad OpenHarmony, lo que deja la puerta abierta.
 
 **Alternativas descartadas:**
 - *React Native / Expo:* compartiría TypeScript con la web, que es su gran ventaja. Se descarta porque varias librerías clave (mapas, notificaciones de Expo) dependen de servicios de Google, lo que complica Huawei, y porque el rendimiento en animaciones complejas depende más del dispositivo. Es una alternativa válida si el equipo es 100 % TypeScript.

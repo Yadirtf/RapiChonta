@@ -1,11 +1,11 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../../app/theme.dart';
-import '../../../../core/config/env.dart';
+import '../../../../core/map/brand_map.dart';
+import '../../../../core/map/map_images.dart';
 import '../../../business/domain/business.dart';
 import '../../../business/presentation/coverage_layers.dart';
 import '../../domain/entities/establishment.dart';
@@ -27,95 +27,140 @@ class NearbyMap extends StatefulWidget {
 }
 
 class _NearbyMapState extends State<NearbyMap> {
-  final _controller = MapController();
-  bool _ready = false;
+  static const _places = 'rapichonta-places';
+  static const _me = 'rapichonta-me';
+
+  MapLibreMapController? _map;
+  final _images = <String>{};
   GeoPoint? _framedFor;
+  double _pixelRatio = 2;
+  int _placesVersion = 0;
 
   @override
   void didUpdateWidget(NearbyMap old) {
     super.didUpdateWidget(old);
     if (old.center != widget.center) _framedFor = null;
+    final map = _map;
+    if (map == null) return;
+    if (old.coverage != widget.coverage) CoverageLayers.update(map, widget.coverage).ignore();
+    if (old.center != widget.center) map.setGeoJsonSource(_me, _meData()).ignore();
+    if (old.establishments != widget.establishments || old.selectedId != widget.selectedId) _syncPlaces();
+  }
+
+  Future<void> _onStyleLoaded(MapLibreMapController map) async {
+    _map = map;
+    _images.clear();
+    await CoverageLayers.add(map, widget.coverage);
+    await map.addGeoJsonSource(_me, _meData());
+    await map.addCircleLayer(
+      _me,
+      _me,
+      CircleLayerProperties(circleColor: mapColor(Colors.blue), circleRadius: 8, circleStrokeColor: '#ffffff', circleStrokeWidth: 3),
+      enableInteraction: false,
+    );
+    await map.addGeoJsonSource(_places, const {'type': 'FeatureCollection', 'features': []});
+    await map.addSymbolLayer(
+      _places,
+      _places,
+      SymbolLayerProperties(
+        iconImage: ['get', 'icon'],
+        iconSize: MapImages.iconSize(_pixelRatio),
+        iconAnchor: 'bottom',
+        iconAllowOverlap: true,
+        iconIgnorePlacement: true,
+        // El seleccionado queda encima de los vecinos.
+        symbolSortKey: ['get', 'sort'],
+        iconPitchAlignment: 'viewport',
+      ),
+    );
+    await _syncPlaces();
     _frameNearest();
+  }
+
+  Map<String, dynamic> _meData() => {
+        'type': 'FeatureCollection',
+        'features': [
+          {
+            'type': 'Feature',
+            'properties': <String, dynamic>{},
+            'geometry': {'type': 'Point', 'coordinates': [widget.center.lng, widget.center.lat]},
+          },
+        ],
+      };
+
+  static String _pinName(String icon, bool open, bool selected) => 'place-$icon-${open ? 1 : 0}${selected ? 1 : 0}';
+
+  Future<void> _syncPlaces() async {
+    final map = _map;
+    if (map == null) return;
+    final version = ++_placesVersion;
+    final features = <Map<String, dynamic>>[];
+    for (final e in widget.establishments) {
+      final selected = e.id == widget.selectedId;
+      final name = _pinName(e.categoryIcon, e.acceptsOrders, selected);
+      if (_images.add(name)) {
+        await MapImages.add(map, name, MapImages.pinSize, () => MapImages.pin(PlacePin(icon: e.categoryIcon, open: e.acceptsOrders, selected: selected)), _pixelRatio);
+      }
+      features.add({
+        'type': 'Feature',
+        'id': e.id,
+        'properties': {'icon': name, 'sort': selected ? 1 : 0},
+        'geometry': {'type': 'Point', 'coordinates': [e.location.lng, e.location.lat]},
+      });
+    }
+    // Llegó una lista más nueva mientras se pintaban los pines: esa manda.
+    if (!mounted || _map != map || version != _placesVersion) return;
+    await map.setGeoJsonSource(_places, {'type': 'FeatureCollection', 'features': features});
+    _frameNearest();
+  }
+
+  void _onFeatureTap(String id, String layerId) {
+    if (layerId != _places) return;
+    final tapped = widget.establishments.where((e) => e.id == id).firstOrNull;
+    if (tapped != null) widget.onSelect(tapped);
   }
 
   /// A las afueras, el local más cercano puede quedar fuera de la vista con zoom 15: se encuadra junto con
   /// el cliente para que no parezca que no hay locales. Una vez por ubicación, para no pelear con el usuario.
-  void _frameNearest() {
+  Future<void> _frameNearest() async {
+    final map = _map;
     final nearest = widget.establishments.firstOrNull;
-    if (!_ready || nearest == null || _framedFor == widget.center) return;
+    if (map == null || nearest == null || _framedFor == widget.center) return;
     _framedFor = widget.center;
-    final point = LatLng(nearest.location.lat, nearest.location.lng);
-    if (_controller.camera.visibleBounds.contains(point)) return;
-    _controller.fitCamera(
-      CameraFit.coordinates(
-        coordinates: [LatLng(widget.center.lat, widget.center.lng), point],
-        padding: const EdgeInsets.all(72),
-        maxZoom: 15,
+    final visible = await map.getVisibleRegion();
+    final p = nearest.location;
+    final inside = p.lat >= visible.southwest.latitude &&
+        p.lat <= visible.northeast.latitude &&
+        p.lng >= visible.southwest.longitude &&
+        p.lng <= visible.northeast.longitude;
+    if (inside) return;
+    final c = widget.center;
+    await map.animateCamera(
+      CameraUpdate.newLatLngBounds(
+        LatLngBounds(
+          southwest: LatLng(math.min(c.lat, p.lat), math.min(c.lng, p.lng)),
+          northeast: LatLng(math.max(c.lat, p.lat), math.max(c.lng, p.lng)),
+        ),
+        left: 72,
+        top: 72,
+        right: 72,
+        bottom: 72,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final center = widget.center;
-    return FlutterMap(
-      mapController: _controller,
-      options: MapOptions(
-        initialCenter: LatLng(center.lat, center.lng),
-        initialZoom: 15,
-        onMapReady: () {
-          _ready = true;
-          _frameNearest();
-        },
-      ),
-      children: [
-        TileLayer(
-          urlTemplate: Env.mapTilesUrl,
-          userAgentPackageName: 'com.rapichonta.app',
-          // Mismas calles de OSM, con colores más cálidos y vivos (en línea con la paleta de la web).
-          tileBuilder: (context, tile, _) => ColorFiltered(colorFilter: brandTint, child: tile),
-        ),
-        ...coverageLayers(widget.coverage),
-        MarkerLayer(
-          markers: [
-            Marker(
-              point: LatLng(center.lat, center.lng),
-              width: 22,
-              height: 22,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.blue,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 3),
-                ),
-              ),
-            ),
-            for (final e in widget.establishments)
-              Marker(
-                point: LatLng(e.location.lat, e.location.lng),
-                width: 48,
-                height: 52,
-                alignment: Alignment.topCenter,
-                child: Semantics(
-                  button: true,
-                  label: e.name,
-                  child: GestureDetector(onTap: () => widget.onSelect(e), child: PlacePin(icon: e.categoryIcon, open: e.acceptsOrders, selected: e.id == widget.selectedId)),
-                ),
-              ),
-          ],
-        ),
-      ],
+    _pixelRatio = MediaQuery.devicePixelRatioOf(context);
+    return BrandMap(
+      center: widget.center,
+      tiltToggle: true,
+      togglePadding: const EdgeInsets.fromLTRB(12, 60, 12, 12),
+      onStyleLoaded: _onStyleLoaded,
+      onFeatureTap: _onFeatureTap,
     );
   }
 }
-
-/// Saturación ×1,25 (verdes y ríos más vivos) y un toque cálido: el fondo gris de OSM queda crema.
-const brandTint = ColorFilter.matrix(<double>[
-  1.1969, -0.1788, -0.0181, 0, 4, //
-  -0.0524, 1.0551, -0.0178, 0, 0, //
-  -0.0505, -0.1699, 1.1704, 0, 0, //
-  0, 0, 0, 1, 0,
-]);
 
 /// Gota color chontaduro con el ícono de la categoría (igual que en la web y que el logo).
 /// Apagada si el local no recibe pedidos.

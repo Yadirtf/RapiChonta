@@ -18,9 +18,9 @@ dependencies:
   go_router: ^18.1.0
   # HTTP
   dio: ^5.7.0
-  # Mapa con OpenStreetMap: no depende de Google Play Services (clave para Huawei)
-  flutter_map: ^8.3.2
-  latlong2: ^0.10.1
+  # Mapa vectorial de MapLibre con datos de OpenStreetMap (el mismo motor de la web): no depende de Google
+  # Play Services (clave para Huawei), se inclina en 3D y guarda Villagarzón en el teléfono para abrir sin señal.
+  maplibre_gl: ^0.27.1
   # Ubicación (usa LocationManager de Android cuando no hay GMS)
   geolocator: ^14.1.1
   equatable: ^3.0.0
