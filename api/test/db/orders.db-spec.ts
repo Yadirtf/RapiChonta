@@ -167,14 +167,14 @@ describe('Pedidos en PostgreSQL', () => {
     await inTransaction(async (tx) => {
       const s = await scenario(tx);
       const book = new PrismaAddressBook(tx as never);
-      await insertOrder(tx, s, 'RC-LST1');
+      await insertOrder(tx, s, 'RC-PRV1');
       expect((await book.lastUsed(s.userId))?.id).toBe(s.addressId);
       const [once] = await tx.$queryRaw<{ id: string }[]>`
         INSERT INTO addresses (owner_user_id, reference, location)
         VALUES (${s.userId}::uuid, 'Donde la tía', ST_SetSRID(ST_MakePoint(-76.61, 1.03), 4326)::geography) RETURNING id`;
       await tx.$executeRaw`INSERT INTO orders (code, customer_user_id, establishment_id, delivery_address_id, delivery_zone_fee_id, commission_rate_id,
                                                payment_method_id, fulfillment_mode_id, status_id, created_at)
-        VALUES ('RC-LST2', ${s.userId}::uuid, ${s.establishmentId}::uuid, ${once.id}::uuid, ${s.feeId}::uuid, ${s.commissionId}::uuid,
+        VALUES ('RC-PRV2', ${s.userId}::uuid, ${s.establishmentId}::uuid, ${once.id}::uuid, ${s.feeId}::uuid, ${s.commissionId}::uuid,
                 ${id('payment_methods', 'CASH')}, ${id('fulfillment_modes', 'COURIER_PURCHASE')}, ${id('order_statuses', 'PENDING_ASSIGNMENT')}, now() + interval '1 minute')`;
       expect(await book.lastUsed(s.userId)).toMatchObject({ id: once.id, label: null, reference: 'Donde la tía' });
     });
