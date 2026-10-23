@@ -118,25 +118,54 @@ class CurrencyPicker extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     return Tooltip(
       message: l10n.currencyHint,
-      child: Row(
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 6,
         children: [
           for (final code in <String?>[null, ...displayCurrencies])
-            Padding(
-              padding: const EdgeInsets.only(right: 4),
-              child: ChoiceChip(
-                label: Text(code == null ? 'COP' : '≈ $code'),
-                selected: selected == code,
-                showCheckmark: false,
-                labelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: selected == code ? AppColors.ink : Colors.white.withValues(alpha: 0.82)),
-                // `color` manda sobre selectedColor/backgroundColor: sin él, Material 3 pinta los no elegidos con
-                // un relleno claro y el texto blanco queda ilegible.
-                color: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.selected) ? Colors.white : Colors.transparent),
-                side: BorderSide(color: selected == code ? Colors.white : Colors.white38),
-                visualDensity: VisualDensity.compact,
-                onSelected: (_) => ref.read(displayCurrencyProvider.notifier).choose(code),
-              ),
+            MenuPill(
+              label: code == null ? 'COP' : '≈ $code',
+              selected: selected == code,
+              onTap: () => ref.read(displayCurrencyProvider.notifier).choose(code),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Opción del menú lateral oscuro (moneda, idioma), igual que en la web: la elegida rellena, las demás solo
+/// con borde y texto claro. No es un ChoiceChip: en Material 3 el chip no elegido salía con relleno claro según
+/// la versión de Flutter y el texto blanco quedaba ilegible.
+class MenuPill extends StatelessWidget {
+  const MenuPill({super.key, required this.label, required this.selected, required this.onTap, this.fill = Colors.white});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  /// Relleno de la opción elegida; el texto va en tinta encima.
+  final Color fill;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: selected ? fill : Colors.transparent,
+        shape: StadiumBorder(side: BorderSide(color: selected ? fill : Colors.white38)),
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: selected ? null : onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: selected ? AppColors.ink : Colors.white.withValues(alpha: 0.88)),
+            ),
+          ),
+        ),
       ),
     );
   }
