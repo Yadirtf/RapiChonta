@@ -66,6 +66,10 @@ El `render.yaml` anterior creaba `rapichonta-db`, `rapichonta-api` y `rapichonta
 
 Cada merge a `develop` que toque `api/`, `web/`, `Dockerfile` o `start.sh` reconstruye la imagen y despliega (`buildFilter`). Los cambios solo en `app/` o `Docs/` no despliegan.
 
+## Volver a probar desde cero
+
+Para borrar los pedidos de prueba y empezar en limpio, correr [`api/scripts/limpiar-pedidos-de-prueba.sql`](../api/scripts/limpiar-pedidos-de-prueba.sql) en el **SQL Editor** de Neon. Borra pedidos, despacho, turnos, compras, entregas, ajustes, novedades, cajas, notificaciones y las fotos y facturas de esos pedidos; deja usuarios, domiciliarios, locales, menús, zonas, tarifas, parámetros y direcciones guardadas. Es una sola instrucción: se aplica completa o no se aplica nada. Antes, los domiciliarios terminan el turno. Solo para la base de pruebas.
+
 ## App de iPhone
 
 El flujo **App iOS** (`.github/workflows/app-ios.yml`) compila la app en macOS igual que **App Android**: apunta a `https://rapichonta.onrender.com/api/v1` (o a la variable `API_URL`), deja el IPA como artefacto en cada PR que toque `app/` y, en cada push a `develop`, lo publica en la pre-release **app-ios-develop**. A mano: Actions → App iOS → Run workflow.
