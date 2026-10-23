@@ -60,6 +60,7 @@ class SideMenu extends ConsumerWidget {
               const Divider(color: Colors.white24),
               const Padding(padding: EdgeInsets.fromLTRB(24, 8, 16, 4), child: OpeningSign(dark: true)),
               const Padding(padding: EdgeInsets.fromLTRB(20, 4, 16, 4), child: CurrencyPicker()),
+              const Padding(padding: EdgeInsets.fromLTRB(20, 4, 16, 4), child: _LanguagePicker()),
               _MenuItem(
                 icon: Icons.delivery_dining_rounded,
                 label: l10n.menuMyOrders,
@@ -106,6 +107,34 @@ class SideMenu extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Español o inglés, como en el menú de la web. Se guarda en el teléfono y, con sesión, en la cuenta.
+class _LanguagePicker extends ConsumerWidget {
+  const _LanguagePicker();
+
+  static const _names = {'es': 'Español', 'en': 'English'};
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final current = Localizations.localeOf(context).languageCode;
+    return Row(
+      children: [
+        Tooltip(message: l10n.language, child: Icon(Icons.translate_rounded, size: 18, color: Colors.white.withValues(alpha: 0.7))),
+        const SizedBox(width: 10),
+        for (final code in LocaleController.supported) ...[
+          MenuPill(
+            label: _names[code] ?? code,
+            selected: current == code,
+            fill: AppColors.brand,
+            onTap: () => ref.read(localeControllerProvider.notifier).choose(code),
+          ),
+          const SizedBox(width: 6),
+        ],
+      ],
     );
   }
 }

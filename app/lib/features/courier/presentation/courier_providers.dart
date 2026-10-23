@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/error/failure.dart';
@@ -44,8 +45,16 @@ class CourierStatusController extends AsyncNotifier<CourierStatus?> {
 
 final courierStatusProvider = AsyncNotifierProvider<CourierStatusController, CourierStatus?>(CourierStatusController.new);
 
-/// Permiso de ubicación del sistema; se vuelve a mirar al volver de los ajustes o tras pedirlo.
-final locationAccessProvider = FutureProvider<LocationAccess>((ref) => locationAccess());
+/// Permiso de ubicación del sistema. Se vuelve a mirar al entrar en modo domiciliario, cada vez que la app vuelve
+/// al frente (de los ajustes o del diálogo de permiso, que en Android la pausa) y tras pedirlo. Se lee desde que
+/// abre la app (el turno se observa en la raíz), antes de que el mapa del cliente pida el permiso: sin volver a
+/// mirarlo quedaba "sin permiso" para siempre, el turno mostraba el aviso y el GPS no arrancaba.
+final locationAccessProvider = FutureProvider<LocationAccess>((ref) {
+  ref.watch(courierModeProvider);
+  final lifecycle = AppLifecycleListener(onResume: ref.invalidateSelf);
+  ref.onDispose(lifecycle.dispose);
+  return locationAccess();
+});
 
 /// Ofertas abiertas mientras está disponible y sin pedido. Llegan también por push; esto cubre al teléfono
 /// sin servicio push o con los avisos apagados.

@@ -49,11 +49,10 @@ class _CourierHomePageState extends ConsumerState<CourierHomePage> with WidgetsB
     super.dispose();
   }
 
-  /// Al volver de los ajustes del teléfono (permiso o GPS), se vuelve a mirar.
+  /// Al volver de los ajustes del teléfono se vuelve a mirar el turno (el permiso lo mira locationAccessProvider).
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      ref.invalidate(locationAccessProvider);
       ref.invalidate(courierStatusProvider);
       ref.read(pendingStepsProvider.notifier).flush();
     }
