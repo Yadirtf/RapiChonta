@@ -54,6 +54,21 @@ final deviceLocationProvider = FutureProvider<GeoPoint?>((ref) async {
   return GeoPoint(position.latitude, position.longitude);
 });
 
+/// Punto fresco y preciso para el pedido: [deviceLocationProvider] se lee una vez al abrir la app y el cliente
+/// pudo moverse desde entonces. Si el GPS no responde a tiempo, vale la última posición conocida.
+final preciseLocationProvider = FutureProvider.autoDispose<GeoPoint?>((ref) async {
+  if (await ref.watch(deviceLocationProvider.future) == null) return null;
+  try {
+    final position = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.best, timeLimit: Duration(seconds: 12)),
+    );
+    return GeoPoint(position.latitude, position.longitude);
+  } catch (_) {
+    final known = await Geolocator.getLastKnownPosition();
+    return known == null ? ref.read(deviceLocationProvider).value : GeoPoint(known.latitude, known.longitude);
+  }
+});
+
 double _meters(GeoPoint a, GeoPoint b) => Geolocator.distanceBetween(a.lat, a.lng, b.lat, b.lng);
 
 /// Radio de búsqueda base: Villagarzón cabe entero en 3 km desde casi cualquier punto del casco urbano.
@@ -77,10 +92,14 @@ int nearbyRadiusMeters(GeoPoint origin, GeoPoint home) =>
 /// cerca de alguno, en su ubicación; si no (o sin permiso), en el centro del municipio abierto más cercano.
 final userLocationProvider = FutureProvider<GeoPoint>((ref) async {
   final device = await ref.watch(deviceLocationProvider.future);
-  final areas = await ref.watch(coverageProvider.future);
+  return usableLocation(device, await ref.watch(coverageProvider.future));
+});
+
+/// [device] si está al alcance de algún municipio abierto; si no (o sin GPS), el centro del más cercano.
+GeoPoint usableLocation(GeoPoint? device, List<CoverageArea> areas) {
   final home = nearestHome(device ?? defaultCenter, areas);
   return device != null && _meters(device, home) <= serviceRadiusMeters ? device : home;
-});
+}
 
 /// Si llegamos a la ubicación del cliente y con qué tarifa, o a cuánto está de la cobertura. Null sin GPS.
 final deviceCoverageProvider = FutureProvider<CoverageCheck?>((ref) async {

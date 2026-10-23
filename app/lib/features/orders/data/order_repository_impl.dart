@@ -123,6 +123,13 @@ class OrderRepositoryImpl implements OrderRepository {
       });
 
   @override
+  Future<SavedAddress?> lastAddress() => _call(() async {
+        final response = await _authed.get<Map<String, dynamic>>('/me/addresses/last');
+        final address = response.data?['address'] as Map<String, dynamic>?;
+        return address == null ? null : addressFromJson(address);
+      });
+
+  @override
   Future<List<SavedRecipient>> recipients() => _call(() async {
         final response = await _authed.get<List<dynamic>>('/me/recipients');
         return [

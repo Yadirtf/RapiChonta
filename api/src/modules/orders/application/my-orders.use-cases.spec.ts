@@ -57,4 +57,18 @@ describe('Direcciones guardadas (H04.2)', () => {
     await expect(manage.create(customer, { label: 'Una más', reference: 'Referencia', ...point })).rejects.toMatchObject({ code: 'TOO_MANY_ADDRESSES' });
     await expect(manage.archive(customer, 'no-existe')).rejects.toMatchObject({ code: 'ADDRESS_NOT_FOUND' });
   });
+
+  it('ofrece la dirección del último pedido mientras siga vigente', async () => {
+    const book = new MemoryAddressBook();
+    const manage = new ManageAddressesUseCase(book);
+    await expect(manage.lastUsed(customer)).resolves.toBeNull();
+    const casa = await manage.create(customer, { label: 'Casa', reference: 'Portón verde', latitude: 1.03, longitude: -76.62 });
+    const finca = await manage.create(customer, { label: 'Finca', reference: 'Después del puente', latitude: 1.04, longitude: -76.63 });
+    book.used.push(casa.id, finca.id);
+    await expect(manage.lastUsed(customer)).resolves.toMatchObject({ id: finca.id });
+    await manage.archive(customer, finca.id);
+    await expect(manage.lastUsed(customer)).resolves.toMatchObject({ id: casa.id });
+    await expect(manage.lastUsed({ ...customer, userId: 'otro' })).resolves.toBeNull();
+  });
 });
+

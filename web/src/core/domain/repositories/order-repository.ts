@@ -41,6 +41,8 @@ export interface OrderRepository {
   decideAdjustment(code: string, adjustmentId: string, input: { decision: AdjustmentDecision; productVersionId?: string }): Promise<void>;
 
   addresses(): Promise<SavedAddress[]>;
+  /** A dónde fue el último pedido (puede ser un punto sin nombre); null si aún no ha pedido. */
+  lastAddress(): Promise<SavedAddress | null>;
   archiveAddress(id: string): Promise<void>;
   makeDefaultAddress(id: string): Promise<void>;
   recipients(): Promise<SavedRecipient[]>;

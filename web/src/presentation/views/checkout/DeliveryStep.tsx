@@ -1,10 +1,10 @@
 "use client";
 
-import { Bike, Briefcase, Heart, Home, LocateFixed, MapPin, MapPinOff, PenLine, Plus, Tag } from "lucide-react";
+import { Bike, Briefcase, Heart, History, Home, LoaderCircle, LocateFixed, MapPin, MapPinOff, MapPinPlus, PenLine, Tag } from "lucide-react";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState } from "react";
-import type { GeoPoint } from "@/core/domain/entities/establishment";
+import { createElement, useEffect, useRef, useState } from "react";
+import { distanceMeters, type GeoPoint } from "@/core/domain/entities/establishment";
 import type { SavedAddress } from "@/core/domain/entities/order";
 import { TextField } from "../../components/ui/Field";
 import { useCatalogFormat } from "../../hooks/useCatalogFormat";
@@ -38,44 +38,61 @@ interface Props {
   draft: CheckoutDraft;
   onChange: (patch: Partial<CheckoutDraft>) => void;
   addresses: SavedAddress[];
+  /** A dónde fue el último pedido: se ofrece al lado del GPS, sin elegirla de antemano. */
+  last: SavedAddress | null;
   zone: ZoneState;
   store?: GeoPoint;
   showErrors: boolean;
 }
 
+type Geo = ReturnType<typeof useGeolocation>;
+
 /**
- * Paso 1 (H04.2): un lugar guardado con un toque, u otro punto marcado en el mapa con una referencia de
- * barrio ("casa azul frente al parque"), que es como se encuentra una puerta en Villagarzón.
+ * Paso 1 (H04.2): primero donde está el cliente según el GPS, con el pin en el mapa; al lado, la dirección del
+ * último pedido y los lugares guardados, a un toque. El punto del mapa lleva una referencia de barrio
+ * ("casa azul frente al parque"), que es como se encuentra una puerta en Villagarzón.
  */
-export function DeliveryStep({ draft, onChange, addresses, zone, store, showErrors }: Props) {
+export function DeliveryStep({ draft, onChange, addresses, last, zone, store, showErrors }: Props) {
   const t = useTranslations("checkout");
   const labelText = (l: PlaceLabel) => t(`label${l[0].toUpperCase()}${l.slice(1)}` as "labelHome");
   const picking = !draft.savedAddressId;
+  const geo = useGeolocation();
+  const chose = useRef(false);
+
+  // Sin GPS, la dirección del último pedido es mejor punto de partida que el centro del municipio.
+  useEffect(() => {
+    if (geo.status !== "denied" || !last || chose.current || draft.point) return;
+    onChange({ savedAddressId: last.id });
+  }, [geo.status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const choose = (patch: Partial<CheckoutDraft>) => {
+    chose.current = true;
+    onChange(patch);
+  };
+  const pinned = last ?? addresses[0] ?? null;
+  const rest = addresses.filter((a) => a.id !== pinned?.id);
 
   return (
     <div className="flex flex-col gap-4">
-      {addresses.length > 0 && (
-        <div role="radiogroup" aria-label={t("savedPlaces")} className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
-          {addresses.map((address) => {
-            const Icon = placeIcon(address.label, labelText);
-            return (
-              <ChoiceChip key={address.id} selected={draft.savedAddressId === address.id} onClick={() => onChange({ savedAddressId: address.id })} className="min-w-44 max-w-60 shrink-0">
-                <Icon className="size-5 shrink-0 text-chonta" aria-hidden />
-                <span className="min-w-0">
-                  <span className="block truncate">{address.label}</span>
-                  <span className="block truncate text-xs font-medium text-ink/55">{address.reference ?? address.line}</span>
-                </span>
-              </ChoiceChip>
-            );
-          })}
-          <ChoiceChip selected={picking} onClick={() => onChange({ savedAddressId: null })} className="shrink-0">
-            <Plus className="size-5 shrink-0 text-chonta" aria-hidden /> {t("otherPlace")}
-          </ChoiceChip>
+      {/* Lado a lado y enteros: el GPS y el último pedido (o el primer lugar guardado); los demás, deslizables debajo. */}
+      {pinned && (
+        <div role="radiogroup" aria-label={t("savedPlaces")} className="flex flex-col gap-2">
+          <div className="grid grid-cols-2 gap-2">
+            <HereChip selected={picking} geo={geo} point={draft.point} onClick={() => choose({ savedAddressId: null })} />
+            <PlaceChip address={pinned} tag={last ? t("lastOrder") : undefined} selected={draft.savedAddressId === pinned.id} onClick={() => choose({ savedAddressId: pinned.id })} labelText={labelText} />
+          </div>
+          {rest.length > 0 && (
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
+              {rest.map((address) => (
+                <PlaceChip key={address.id} address={address} selected={draft.savedAddressId === address.id} onClick={() => choose({ savedAddressId: address.id })} labelText={labelText} className="min-w-44 max-w-60 shrink-0" />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       {picking ? (
-        <PointPicker draft={draft} onChange={onChange} zone={zone} store={store} showErrors={showErrors} labelText={labelText} />
+        <PointPicker draft={draft} onChange={onChange} zone={zone} store={store} showErrors={showErrors} labelText={labelText} geo={geo} />
       ) : (
         <ZoneLine zone={zone} />
       )}
@@ -83,9 +100,44 @@ export function DeliveryStep({ draft, onChange, addresses, zone, store, showErro
   );
 }
 
-function PointPicker({ draft, onChange, zone, store, showErrors, labelText }: Omit<Props, "addresses"> & { labelText: (l: PlaceLabel) => string }) {
+/** "Donde estoy": el punto del mapa, que arranca en el GPS. Dice si el pin sigue en el GPS o ya lo movió. */
+function HereChip({ selected, geo, point, onClick }: { selected: boolean; geo: Geo; point: GeoPoint | null; onClick: () => void }) {
   const t = useTranslations("checkout");
-  const { position, status, home } = useGeolocation();
+  const located = geo.status === "granted";
+  const onGps = located && !!point && distanceMeters(point, geo.position) < 3;
+  const [title, detail] =
+    geo.status === "loading" ? [t("hereNow"), t("locatingShort")] : located ? [t("hereNow"), onGps ? t("hereGps") : t("hereMoved")] : [t("pickOnMap"), t("pickOnMapHint")];
+  const Icon = geo.status === "loading" ? LoaderCircle : located ? LocateFixed : MapPinPlus;
+  return (
+    <ChoiceChip selected={selected} onClick={onClick} className="min-w-0">
+      <Icon className={`size-5 shrink-0 ${onGps ? "text-leaf" : "text-chonta"} ${geo.status === "loading" ? "animate-spin" : ""}`} aria-hidden />
+      <span className="min-w-0">
+        <span className="block truncate">{title}</span>
+        <span className="block truncate text-xs font-medium text-ink/55">{detail}</span>
+      </span>
+    </ChoiceChip>
+  );
+}
+
+function PlaceChip({ address, tag, selected, onClick, labelText, className = "min-w-0" }: { address: SavedAddress; tag?: string; selected: boolean; onClick: () => void; labelText: (l: PlaceLabel) => string; className?: string }) {
+  const t = useTranslations("checkout");
+  const title = address.label ?? address.reference ?? address.line ?? t("hereMoved");
+  const detail = address.label ? (address.reference ?? address.line) : address.line;
+  return (
+    <ChoiceChip selected={selected} onClick={onClick} className={className}>
+      {createElement(tag ? History : placeIcon(address.label, labelText), { className: "size-5 shrink-0 text-chonta", "aria-hidden": true })}
+      <span className="min-w-0">
+        {tag && <span className="block text-[10px] font-black uppercase tracking-[0.12em] text-chonta-strong">{tag}</span>}
+        <span className="block truncate">{title}</span>
+        {detail && <span className="block truncate text-xs font-medium text-ink/55">{detail}</span>}
+      </span>
+    </ChoiceChip>
+  );
+}
+
+function PointPicker({ draft, onChange, zone, store, showErrors, labelText, geo }: Omit<Props, "addresses" | "last"> & { labelText: (l: PlaceLabel) => string; geo: Geo }) {
+  const t = useTranslations("checkout");
+  const { position, status, home } = geo;
   const coverage = useCoverage();
   const [focus, setFocus] = useState<{ point: GeoPoint; key: number }>({ point: draft.point ?? home, key: 0 });
   const touched = useRef(!!draft.point);
