@@ -14,11 +14,14 @@ final orderRepositoryProvider = Provider<OrderRepository>(
 
 final paymentMethodsProvider = FutureProvider<List<PaymentOption>>((ref) => ref.watch(orderRepositoryProvider).paymentMethods());
 
-/// Libreta del cliente: lugares guardados y personas a las que ya les envió. Se vuelve a pedir al abrir el pedido.
-final customerBookProvider = FutureProvider.autoDispose<({List<SavedAddress> addresses, List<SavedRecipient> recipients})>((ref) async {
+typedef CustomerBook = ({List<SavedAddress> addresses, SavedAddress? last, List<SavedRecipient> recipients});
+
+/// Libreta del cliente: lugares guardados, a dónde fue su último pedido y personas a las que ya les envió.
+/// Se vuelve a pedir al abrir el pedido.
+final customerBookProvider = FutureProvider.autoDispose<CustomerBook>((ref) async {
   final repository = ref.watch(orderRepositoryProvider);
-  final (addresses, recipients) = await (repository.addresses(), repository.recipients()).wait;
-  return (addresses: addresses, recipients: recipients);
+  final (addresses, last, recipients) = await (repository.addresses(), repository.lastAddress(), repository.recipients()).wait;
+  return (addresses: addresses, last: last, recipients: recipients);
 });
 
 /// Mientras haya pedidos en curso, la lista se refresca sola.

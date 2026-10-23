@@ -30,6 +30,8 @@ export abstract class AddressBook {
   /** Solo las guardadas con nombre y vigentes; la predeterminada primero. */
   abstract list(ownerUserId: string): Promise<SavedAddress[]>;
   abstract find(ownerUserId: string, id: string): Promise<SavedAddress | null>;
+  /** A dónde fue su último pedido (con o sin nombre), si esa dirección sigue vigente. */
+  abstract lastUsed(ownerUserId: string): Promise<SavedAddress | null>;
   /**
    * Guardar con un nombre que ya existe ("Casa") reemplaza esa dirección: la vieja se archiva y la nueva
    * hereda si era la predeterminada. La primera dirección con nombre queda como predeterminada.

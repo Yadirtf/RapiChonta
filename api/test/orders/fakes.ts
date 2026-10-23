@@ -59,12 +59,21 @@ export class MemoryCheckoutReader extends CheckoutReader {
 
 export class MemoryAddressBook extends AddressBook {
   rows: (SavedAddress & { owner: string; archived: boolean })[] = [];
+  /** Direcciones de los pedidos, del más viejo al más nuevo. */
+  used: string[] = [];
 
   async list(owner: string) {
     return this.rows.filter((a) => a.owner === owner && !a.archived && a.label).sort((a, b) => Number(b.isDefault) - Number(a.isDefault));
   }
   async find(owner: string, id: string) {
     return this.rows.find((a) => a.owner === owner && a.id === id && !a.archived) ?? null;
+  }
+  async lastUsed(owner: string) {
+    for (const id of [...this.used].reverse()) {
+      const row = await this.find(owner, id);
+      if (row) return row;
+    }
+    return null;
   }
   async create(owner: string, data: NewAddress) {
     const same = this.rows.find((a) => a.owner === owner && !a.archived && a.label && data.label && a.label.toLowerCase() === data.label.toLowerCase());

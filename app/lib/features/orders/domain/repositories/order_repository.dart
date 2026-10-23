@@ -31,5 +31,8 @@ abstract class OrderRepository {
   /// La decisión del cliente sobre una línea (con CANCEL_ORDER, sobre todo el pedido).
   Future<void> decideAdjustment(String code, String adjustmentId, {required String decision, String? productVersionId});
   Future<List<SavedAddress>> addresses();
+
+  /// A dónde fue el último pedido (puede ser un punto sin nombre); null si aún no ha pedido.
+  Future<SavedAddress?> lastAddress();
   Future<List<SavedRecipient>> recipients();
 }

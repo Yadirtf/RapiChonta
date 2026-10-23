@@ -327,6 +327,32 @@ class ReceiptPhoto {
 }
 
 /// Puerto del lado del domiciliario. Un adaptador HTTP (data/).
+/// Ruta por las calles hasta el local o la puerta del cliente (la traza la API con OpenStreetMap).
+class TripRoute extends Equatable {
+  const TripRoute({required this.towardsCustomer, required this.line, required this.distanceMeters, required this.durationSeconds});
+
+  final bool towardsCustomer;
+  final List<GeoPoint> line;
+  final double distanceMeters;
+  final double durationSeconds;
+
+  @override
+  List<Object?> get props => [towardsCustomer, line, distanceMeters, durationSeconds];
+}
+
+/// La API responde `{route: null}` si el paso no tiene a dónde ir, y `{route: {target, route: null}}` si el
+/// servicio de rutas no respondió: en los dos casos no hay línea que dibujar.
+TripRoute? tripRouteFromJson(Map<String, dynamic>? json) {
+  final planned = json?['route'] as Map<String, dynamic>?;
+  if (planned == null) return null;
+  return TripRoute(
+    towardsCustomer: json!['target'] == 'CUSTOMER',
+    line: [for (final p in (planned['line'] as List).cast<List>()) GeoPoint((p[1] as num).toDouble(), (p[0] as num).toDouble())],
+    distanceMeters: (planned['distanceMeters'] as num).toDouble(),
+    durationSeconds: (planned['durationSeconds'] as num).toDouble(),
+  );
+}
+
 abstract interface class CourierRepository {
   Future<CourierStatus> status();
   Future<CourierStatus> setAvailable(bool available);
@@ -341,6 +367,9 @@ abstract interface class CourierRepository {
   Future<void> reject(String offerId);
 
   Future<Trip?> trip({required String language});
+
+  /// Ruta desde [from] (su GPS) hasta el destino del paso en curso; null si no hay.
+  Future<TripRoute?> route(String code, GeoPoint from);
 
   /// Sube la factura (tres pasos de /files/uploads) y devuelve el id del archivo.
   Future<String> uploadReceipt(ReceiptPhoto photo);

@@ -124,6 +124,13 @@ export class CustomerBookController {
     return (await this.addresses.list(principal)).map((a) => this.presenter.address(a));
   }
 
+  /** `{ address: null }` si aún no tiene pedidos (o archivó esa dirección). */
+  @Get('addresses/last')
+  async lastAddress(@CurrentPrincipal() principal: Principal) {
+    const last = await this.addresses.lastUsed(principal);
+    return { address: last ? this.presenter.address(last) : null };
+  }
+
   @Post('addresses')
   async saveAddress(@CurrentPrincipal() principal: Principal, @Body() body: SaveAddressDto) {
     return this.presenter.address(await this.addresses.create(principal, body));

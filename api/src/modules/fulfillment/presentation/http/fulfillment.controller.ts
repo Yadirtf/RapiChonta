@@ -5,6 +5,8 @@ import { Principal } from '../../../identity/domain/principal';
 import { CurrentPrincipal, RequirePermissions, Roles } from '../../../identity/presentation/http/decorators/auth.decorators';
 import { OrderCode } from '../../../orders/domain/value-objects/order-code';
 import { CourierCollectionsUseCase, CourierTripUseCase, CustomerAdjustmentsUseCase, CustomerDeliveryUseCase } from '../../application/courier-trip.use-cases';
+import { TripRouteUseCase } from '../../application/trip-route.use-case';
+import { GeoPoint } from '../../../catalog/domain/value-objects/geo-point';
 import { TripEvent } from '../../domain/event-time';
 import { FULFILLMENT_PERMISSIONS as P } from '../../domain/fulfillment.codes';
 import { FulfillmentErrors } from '../../domain/fulfillment.errors';
@@ -18,6 +20,7 @@ import {
   NotReceivedDto,
   PurchaseDto,
   ReportAdjustmentDto,
+  RouteQueryDto,
   TripEventDto,
   TripQueryDto,
 } from './fulfillment.dto';
@@ -52,6 +55,7 @@ export class CourierTripController {
   constructor(
     private readonly trips: CourierTripUseCase,
     private readonly presenter: FulfillmentPresenter,
+    private readonly routes: TripRouteUseCase,
   ) {}
 
   /** GET /api/v1/courier/trip — el pedido que lleva ahora (o null). */
@@ -60,6 +64,17 @@ export class CourierTripController {
   async active(@CurrentPrincipal() principal: Principal, @Query() query: TripQueryDto) {
     const trip = await this.trips.active(principal, contentLanguage(query.lang));
     return { trip: trip ? this.presenter.trip(trip) : null };
+  }
+
+  /**
+   * GET /api/v1/courier/trip/:code/route?lat=&lng= — ruta por las calles desde donde está (su GPS) hasta el local o la
+   * puerta del cliente, según el paso. `route` nulo si el servicio de rutas no responde; `null` entero si el paso no
+   * tiene a dónde ir.
+   */
+  @Get(':code/route')
+  @RequirePermissions(P.PROGRESS)
+  async route(@CurrentPrincipal() principal: Principal, @Param('code') code: string, @Query() query: RouteQueryDto) {
+    return { route: await this.routes.route(principal, orderCode(code), GeoPoint.create(query.lat, query.lng)) };
   }
 
   /** POST /api/v1/courier/trip/:code/purchase — total pagado y factura (H08.4). */

@@ -76,7 +76,7 @@ function Checkout({ cart }: { cart: Cart }) {
   const opening = useOpeningText()(business.status);
 
   const book = useResource(
-    () => Promise.all([container.orders.addresses(), container.orders.recipients(), container.orders.paymentMethods()]),
+    () => Promise.all([container.orders.addresses(), container.orders.recipients(), container.orders.paymentMethods(), container.orders.lastAddress()]),
     [],
   );
   const store = useResource(() => container.establishments.findById(cart.establishmentId, { language: locale }), [cart.establishmentId, locale]);
@@ -216,7 +216,7 @@ function Checkout({ cart }: { cart: Cart }) {
               </Alert>
             )}
             <StepCard number={1} title={t("stepWhere")} done={!problems.includes("point") && !problems.includes("reference") && zone.kind === "zone"}>
-              <DeliveryStep draft={draft} onChange={patch} addresses={book.data![0]} zone={zone} store={store.data?.location} showErrors={showErrors} />
+              <DeliveryStep draft={draft} onChange={patch} addresses={book.data![0]} last={book.data![3]} zone={zone} store={store.data?.location} showErrors={showErrors} />
             </StepCard>
             <StepCard number={2} title={t("stepWho")} done={!problems.includes("recipient")}>
               <RecipientStep draft={draft} onChange={patch} recipients={book.data![1]} myPhone={account?.phone ?? null} showErrors={showErrors} />

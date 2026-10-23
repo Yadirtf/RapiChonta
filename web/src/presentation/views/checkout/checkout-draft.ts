@@ -25,8 +25,12 @@ export interface CheckoutDraft {
   notes: string;
 }
 
+/**
+ * Arranca marcando el punto: el GPS lo pone donde está el cliente ahora y la dirección del último pedido queda
+ * al lado como opción, sin elegirla (pedir desde otro lugar no debe ir a la casa por descuido).
+ */
 export const emptyDraft = (addresses: SavedAddress[]): CheckoutDraft => ({
-  savedAddressId: (addresses.find((a) => a.isDefault) ?? addresses[0])?.id ?? null,
+  savedAddressId: null,
   point: null,
   reference: "",
   line: "",
