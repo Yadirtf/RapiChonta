@@ -15,25 +15,25 @@ dependencies:
   # Estado e inyección de dependencias
   flutter_riverpod: ^3.4.3
   # Navegación declarativa
-  go_router: ^18.1.0
+  go_router: ^18.1.1
   # HTTP
   dio: ^5.7.0
   # Mapa vectorial de MapLibre con datos de OpenStreetMap (el mismo motor de la web): no depende de Google
   # Play Services (clave para Huawei), se inclina en 3D y guarda Villagarzón en el teléfono para abrir sin señal.
   maplibre_gl: ^0.27.1
   # Ubicación (usa LocationManager de Android cuando no hay GMS)
-  geolocator: ^14.1.1
+  geolocator: ^14.1.2
   equatable: ^3.0.0
   intl: any
   # Token de refresco en Keystore (Android, también Huawei sin GMS) / Keychain (iOS)
   flutter_secure_storage: ^11.2.0
   # Abrir los documentos legales publicados en la web
   url_launcher: ^6.3.3
-  sentry_flutter: ^10.1.0
+  sentry_flutter: ^10.2.0
   # Notificaciones push (E06): FCM en Android con Google e iOS; Huawei Push Kit en teléfonos sin Google.
   # Firebase se configura por --dart-define (sin google-services.json ni plugin de Gradle).
-  firebase_core: ^5.0.0
-  firebase_messaging: ^17.0.0
+  firebase_core: ^5.1.0
+  firebase_messaging: ^17.0.1
   huawei_push: ^6.15.0+300
   # Modo domiciliario (E08): foto de la factura, cola sin señal guardada en el teléfono y su huella SHA-256.
   image_picker: ^1.2.4
