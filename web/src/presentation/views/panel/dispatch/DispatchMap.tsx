@@ -136,7 +136,7 @@ export function DispatchMap({ center, orders, couriers, selectedOrder, selectedC
 
   return (
     <div className="blueprint relative h-full w-full">
-      <div ref={container} className="absolute inset-0" />
+      <div ref={container} className="size-full" />
     </div>
   );
 }

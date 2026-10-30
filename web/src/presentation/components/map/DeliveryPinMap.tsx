@@ -83,7 +83,7 @@ export function DeliveryPinMap({ focus, focusKey, onPick, label, store, coverage
 
   return (
     <div className={`relative overflow-hidden ${className}`}>
-      <div ref={containerRef} className="blueprint absolute inset-0" />
+      <div ref={containerRef} className="blueprint size-full" />
       {/* La sombra marca el punto exacto (centro del mapa); la punta de la gota cae sobre ella. */}
       <span className={`drop-pin-shadow pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${moving ? "is-lifted" : ""}`} aria-hidden />
       <div className="pointer-events-none absolute bottom-1/2 left-1/2 mb-3 flex -translate-x-1/2 flex-col items-center">
