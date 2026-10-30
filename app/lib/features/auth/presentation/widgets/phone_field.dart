@@ -33,13 +33,14 @@ class _ColombianMobileFormatter extends TextInputFormatter {
 }
 
 class PhoneField extends StatelessWidget {
-  const PhoneField({super.key, required this.controller, required this.label, this.errorText, this.helperText, this.autofocus = false, this.onSubmitted});
+  const PhoneField({super.key, required this.controller, required this.label, this.errorText, this.helperText, this.autofocus = false, this.focusNode, this.onSubmitted});
 
   final TextEditingController controller;
   final String label;
   final String? errorText;
   final String? helperText;
   final bool autofocus;
+  final FocusNode? focusNode;
   final ValueChanged<String>? onSubmitted;
 
   @override
@@ -47,6 +48,7 @@ class PhoneField extends StatelessWidget {
     return TextField(
       controller: controller,
       autofocus: autofocus,
+      focusNode: focusNode,
       keyboardType: TextInputType.phone,
       autofillHints: const [AutofillHints.telephoneNumberNational],
       inputFormatters: [_ColombianMobileFormatter()],
