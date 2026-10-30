@@ -73,13 +73,15 @@ async function seedCatalogs() {
   for (const [index, t] of CASH_MOVEMENT_TYPES.entries()) {
     await prisma.$executeRaw`
       INSERT INTO cash_movement_types (code, sort_order, direction, requires_order, requires_payment_method, is_manual,
-                                       uses_courier_collection_account, only_for_funding_mode_id)
+                                       uses_courier_collection_account, only_for_funding_mode_id, opens_box, settles_order, is_correction)
       VALUES (${t.code}, ${index + 1}, ${t.direction}, ${t.requiresOrder}, ${t.requiresPaymentMethod}, ${t.isManual},
-              ${t.usesCollectionAccount}, (SELECT id FROM funding_modes WHERE code = ${t.onlyForFundingMode}))
+              ${t.usesCollectionAccount}, (SELECT id FROM funding_modes WHERE code = ${t.onlyForFundingMode}),
+              ${t.opensBox ?? false}, ${t.settlesOrder ?? false}, ${t.isCorrection ?? false})
       ON CONFLICT (code) DO UPDATE SET sort_order = EXCLUDED.sort_order, direction = EXCLUDED.direction,
         requires_order = EXCLUDED.requires_order, requires_payment_method = EXCLUDED.requires_payment_method,
         is_manual = EXCLUDED.is_manual, uses_courier_collection_account = EXCLUDED.uses_courier_collection_account,
-        only_for_funding_mode_id = EXCLUDED.only_for_funding_mode_id
+        only_for_funding_mode_id = EXCLUDED.only_for_funding_mode_id, opens_box = EXCLUDED.opens_box,
+        settles_order = EXCLUDED.settles_order, is_correction = EXCLUDED.is_correction
     `;
   }
 

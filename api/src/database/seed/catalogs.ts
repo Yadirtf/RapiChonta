@@ -159,7 +159,15 @@ export const CATALOGS: CatalogSeed[] = [
       STATUS('REJECTED', { can_receive_offers: false }),
     ]),
   },
-  { table: 'funding_modes', key: 'code', rows: ordered(['CASH_BOX', 'OWN_FUNDS'].map((code) => ({ code }))) },
+  {
+    table: 'funding_modes',
+    key: 'code',
+    // CASH_BOX: RapiChonta entrega una base y la caja del día debe abrirse con ella antes de recibir ofertas (H11.1).
+    rows: ordered([
+      { code: 'CASH_BOX', requires_box_opening: true },
+      { code: 'OWN_FUNDS', requires_box_opening: false },
+    ]),
+  },
   {
     table: 'vehicle_types',
     key: 'code',
@@ -591,13 +599,19 @@ export const CASH_MOVEMENT_TYPES: {
   isManual: boolean;
   usesCollectionAccount: boolean;
   onlyForFundingMode: string | null;
+  /** La base de la caja: una sola por caja. */
+  opensBox?: boolean;
+  /** La tarifa y la comisión del pedido se liquidan en la caja donde cae este movimiento. */
+  settlesOrder?: boolean;
+  /** Ajuste firmado: nota obligatoria, puede anular otro movimiento y entra aunque la caja esté cerrada. */
+  isCorrection?: boolean;
 }[] = [
-  { code: 'OPENING', direction: 1, requiresOrder: false, requiresPaymentMethod: true, isManual: true, usesCollectionAccount: true, onlyForFundingMode: 'CASH_BOX' },
+  { code: 'OPENING', direction: 1, requiresOrder: false, requiresPaymentMethod: true, isManual: true, usesCollectionAccount: true, onlyForFundingMode: 'CASH_BOX', opensBox: true },
   { code: 'PURCHASE', direction: -1, requiresOrder: true, requiresPaymentMethod: false, isManual: false, usesCollectionAccount: false, onlyForFundingMode: null },
-  { code: 'COLLECTION', direction: 1, requiresOrder: true, requiresPaymentMethod: true, isManual: false, usesCollectionAccount: true, onlyForFundingMode: null },
+  { code: 'COLLECTION', direction: 1, requiresOrder: true, requiresPaymentMethod: true, isManual: false, usesCollectionAccount: true, onlyForFundingMode: null, settlesOrder: true },
   { code: 'RETURN', direction: -1, requiresOrder: false, requiresPaymentMethod: true, isManual: true, usesCollectionAccount: false, onlyForFundingMode: null },
-  { code: 'ADJUSTMENT_IN', direction: 1, requiresOrder: false, requiresPaymentMethod: false, isManual: true, usesCollectionAccount: false, onlyForFundingMode: null },
-  { code: 'ADJUSTMENT_OUT', direction: -1, requiresOrder: false, requiresPaymentMethod: false, isManual: true, usesCollectionAccount: false, onlyForFundingMode: null },
+  { code: 'ADJUSTMENT_IN', direction: 1, requiresOrder: false, requiresPaymentMethod: false, isManual: true, usesCollectionAccount: false, onlyForFundingMode: null, isCorrection: true },
+  { code: 'ADJUSTMENT_OUT', direction: -1, requiresOrder: false, requiresPaymentMethod: false, isManual: true, usesCollectionAccount: false, onlyForFundingMode: null, isCorrection: true },
 ];
 
 /**

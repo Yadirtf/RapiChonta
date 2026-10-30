@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:rapichonta/core/error/failure.dart';
+import 'package:rapichonta/features/courier/domain/cash_box.dart';
 import 'package:rapichonta/features/courier/domain/courier.dart';
 import 'package:rapichonta/features/establishments/domain/entities/establishment.dart' show GeoPoint;
 import 'package:rapichonta/features/orders/domain/entities/adjustment.dart';
@@ -44,6 +45,8 @@ class FakeCourierRepository implements CourierRepository {
   final collected = <List<CollectedPayment>>[];
   List<CollectionAccount> accounts = const [];
   List<PendingCollection> pending = const [];
+  CourierCashDay cashDay = const CourierCashDay(date: '2026-10-30', today: '2026-10-30', fundingMode: 'OWN_FUNDS', requiresOpening: false, canReceiveOffers: true, box: null);
+  final cashDates = <String?>[];
   final qrUploads = <String>[];
 
   static const _network = Failure('Sin conexión', code: 'NETWORK_ERROR');
@@ -173,6 +176,13 @@ class FakeCourierRepository implements CourierRepository {
   Future<List<PendingCollection>> pendingCollections() async {
     _online();
     return pending;
+  }
+
+  @override
+  Future<CourierCashDay> cashBox({String? date}) async {
+    _online();
+    cashDates.add(date);
+    return cashDay;
   }
 
   @override

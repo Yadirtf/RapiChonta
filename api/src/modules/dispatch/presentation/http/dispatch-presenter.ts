@@ -51,6 +51,7 @@ export const DispatchPresenter = {
     distanceMeters: c.distanceMeters,
     hasPendingOffer: c.hasPendingOffer,
     declined: c.declined,
+    cashReady: c.cashReady,
   }),
 
   courierStatus: (s: CourierStatus & { locationFresh: boolean }) => ({

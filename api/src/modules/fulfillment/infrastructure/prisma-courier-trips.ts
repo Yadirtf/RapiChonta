@@ -247,21 +247,11 @@ export class PrismaCourierTrips extends CourierTrips {
           WHERE f.id = ${command.receiptFileId}::uuid AND f.uploaded_by_user_id = ${command.courierUserId}::uuid
             AND NOT EXISTS (SELECT 1 FROM order_purchases op WHERE op.receipt_file_id = f.id)) AS usable`;
       if (!receipt.usable) throw new Refused('RECEIPT', TRIP_STATUSES.AT_ESTABLISHMENT);
-      // La caja del día (en la hora del municipio del local). En modo CASH_BOX el administrador agrega la base
-      // (OPENING) a esta misma caja; en OWN_FUNDS la caja nace con la primera compra (E11).
+      // La caja del día (en la hora del municipio del local) o, si ese día ya se cerró, la siguiente abierta (E11).
       const [box] = await tx.$queryRaw<{ id: string }[]>`
-        WITH day AS (
-          SELECT (${command.occurredAt}::timestamptz AT TIME ZONE m.time_zone)::date AS business_date
-          FROM orders o JOIN establishments e ON e.id = o.establishment_id JOIN municipalities m ON m.id = e.municipality_id
-          WHERE o.id = ${command.trip.orderId}::uuid),
-        created AS (
-          INSERT INTO cash_boxes (courier_user_id, business_date)
-          SELECT ${command.courierUserId}::uuid, business_date FROM day
-          ON CONFLICT (courier_user_id, business_date) DO NOTHING RETURNING id)
-        SELECT id FROM created
-        UNION ALL
-        SELECT b.id FROM cash_boxes b JOIN day ON b.business_date = day.business_date WHERE b.courier_user_id = ${command.courierUserId}::uuid
-        LIMIT 1`;
+        SELECT fn_courier_open_cash_box(${command.courierUserId}::uuid, (${command.occurredAt}::timestamptz AT TIME ZONE m.time_zone)::date) AS id
+        FROM orders o JOIN establishments e ON e.id = o.establishment_id JOIN municipalities m ON m.id = e.municipality_id
+        WHERE o.id = ${command.trip.orderId}::uuid`;
       const [movement] = await tx.$queryRaw<{ id: string }[]>`
         INSERT INTO cash_movements (cash_box_id, movement_type_id, amount, order_id, created_by_user_id)
         VALUES (${box.id}::uuid, ${purchase}, ${command.amount}::numeric, ${command.trip.orderId}::uuid, ${command.courierUserId}::uuid)

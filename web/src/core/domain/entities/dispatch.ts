@@ -65,6 +65,8 @@ export interface DispatchCourier extends PersonName {
   distanceMeters: number | null;
   hasPendingOffer: boolean;
   declined: boolean;
+  /** E11: la caja de hoy está lista (con base si su modo la exige, sin cerrar). Sin ella no se le ofrece. */
+  cashReady: boolean;
 }
 
 /** Con ubicación reciente: está en el mapa y se le puede ofrecer. */

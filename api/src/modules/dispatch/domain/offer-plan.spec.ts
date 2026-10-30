@@ -1,7 +1,7 @@
 import { DomainError } from '../../../shared/domain/domain.error';
 import { nextSweepDelay, OfferCandidate, planRecipients, responseError } from './offer-plan';
 
-const candidate = (userId: string, extra: Partial<OfferCandidate> = {}): OfferCandidate => ({ userId, hasPendingOffer: false, declined: false, locationFresh: true, ...extra });
+const candidate = (userId: string, extra: Partial<OfferCandidate> = {}): OfferCandidate => ({ userId, hasPendingOffer: false, declined: false, locationFresh: true, cashReady: true, ...extra });
 const code = (work: () => unknown) => {
   try {
     work();
@@ -17,6 +17,7 @@ describe('planRecipients', () => {
     candidate('beto', { declined: true }),
     candidate('caro', { hasPendingOffer: true }),
     candidate('dora', { locationFresh: false }),
+    candidate('eli', { cashReady: false }),
   ];
 
   it('a uno: el elegido, aunque haya rechazado antes', () => {
@@ -33,7 +34,11 @@ describe('planRecipients', () => {
     expect(code(() => planRecipients('SPECIFIC', pool, 'dora'))).toBe('COURIER_LOCATION_STALE');
   });
 
-  it('a todos: deja fuera a quien ya lo tiene, lo rechazó o no reporta ubicación', () => {
+  it('E11: sin la caja de hoy lista no se le ofrece, ni a uno ni a todos', () => {
+    expect(code(() => planRecipients('SPECIFIC', pool, 'eli'))).toBe('COURIER_CASH_BOX_NOT_READY');
+  });
+
+  it('a todos: deja fuera a quien ya lo tiene, lo rechazó, no reporta ubicación o no tiene caja lista', () => {
     expect(planRecipients('BROADCAST', pool)).toEqual(['ana']);
   });
 

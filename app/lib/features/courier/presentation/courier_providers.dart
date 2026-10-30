@@ -14,6 +14,7 @@ import '../../orders/domain/entities/adjustment.dart';
 import '../data/courier_repository_impl.dart';
 import '../data/location_tracker.dart';
 import '../data/pending_steps_store.dart';
+import '../domain/cash_box.dart';
 import '../domain/courier.dart';
 import '../domain/pending_steps.dart';
 
@@ -120,6 +121,14 @@ final pendingCollectionsProvider = FutureProvider.autoDispose<List<PendingCollec
   if (!ref.watch(courierModeProvider)) return const [];
   ref.watch(courierStatusProvider);
   return ref.watch(courierRepositoryProvider).pendingCollections();
+});
+
+/// H11.4: su caja del día ([date] nulo es hoy). Hoy se vuelve a pedir con el estado del turno: la base que
+/// entrega la oficina, la compra o el cobro de un pedido la mueven.
+final courierCashDayProvider = FutureProvider.autoDispose.family<CourierCashDay?, String?>((ref, date) async {
+  if (!ref.watch(courierModeProvider)) return null;
+  if (date == null) ref.watch(courierStatusProvider);
+  return ref.watch(courierRepositoryProvider).cashBox(date: date);
 });
 
 // ── Cola sin señal (H08.8) ──
@@ -259,6 +268,7 @@ class PendingStepsController extends Notifier<PendingState> {
         ref.invalidate(courierTripProvider);
         ref.invalidate(courierStatusProvider);
         ref.invalidate(pendingCollectionsProvider);
+        ref.invalidate(courierCashDayProvider);
       }
     }
   }

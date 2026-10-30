@@ -6,7 +6,7 @@ import { OrderCode } from '../../orders/domain/value-objects/order-code';
 import { COURIER_FRESH_SECONDS, OfferModeCode } from '../domain/dispatch.codes';
 import { DispatchErrors } from '../domain/dispatch.errors';
 import { planRecipients } from '../domain/offer-plan';
-import { DispatchBoard, DispatchTarget, OrderNoLongerDispatchable, RecipientRejected } from '../domain/ports/dispatch-board';
+import { CashBoxNotReady, DispatchBoard, DispatchTarget, OrderNoLongerDispatchable, RecipientRejected } from '../domain/ports/dispatch-board';
 import { DispatchSignal } from './dispatch-signal';
 
 /**
@@ -57,6 +57,7 @@ export class SendOfferUseCase {
     } catch (error) {
       if (error instanceof OrderNoLongerDispatchable) throw DispatchErrors.orderNotDispatchable();
       if (error instanceof RecipientRejected) throw DispatchErrors.courierNotAvailable();
+      if (error instanceof CashBoxNotReady) throw DispatchErrors.cashBoxNotReady();
       throw error;
     }
   }

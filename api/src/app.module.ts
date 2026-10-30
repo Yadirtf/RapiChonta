@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { CashModule } from './modules/cash/cash.module';
 import { BusinessConfigModule } from './modules/business-config/business-config.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { DispatchModule } from './modules/dispatch/dispatch.module';
@@ -31,6 +32,7 @@ import { PrismaModule } from './shared/infrastructure/prisma/prisma.module';
     DispatchModule,
     FulfillmentModule,
     OperationsModule,
+    CashModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

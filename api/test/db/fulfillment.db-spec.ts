@@ -19,6 +19,9 @@ import { rankSubstitutes } from '../../src/modules/fulfillment/domain/adjustment
 import { PrismaCourierCollections } from '../../src/modules/fulfillment/infrastructure/prisma-courier-collections';
 import { PrismaDeskReader } from '../../src/modules/operations/infrastructure/prisma-desk.reader';
 import { PrismaDeskActions } from '../../src/modules/operations/infrastructure/prisma-desk.actions';
+import { PrismaCashBook } from '../../src/modules/cash/infrastructure/prisma-cash-book';
+import { PrismaCashBoxReader } from '../../src/modules/cash/infrastructure/prisma-cash-box.reader';
+import { amountDue } from '../../src/modules/cash/domain/settlement';
 
 /**
  * E08 en PostgreSQL (Docs/14-base-de-datos/E08-modo-domiciliario.md): geocercas con ST_Covers / ST_DWithin,
@@ -41,6 +44,8 @@ const adjustments = new PrismaOrderAdjustments(service, ids);
 const collections = new PrismaCourierCollections(service, ids);
 const deskReader = new PrismaDeskReader(service, ids);
 const deskActions = new PrismaDeskActions(service, ids);
+const cashBook = new PrismaCashBook(service, ids);
+const cashReader = new PrismaCashBoxReader(service);
 
 type Db = Prisma.TransactionClient | PrismaClient;
 
@@ -68,8 +73,11 @@ interface Scenario {
   home: { lat: number; lng: number };
 }
 
-/** Pedido confirmado y aceptado por un domiciliario verificado, con turno abierto. */
-async function acceptedOrder(): Promise<Scenario> {
+/**
+ * Pedido confirmado y aceptado por un domiciliario verificado, con turno abierto. `prepare` corre antes de la oferta
+ * (E11: el modo de financiación del domiciliario y, si lo exige, la base de su caja).
+ */
+async function acceptedOrder(prepare?: (tx: Prisma.TransactionClient, courierId: string, staffId: string) => Promise<void>): Promise<Scenario> {
   return prisma.$transaction(
     async (tx) => {
       const [staff] = await tx.$queryRaw<{ id: string }[]>`
@@ -110,6 +118,7 @@ async function acceptedOrder(): Promise<Scenario> {
         INSERT INTO courier_verification_history (courier_user_id, from_status_id, to_status_id, changed_by_user_id)
         VALUES (${courierId}::uuid, ${id('courier_verification_statuses', 'PENDING')}, ${id('courier_verification_statuses', 'VERIFIED')}, ${staff.id}::uuid)`;
       await tx.$executeRaw`INSERT INTO courier_availability_periods (courier_user_id) VALUES (${courierId}::uuid)`;
+      await prepare?.(tx, courierId, staff.id);
 
       // El cliente vive a ~600 m al norte del local.
       const home = offset(product.lat, product.lng, 600);
@@ -861,6 +870,132 @@ describe('Cobro, novedades y panel de pedidos (E10)', () => {
       expect(await deskActions.cancel(staff(bought), bought.orderCode, (await deskReader.cancellationReasons())[0], 'Ya no lo quiere')).toMatchObject({ ok: false, reason: 'STEP' });
     } finally {
       await finish(bought);
+    }
+  });
+});
+
+/** E11: el modo de financiación desde hoy y, opcionalmente, la base de la caja de hoy. */
+const withFunding = (mode: 'CASH_BOX' | 'OWN_FUNDS', base?: string) => async (tx: Prisma.TransactionClient, courierId: string, staffId: string) => {
+  await tx.$executeRaw`
+    INSERT INTO courier_funding_modes (courier_user_id, funding_mode_id, effective_on, created_by_user_id)
+    VALUES (${courierId}::uuid, ${id('funding_modes', mode)}, current_date - 1, ${staffId}::uuid)`;
+  if (!base) return;
+  await tx.$executeRaw`
+    INSERT INTO cash_movements (cash_box_id, movement_type_id, amount, payment_method_id, created_by_user_id)
+    SELECT fn_courier_open_cash_box(${courierId}::uuid, d.business_date), ${id('cash_movement_types', 'OPENING')}, ${base}::numeric,
+           ${id('payment_methods', 'CASH')}, ${staffId}::uuid
+    FROM v_courier_business_day d WHERE d.courier_user_id = ${courierId}::uuid`;
+};
+
+const readiness = async (courierId: string) =>
+  (await prisma.$queryRaw<{ ready: boolean; box: string | null }[]>`
+    SELECT can_receive_offers AS ready, cash_box_id AS box FROM v_courier_cash_readiness WHERE courier_user_id = ${courierId}::uuid`)[0];
+
+/** Del local a la puerta y entregado con el código: libera al domiciliario. */
+async function deliver(s: Scenario) {
+  await onTheWay(s);
+  const deliveryCode = (await orders.findMine(s.customerId, s.orderCode, 'es'))!.delivery.code!;
+  expect(await trips.markArrived(command(s, await refOf(s)))).toEqual({ ok: true });
+  expect(await trips.deliverWithCode({ ...command(s, await refOf(s)), deliveryCode })).toEqual({ ok: true });
+}
+
+describe('Cajas diarias y comisiones (E11)', () => {
+  it('H11.1: con modo CASH_BOX y sin base no recibe ofertas', async () => {
+    await expect(acceptedOrder(withFunding('CASH_BOX'))).rejects.toThrow(/CASH_BOX_NOT_READY/);
+  });
+
+  it('H11.1–H11.3: base, compra, cobro y comisión cuadran; el cierre exige nota con diferencia y deja la caja solo para ajustes', async () => {
+    const s = await acceptedOrder(withFunding('CASH_BOX', '50000'));
+    try {
+      const day = (await cashReader.courierDay(s.courierId))!;
+      expect(day).toMatchObject({ fundingMode: 'CASH_BOX', requiresOpening: true, canReceiveOffers: true });
+      const boxId = day.boxId!;
+      // Una sola base por caja.
+      expect(await cashBook.open({ courierUserId: s.courierId, businessDate: day.today, amount: '1000', paymentMethod: 'CASH', note: null, actorUserId: s.staffId })).toEqual({
+        ok: false,
+        reason: 'ALREADY_OPENED',
+      });
+
+      await onTheWay(s);
+      // Con el pedido en curso no se cierra el día.
+      expect(await cashBook.close({ boxId, received: [], notes: 'cierre temprano', actorUserId: s.staffId })).toEqual({ ok: false, reason: 'BUSY' });
+      const deliveryCode = (await orders.findMine(s.customerId, s.orderCode, 'es'))!.delivery.code!;
+      expect(await trips.markArrived(command(s, await refOf(s)))).toEqual({ ok: true });
+      expect(await trips.deliverWithCode({ ...command(s, await refOf(s)), deliveryCode })).toEqual({ ok: true });
+      const [{ total }] = await prisma.$queryRaw<{ total: string }[]>`SELECT customer_total::text AS total FROM v_order_amounts WHERE order_id = ${s.orderId}::uuid`;
+      expect(await collections.record(s.courierId, s.orderCode, [{ paymentMethod: 'CASH', amount: total, collectionAccountId: null }], new Date())).toEqual({ ok: true, replayed: false });
+
+      // Base 50.000 − compra 18.000 + cobro (productos + tarifa 3.000) − tarifa + comisión 15 % (450). Si la factura del
+      // local fue menor que el menú, esa diferencia también la entrega: debe = base + productos − compra + comisión.
+      const box = (await cashReader.detail(boxId))!;
+      expect(box.movements.map((m) => m.type)).toEqual(['OPENING', 'PURCHASE', 'COLLECTION']);
+      expect(box.orders).toHaveLength(1);
+      expect(box.commissions).toBe('450.00');
+      const due = (Number(total) - 3000 - 18000 + 50000 + 450).toFixed(2);
+      expect(box.amountDue).toBe(due);
+      // El desglose (Pesos) y la vista de la base dicen lo mismo.
+      expect(amountDue(box.totals, box.courierFees, box.commissions).amountDue).toBe(box.amountDue);
+      expect((await cashReader.board(box.municipalityId!, day.today)).find((r) => r.courierUserId === s.courierId)).toMatchObject({
+        fundingMode: 'CASH_BOX',
+        busy: false,
+        canReceiveOffers: true,
+        box: { id: boxId, state: 'OPEN', opening: '50000.00', amountDue: due, settledOrders: 1 },
+      });
+
+      // Entrega 450 menos de lo debido: con diferencia, sin nota no cierra (y nada queda a medias).
+      const received = [{ paymentMethod: 'CASH', amount: (Number(due) - 450).toFixed(2) }];
+      expect(await cashBook.close({ boxId, received, notes: null, actorUserId: s.staffId })).toEqual({ ok: false, reason: 'NOTE' });
+      expect((await cashReader.detail(boxId))!.movements).toHaveLength(3);
+      expect(await cashBook.close({ boxId, received, notes: 'La comisión la trae mañana', actorUserId: s.staffId })).toEqual({ ok: true });
+      expect(await cashBook.close({ boxId, received: [], notes: 'otra vez', actorUserId: s.staffId })).toEqual({ ok: false, reason: 'CLOSED' });
+      const closed = (await cashReader.detail(boxId))!;
+      expect(closed).toMatchObject({ state: 'CLOSED', amountDue: '450.00', closure: { notes: 'La comisión la trae mañana' } });
+      // Cerrada: termina la jornada (no recibe ofertas) y solo admite ajustes.
+      expect(await readiness(s.courierId)).toEqual({ ready: false, box: boxId });
+      expect(await cashBook.open({ courierUserId: s.courierId, businessDate: day.today, amount: '1000', paymentMethod: 'CASH', note: null, actorUserId: s.staffId })).toEqual({
+        ok: false,
+        reason: 'CLOSED',
+      });
+      const returned = closed.movements.find((m) => m.type === 'RETURN')!;
+      // Un ajuste que no es contrario o no es por el mismo monto no anula; el correcto sí, y solo una vez.
+      const back = returned.amount;
+      expect(await cashBook.adjust({ boxId, direction: -1, amount: back, note: 'anula', reversesMovementId: returned.id, actorUserId: s.staffId })).toEqual({ ok: false, reason: 'REVERSAL' });
+      expect(await cashBook.adjust({ boxId, direction: 1, amount: '1.00', note: 'anula', reversesMovementId: returned.id, actorUserId: s.staffId })).toEqual({ ok: false, reason: 'REVERSAL' });
+      expect(await cashBook.adjust({ boxId, direction: 1, amount: back, note: '', reversesMovementId: returned.id, actorUserId: s.staffId })).toEqual({ ok: false, reason: 'NOTE' });
+      expect(await cashBook.adjust({ boxId, direction: 1, amount: back, note: 'Billetes falsos', reversesMovementId: returned.id, actorUserId: s.staffId })).toMatchObject({ ok: true });
+      expect(await cashBook.adjust({ boxId, direction: 1, amount: back, note: 'Otra vez', reversesMovementId: returned.id, actorUserId: s.staffId })).toEqual({ ok: false, reason: 'REVERSAL' });
+      expect((await cashReader.detail(boxId))!.amountDue).toBe(due);
+
+      // Un movimiento tardío del día cerrado cae en la caja siguiente; el libro y el cierre no se editan.
+      const [next] = await prisma.$queryRaw<{ id: string }[]>`SELECT fn_courier_open_cash_box(${s.courierId}::uuid, ${day.today}::date) AS id`;
+      const [late] = await prisma.$queryRaw<{ date: string }[]>`SELECT business_date::text AS date FROM cash_boxes WHERE id = ${next.id}::uuid`;
+      expect(late.date > day.today).toBe(true);
+      await expect(prisma.$executeRaw`DELETE FROM cash_box_closures WHERE cash_box_id = ${boxId}::uuid`).rejects.toThrow();
+      await expect(prisma.$executeRaw`UPDATE cash_movements SET amount = 1 WHERE id = ${returned.id}::uuid`).rejects.toThrow();
+    } finally {
+      await finish(s);
+    }
+  });
+
+  it('OWN_FUNDS: sin base, recibe ofertas; lo que debe es la comisión, y la base no aplica', async () => {
+    const s = await acceptedOrder(withFunding('OWN_FUNDS'));
+    try {
+      await deliver(s);
+      const [{ total }] = await prisma.$queryRaw<{ total: string }[]>`SELECT customer_total::text AS total FROM v_order_amounts WHERE order_id = ${s.orderId}::uuid`;
+      await collections.record(s.courierId, s.orderCode, [{ paymentMethod: 'CASH', amount: total, collectionAccountId: null }], new Date());
+      const day = (await cashReader.courierDay(s.courierId))!;
+      expect(day).toMatchObject({ fundingMode: 'OWN_FUNDS', requiresOpening: false, canReceiveOffers: true });
+      // Solo la comisión (450), más lo que la factura del local haya salido por debajo del menú.
+      const due = (Number(total) - 3000 - 18000 + 450).toFixed(2);
+      expect((await cashReader.detail(day.boxId!))!.amountDue).toBe(due);
+      expect(await cashBook.open({ courierUserId: s.courierId, businessDate: day.today, amount: '1000', paymentMethod: 'CASH', note: null, actorUserId: s.staffId })).toEqual({
+        ok: false,
+        reason: 'NO_BASE_MODE',
+      });
+      expect(await cashBook.close({ boxId: day.boxId!, received: [{ paymentMethod: 'CASH', amount: due }], notes: null, actorUserId: s.staffId })).toEqual({ ok: true });
+      expect((await cashReader.detail(day.boxId!))!.amountDue).toBe('0.00');
+    } finally {
+      await finish(s);
     }
   });
 });

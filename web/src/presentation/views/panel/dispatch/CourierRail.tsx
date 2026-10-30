@@ -1,7 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Bike, Hourglass, Megaphone, Phone, Send, Signal, SignalZero, ThumbsDown } from "lucide-react";
+import { Bike, Hourglass, Megaphone, Phone, Send, Signal, SignalZero, ThumbsDown, WalletMinimal } from "lucide-react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { DispatchCourier, DispatchOrder, LocatedCourier } from "@/core/domain/entities/dispatch";
 import { elapsed } from "@/core/domain/entities/dispatch";
@@ -34,7 +35,7 @@ export function CourierRail({ order, couriers, silent, freshSeconds, now, canAss
   const t = useTranslations("dispatch");
   const { distance } = useCatalogFormat();
   const dispatchable = !!order?.needsCourier && canAssign;
-  const callable = couriers.filter((c) => !c.hasPendingOffer && !c.declined).length;
+  const callable = couriers.filter((c) => !c.hasPendingOffer && !c.declined && c.cashReady).length;
 
   return (
     <section aria-labelledby="couriers-title" className="flex min-h-0 flex-col gap-3">
@@ -113,6 +114,11 @@ export function CourierRail({ order, couriers, silent, freshSeconds, now, canAss
                         <Hourglass className="size-3" aria-hidden /> {t("hasIt")}
                       </span>
                     )}
+                    {!c.cashReady && (
+                      <Link href="/panel/cajas" className="inline-flex items-center gap-1 rounded-full bg-ink px-2.5 py-1 text-xs font-bold text-brand hover:bg-ink/85" title={t("noCashBoxHint")}>
+                        <WalletMinimal className="size-3" aria-hidden /> {t("noCashBox")}
+                      </Link>
+                    )}
                     {c.declined && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-chonta-soft px-2.5 py-1 text-xs font-bold text-chonta-strong">
                         <ThumbsDown className="size-3" aria-hidden /> {t("saidNo")}
@@ -126,7 +132,7 @@ export function CourierRail({ order, couriers, silent, freshSeconds, now, canAss
                   </div>
 
                   {dispatchable && (
-                    <Button size="sm" variant={index === 0 ? "primary" : "outline"} onClick={() => onSendOne(c)} loading={sending === c.userId} disabled={c.hasPendingOffer || !!sending}>
+                    <Button size="sm" variant={index === 0 ? "primary" : "outline"} onClick={() => onSendOne(c)} loading={sending === c.userId} disabled={c.hasPendingOffer || !c.cashReady || !!sending}>
                       <Send className="size-3.5" aria-hidden />
                       {t("sendTo", { name: c.givenNames.split(" ")[0] })}
                     </Button>

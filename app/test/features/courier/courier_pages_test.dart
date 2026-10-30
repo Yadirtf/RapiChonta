@@ -9,12 +9,15 @@ import 'package:rapichonta/features/courier/data/location_tracker.dart';
 import 'package:rapichonta/features/courier/data/pending_steps_store.dart';
 import 'package:rapichonta/features/courier/domain/courier.dart';
 import 'package:rapichonta/features/courier/presentation/courier_providers.dart';
+import 'package:rapichonta/features/courier/domain/cash_box.dart';
+import 'package:rapichonta/features/courier/presentation/pages/cash_box_page.dart';
 import 'package:rapichonta/features/courier/presentation/pages/courier_home_page.dart';
 import 'package:rapichonta/features/courier/presentation/pages/trip_page.dart';
 import 'package:rapichonta/features/courier/presentation/widgets/duty_widgets.dart';
 import 'package:rapichonta/features/orders/domain/entities/adjustment.dart';
 import 'package:rapichonta/l10n/app_localizations.dart';
 
+import 'cash_box_test.dart' show cashDayJson;
 import 'courier_fakes.dart';
 
 const _courier = Account(
@@ -36,6 +39,7 @@ class _Session extends SessionController {
 Widget _app(String location, FakeCourierRepository repository) {
   final router = GoRouter(initialLocation: location, routes: [
     GoRoute(path: '/turno', builder: (_, _) => const CourierHomePage()),
+    GoRoute(path: '/turno/caja', builder: (_, _) => const CashBoxPage()),
     GoRoute(
       path: '/turno/pedido/:code',
       builder: (_, state) => TripPage(code: state.pathParameters['code']!, cancelled: state.uri.queryParameters['cancelado'] == '1'),
@@ -265,6 +269,39 @@ void main() {
     await _settle(tester);
     expect(repository.collected.single, const [CollectedPayment(paymentMethod: 'CASH', amountCents: 4150000)]);
     expect(find.text('Todo cobrado. ¡Caja al día!'), findsOneWidget);
+  });
+
+  testWidgets('con base y sin entregar: el turno avisa que no le llegan pedidos y la caja dice por qué', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 1600));
+    final repository = FakeCourierRepository()
+      ..cashDay = const CourierCashDay(date: '2026-10-30', today: '2026-10-30', fundingMode: 'CASH_BOX', requiresOpening: true, canReceiveOffers: false, box: null);
+    await tester.pumpWidget(_app('/turno', repository));
+    await _settle(tester);
+
+    expect(find.text('Sin base: aún no te llegan pedidos'), findsOneWidget);
+    await tester.tap(find.text('Sin base: aún no te llegan pedidos'));
+    await _settle(tester);
+    expect(find.text('Pasa por tu base'), findsOneWidget);
+    expect(find.text('Sin movimientos'), findsOneWidget);
+  });
+
+  testWidgets('mi caja: lo que debe entregar, la cuenta y la libreta; ayer se pide por fecha', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 2600));
+    final repository = FakeCourierRepository()..cashDay = cashDayFromJson(cashDayJson());
+    await tester.pumpWidget(_app('/turno/caja', repository));
+    await _settle(tester);
+
+    expect(find.text('Debes entregar'), findsWidgets);
+    expect(find.text('\$ 41.000'), findsWidgets);
+    expect(find.textContaining('Pagaste en los locales', findRichText: true), findsOneWidget);
+    expect(find.text('− \$ 18.000'), findsWidgets);
+    expect(find.textContaining('Tu tarifa (1 pedido)', findRichText: true), findsOneWidget);
+    expect(find.text('Compra en el local'), findsOneWidget);
+    expect(find.text('Tarifa \$ 3.000 · Comisión \$ 500'), findsOneWidget);
+
+    await tester.tap(find.text('Ayer'));
+    await _settle(tester);
+    expect(repository.cashDates.last, '2026-10-29');
   });
 
   testWidgets('donde el cliente: el código equivocado dice cuántos intentos quedan; el correcto entrega', (tester) async {

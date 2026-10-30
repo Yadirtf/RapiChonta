@@ -80,7 +80,7 @@ En modo `CASH_BOX` la abre un administrador junto con el movimiento `OPENING` (q
 
 ### `cash_box_closures` (H11.3, RF-72)
 
-`cash_box_id` PK, `closed_by_user_id` (administrador), `closed_at`, `notes`. Después del cierre no se aceptan movimientos en esa caja (disparador). Un error en un día cerrado se corrige con un ajuste en la caja abierta que apunta al movimiento original.
+`cash_box_id` PK, `closed_by_user_id` (administrador), `closed_at`, `notes`. Después del cierre esa caja solo acepta correcciones (ajustes firmados, disparador); una compra o un cobro tardío de ese día cae en la siguiente caja abierta del domiciliario (`fn_courier_open_cash_box`).
 
 ### `cash_movement_types` (sistema)
 
@@ -174,3 +174,52 @@ Otras vistas:
 ## Comisiones (RF-73)
 
 No hay movimiento de comisión: la comisión de cada pedido es `round(tarifa × commission_rates.rate, 2)` con la tarifa y el porcentaje a los que apunta el pedido, así que un cambio de porcentaje nunca altera pedidos pasados y no hay dos lugares donde el valor pueda diferir. Lo que el domiciliario paga de comisiones sale como parte de su `RETURN`.
+
+## Implementado en E11
+
+Migración `20261030000000_cash_boxes_e11`. Las reglas viven en la base; la API solo las traduce.
+
+### Banderas de catálogo (sin códigos en el código)
+
+| Tabla | Columna | Quién la tiene | Para qué |
+| --- | --- | --- | --- |
+| `funding_modes` | `requires_box_opening` | `CASH_BOX` | Sin `OPENING` hoy no recibe ofertas |
+| `cash_movement_types` | `opens_box` | `OPENING` | Una sola por caja (`CASH_BOX_ALREADY_OPENED`) |
+| `cash_movement_types` | `settles_order` | `COLLECTION` | La tarifa y la comisión del pedido cuentan en la caja donde cae este movimiento |
+| `cash_movement_types` | `is_correction` | `ADJUSTMENT_IN`, `ADJUSTMENT_OUT` | Nota obligatoria, puede anular otro movimiento y entra aunque la caja esté cerrada |
+
+### Disparadores
+
+- `fn_cash_movements_insert` (amplía el de E10): caja cerrada solo con correcciones (`CASH_BOX_CLOSED`); el `only_for_funding_mode` del tipo debe ser el modo de la caja (`CASH_BOX_FUNDING_MODE`); una base por caja; nota en correcciones (`CASH_NOTE_REQUIRED`); la anulación es una corrección del mismo domiciliario, en sentido contrario y por el mismo monto (`CASH_REVERSAL_INVALID`; `reverses_movement_id` es `UNIQUE`).
+- `fn_cash_box_closures_insert`: bloquea la caja `FOR UPDATE`; no cierra la de hoy si el domiciliario lleva un pedido (`CASH_BOX_COURIER_BUSY`); con diferencia (`amount_due ≠ 0` después de los `RETURN`) exige nota. El cierre es inmutable.
+- `fn_order_offer_recipients_cash_ready`: no se ofrece un pedido a quien no tiene la caja lista (`CASH_BOX_NOT_READY`). El panel de despacho lo muestra como «Sin caja» y lo excluye del «enviar a todos».
+
+Los mensajes de los disparadores empiezan con su código (`CASH_BOX_CLOSED: …`): la API los traduce a errores de dominio sin depender del texto.
+
+### Vistas y funciones
+
+| Objeto | Qué da |
+| --- | --- |
+| `v_courier_business_day` | El municipio del domiciliario y la fecha de hoy en su zona horaria |
+| `v_cash_box_funding` | Por caja: el modo vigente en su fecha, si exige base, si está cerrada y si ya tiene base |
+| `v_courier_cash_readiness` | `can_receive_offers = NOT cerrada AND (NOT exige base OR tiene base)` |
+| `v_cash_box_balances` | `movements_net`, `courier_fees`, `commissions`, `settled_orders` y `amount_due`. Un pedido cuenta en la caja de su `COLLECTION` si `counts_as_delivered` o aún no es terminal (cancelado después del cobro no deja tarifa ni comisión) |
+| `fn_courier_open_cash_box(courier, día)` | La primera caja no cerrada del domiciliario desde ese día (la crea si no existe). La usan la compra y el cobro |
+
+`amount_due = movements_net − courier_fees + commissions`. El dominio de la API (`cash/domain/settlement.ts`, con `Pesos` en centavos `bigint`) recalcula lo mismo desde el desglose y las pruebas de base verifican que coincidan.
+
+### API
+
+| Ruta | Quién | Qué hace |
+| --- | --- | --- |
+| `GET /cash/boxes?municipalityId&date` | Admin (`cash.manage`) | Los domiciliarios del municipio y su caja de ese día |
+| `GET /cash/boxes/:id` | Admin | Desglose, libreta, pedidos liquidados y entregas sin cobro |
+| `POST /cash/boxes/open` | Admin | Entrega la base (`OPENING`) en efectivo o transferencia; quién la entregó es el autor del movimiento |
+| `POST /cash/boxes/:id/adjustments` | Admin (`cash.adjust`) | Ajuste firmado con nota; con `reversesMovementId` anula un movimiento (sentido y monto los deriva el caso de uso) |
+| `POST /cash/boxes/:id/close` | Admin | Arqueo: un `RETURN` por medio recibido y el cierre; responde la diferencia |
+| `GET /courier/cash-box?date=` | Domiciliario (`cash.read_own`) | Su caja de hoy (o de ese día) y si hoy puede recibir ofertas. Solo la suya: se busca por la sesión |
+
+### Pantallas
+
+- Panel `/panel/cajas`: un sobre por domiciliario (sin base, abierta, cerrada con sello), la libreta del día con anulación, la base, los ajustes y el arqueo con sello en vivo («Cuadra», «Faltan», «Sobran»).
+- App `/turno/caja`: el sobre con lo que debe entregar, la cuenta, la libreta y los pedidos; en el turno, una tarjeta con el saldo de hoy que avisa cuando falta la base o la caja ya se cerró.

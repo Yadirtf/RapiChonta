@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../establishments/domain/entities/establishment.dart';
 import '../../orders/domain/entities/adjustment.dart';
+import 'cash_box.dart';
 
 /// Modo domiciliario (E07 + E08). Montos en centavos; estados, zonas y medios de pago son códigos del
 /// catálogo de la API que la app traduce. La ubicación la decide el servidor: la app solo la reporta.
@@ -403,6 +404,9 @@ abstract interface class CourierRepository {
 
   /// Sube la imagen del QR de su cuenta (propósito COLLECTION_QR) y la deja en la cuenta.
   Future<CollectionAccount> setAccountQr(String accountId, ReceiptPhoto photo);
+
+  /// H11.4: su caja de hoy (o de [date], AAAA-MM-DD) y si hoy puede recibir ofertas. Solo la suya.
+  Future<CourierCashDay> cashBox({String? date});
 }
 
 /// Id del paso (para no repetirlo si se reenvía) y, desde la cola sin señal, la hora en que ocurrió.
