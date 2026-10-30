@@ -19,6 +19,7 @@ import '../../../orders/presentation/widgets/store_page.dart';
 import '../../data/location_tracker.dart';
 import '../../domain/courier.dart';
 import '../courier_providers.dart';
+import '../widgets/cash_box_widgets.dart';
 import '../widgets/duty_widgets.dart';
 import '../widgets/location_signal.dart';
 import '../widgets/offer_card.dart';
@@ -129,6 +130,7 @@ class _CourierHomePageState extends ConsumerState<CourierHomePage> with WidgetsB
         color: AppColors.chonta,
         onRefresh: () async {
           ref.invalidate(courierOffersProvider);
+          ref.invalidate(courierCashDayProvider);
           ref.invalidate(courierTripProvider);
           ref.invalidate(courierStatusProvider);
           await ref.read(courierStatusProvider.future);
@@ -158,6 +160,7 @@ class _CourierHomePageState extends ConsumerState<CourierHomePage> with WidgetsB
                             const SizedBox(height: 14),
                             const PendingStepsRibbon(),
                             const PendingCollectionsBanner(),
+                            if (status.verified) const CashBoxStrip(),
                             ..._body(context, status, language),
                             if (account != null && account.canSwitchMode) ...[
                               const SizedBox(height: 22),

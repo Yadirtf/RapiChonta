@@ -8,6 +8,7 @@ import '../../../core/network/api_failure.dart';
 import '../../establishments/domain/entities/establishment.dart';
 import '../../orders/data/order_repository_impl.dart' show adjustmentFromJson;
 import '../../orders/domain/entities/adjustment.dart';
+import '../domain/cash_box.dart';
 import '../domain/courier.dart';
 
 /// Adaptador HTTP del modo domiciliario: /courier (E07) y /courier/trip (E08).
@@ -169,6 +170,12 @@ class CourierRepositoryImpl implements CourierRepository {
       });
 
   @override
+  Future<CourierCashDay> cashBox({String? date}) => _call(() async {
+        final response = await _authed.get<Map<String, dynamic>>('/courier/cash-box', queryParameters: {'date': ?date});
+        return cashDayFromJson(response.data!);
+      });
+
+  @override
   Future<CollectionAccount> setAccountQr(String accountId, ReceiptPhoto photo) async {
     final fileId = await _uploadPhoto(photo, 'COLLECTION_QR');
     return _call(() async {
@@ -302,5 +309,73 @@ Trip tripFromJson(Map<String, dynamic> json) {
         ),
       _ => null,
     },
+  );
+}
+
+CourierCashDay cashDayFromJson(Map<String, dynamic> json) {
+  final box = json['box'] as Map<String, dynamic>?;
+  return CourierCashDay(
+    date: json['date'] as String,
+    today: json['today'] as String,
+    fundingMode: json['fundingMode'] as String?,
+    requiresOpening: json['requiresOpening'] as bool? ?? false,
+    canReceiveOffers: json['canReceiveOffers'] as bool? ?? true,
+    box: box == null ? null : _cashBox(box),
+  );
+}
+
+CashBox _cashBox(Map<String, dynamic> json) {
+  final closure = json['closure'] as Map<String, dynamic>?;
+  final closer = closure?['closedBy'] as Map<String, dynamic>?;
+  final balance = json['balance'] as Map<String, dynamic>;
+  List<Map<String, dynamic>> list(String key) => (json[key] as List? ?? const []).cast<Map<String, dynamic>>();
+  return CashBox(
+    id: json['id'] as String,
+    businessDate: json['businessDate'] as String,
+    fundingMode: json['fundingMode'] as String?,
+    closure: closure == null
+        ? null
+        : CashClosure(
+            closedAt: DateTime.parse(closure['closedAt'] as String),
+            closedBy: [closer?['givenNames'], closer?['familyNames']].whereType<String>().join(' '),
+            notes: closure['notes'] as String?,
+          ),
+    totals: [
+      for (final t in list('totals')) CashTotal(type: t['type'] as String, signedCents: parseSignedCents(t['signed']), count: (t['count'] as num).toInt()),
+    ],
+    balance: CashBalance(
+      movementsNetCents: parseSignedCents(balance['movementsNet']),
+      courierFeesCents: parseSignedCents(balance['courierFees']),
+      commissionsCents: parseSignedCents(balance['commissions']),
+      amountDueCents: parseSignedCents(balance['amountDue']),
+      settledOrders: (balance['settledOrders'] as num?)?.toInt() ?? 0,
+    ),
+    movements: [
+      for (final m in list('movements'))
+        CashMovement(
+          id: m['id'] as String,
+          type: m['type'] as String,
+          signedCents: parseSignedCents(m['signed']),
+          paymentMethod: m['paymentMethod'] as String?,
+          orderCode: m['orderCode'] as String?,
+          note: m['note'] as String?,
+          createdAt: DateTime.parse(m['createdAt'] as String),
+          reversed: m['reversedById'] != null,
+          reverses: m['reversesMovementId'] != null,
+        ),
+    ],
+    orders: [
+      for (final o in list('orders'))
+        CashOrder(
+          code: o['code'] as String,
+          storeName: o['storeName'] as String,
+          feeCents: _cents(o['deliveryFee']),
+          commissionCents: _cents(o['commission']),
+          counted: o['counted'] as bool? ?? true,
+        ),
+    ],
+    uncollected: [
+      for (final u in list('uncollected')) CashUncollected(code: u['code'] as String, storeName: u['storeName'] as String, customerTotalCents: _cents(u['customerTotal'])),
+    ],
   );
 }

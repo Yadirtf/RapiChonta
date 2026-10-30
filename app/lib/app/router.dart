@@ -7,6 +7,7 @@ import '../features/auth/presentation/pages/account_page.dart';
 import '../features/auth/presentation/pages/consents_page.dart';
 import '../features/auth/presentation/pages/sign_in_page.dart';
 import '../features/auth/presentation/providers/auth_providers.dart';
+import '../features/courier/presentation/pages/cash_box_page.dart';
 import '../features/courier/presentation/pages/courier_home_page.dart';
 import '../features/courier/presentation/pages/trip_page.dart';
 import '../features/establishments/presentation/pages/establishment_page.dart';
@@ -74,6 +75,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/pedidos', builder: (context, state) => const MyOrdersPage()),
       GoRoute(path: '/avisos', builder: (context, state) => const NotificationsPage()),
       GoRoute(path: '/turno', builder: (context, state) => const CourierHomePage()),
+      GoRoute(path: '/turno/caja', builder: (context, state) => const CashBoxPage()),
       GoRoute(
         path: '/turno/pedido/:code',
         builder: (context, state) => TripPage(code: state.pathParameters['code']!, cancelled: state.uri.queryParameters['cancelado'] == '1'),
