@@ -21,7 +21,7 @@ export function PlacePreviewMap({ point, className = "" }: { point: GeoPoint; cl
 
   return (
     <div className={`relative overflow-hidden ${className}`}>
-      <div ref={containerRef} className="blueprint absolute inset-0" aria-hidden />
+      <div ref={containerRef} className="blueprint size-full" aria-hidden />
       <span className="drop-pin-shadow pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" aria-hidden />
       <span className="pointer-events-none absolute bottom-1/2 left-1/2 mb-3 -translate-x-1/2" aria-hidden>
         <span className="drop-pin">
