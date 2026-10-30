@@ -64,6 +64,8 @@ export interface AvailableCourier {
   distanceMeters: number | null;
   hasPendingOffer: boolean;
   declined: boolean;
+  /** E11: la caja de hoy está lista para comprar (con base si su modo la exige, sin cerrar). */
+  cashReady: boolean;
 }
 
 export interface DispatchTarget {
@@ -85,6 +87,8 @@ export interface NewOffer {
 export class OrderNoLongerDispatchable extends Error {}
 /** Un destinatario dejó de ser despachable entre la lista y el envío (lo rechaza la base). */
 export class RecipientRejected extends Error {}
+/** E11: entre el panel y el envío, la caja del domiciliario dejó de estar lista (se cerró, o cambió su modo). */
+export class CashBoxNotReady extends Error {}
 
 export abstract class DispatchBoard {
   /** Pedidos no terminados del municipio: los que buscan domiciliario primero, del que más espera al que menos. */

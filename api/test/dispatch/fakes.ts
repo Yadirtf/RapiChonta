@@ -36,6 +36,7 @@ export const availableCourier = (userId: string, extra: Partial<AvailableCourier
   distanceMeters: 300,
   hasPendingOffer: false,
   declined: false,
+  cashReady: true,
   ...extra,
 });
 

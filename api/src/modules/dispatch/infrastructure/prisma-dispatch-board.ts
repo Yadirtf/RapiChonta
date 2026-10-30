@@ -13,6 +13,7 @@ import {
   NewOffer,
   OrderNoLongerDispatchable,
   RecipientRejected,
+  CashBoxNotReady,
 } from '../domain/ports/dispatch-board';
 import { dbError, name, point } from './sql';
 
@@ -206,6 +207,7 @@ export class PrismaDispatchBoard extends DispatchBoard {
         distance: number | null;
         pending: boolean;
         declined: boolean;
+        cash_ready: boolean;
       }[]
     >`
       SELECT c.user_id, p.given_names, p.family_names, pp.phone_e164, vt.code AS vehicle_type, v.plate,
@@ -218,9 +220,11 @@ export class PrismaDispatchBoard extends DispatchBoard {
                      WHERE lo.order_id = ${order}::uuid AND r.courier_user_id = c.user_id) AS pending,
              EXISTS (SELECT 1 FROM order_offers oo JOIN order_offer_recipients r ON r.order_offer_id = oo.id
                      JOIN offer_recipient_statuses rs ON rs.id = r.status_id AND rs.code = ${RECIPIENT_STATUSES.REJECTED}
-                     WHERE oo.order_id = ${order}::uuid AND r.courier_user_id = c.user_id) AS declined
+                     WHERE oo.order_id = ${order}::uuid AND r.courier_user_id = c.user_id) AS declined,
+             coalesce(cr.can_receive_offers, true) AS cash_ready
       FROM v_dispatchable_couriers c
       JOIN v_open_availability av ON av.courier_user_id = c.user_id
+      LEFT JOIN v_courier_cash_readiness cr ON cr.courier_user_id = c.user_id
       LEFT JOIN LATERAL (SELECT location, accuracy_m, recorded_at FROM courier_location_pings lp
                          WHERE lp.courier_user_id = c.user_id
                          ORDER BY lp.recorded_at DESC LIMIT 1) l ON true
@@ -249,6 +253,7 @@ export class PrismaDispatchBoard extends DispatchBoard {
       distanceMeters: r.distance === null || !r.fresh ? null : Math.round(r.distance),
       hasPendingOffer: r.pending,
       declined: r.declined,
+      cashReady: r.cash_ready,
     }));
   }
 
@@ -287,6 +292,7 @@ export class PrismaDispatchBoard extends DispatchBoard {
       });
     } catch (error) {
       if (dbError(error, '23514', 'domiciliarios verificados') || dbError(error, '23514', 'ya tiene domiciliario')) throw new RecipientRejected();
+      if (dbError(error, '23514', 'CASH_BOX_NOT_READY')) throw new CashBoxNotReady();
       throw error;
     }
   }

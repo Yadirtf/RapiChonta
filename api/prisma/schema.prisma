@@ -337,6 +337,7 @@ model User {
   offersSent             OrderOffer[]
   assignmentsReleased    OrderAssignment[]            @relation("OrderAssignmentReleasedBy")
   cashMovementsCreated   CashMovement[]
+  cashBoxClosures        CashBoxClosure[]
   preparationDelays      OrderPreparationDelay[]
   deliveryCodeAttempts   DeliveryCodeAttempt[]
   adjustmentsReported    OrderAdjustmentRequest[]
@@ -739,12 +740,14 @@ model CourierVerificationHistory {
 }
 
 model FundingMode {
-  id            Int                  @id @default(autoincrement()) @db.SmallInt
-  code          String               @unique @db.VarChar(40)
-  sortOrder     Int                  @map("sort_order") @db.SmallInt
-  deactivatedAt DateTime?            @map("deactivated_at") @db.Timestamptz(6)
-  courierModes  CourierFundingMode[]
-  movementTypes CashMovementType[]
+  id                 Int                  @id @default(autoincrement()) @db.SmallInt
+  code               String               @unique @db.VarChar(40)
+  sortOrder          Int                  @map("sort_order") @db.SmallInt
+  deactivatedAt      DateTime?            @map("deactivated_at") @db.Timestamptz(6)
+  /// La caja del día necesita la base (OPENING) antes de recibir ofertas (CASH_BOX).
+  requiresBoxOpening Boolean              @default(false) @map("requires_box_opening")
+  courierModes       CourierFundingMode[]
+  movementTypes      CashMovementType[]
 
   @@map("funding_modes")
 }
@@ -1721,6 +1724,12 @@ model CashMovementType {
   requiresPaymentMethod        Boolean        @map("requires_payment_method")
   isManual                     Boolean        @map("is_manual")
   usesCourierCollectionAccount Boolean        @map("uses_courier_collection_account")
+  /// Es la base de la caja: una sola por caja (OPENING).
+  opensBox                     Boolean        @default(false) @map("opens_box")
+  /// Lleva la tarifa y la comisión del pedido a la caja donde cae (COLLECTION).
+  settlesOrder                 Boolean        @default(false) @map("settles_order")
+  /// Corrección firmada: nota obligatoria, puede anular otro movimiento y entra aunque la caja esté cerrada.
+  isCorrection                 Boolean        @default(false) @map("is_correction")
   onlyForFundingModeId         Int?           @map("only_for_funding_mode_id") @db.SmallInt
   onlyForFundingMode           FundingMode?   @relation(fields: [onlyForFundingModeId], references: [id], onDelete: Restrict)
   movements                    CashMovement[]
@@ -1730,15 +1739,29 @@ model CashMovementType {
 
 /// Caja del domiciliario por día (fecha en la zona horaria del municipio). El saldo se calcula; no se guarda.
 model CashBox {
-  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  courierUserId String         @map("courier_user_id") @db.Uuid
-  businessDate  DateTime       @map("business_date") @db.Date
-  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  courier       CourierProfile @relation(fields: [courierUserId], references: [userId], onDelete: Restrict)
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  courierUserId String          @map("courier_user_id") @db.Uuid
+  businessDate  DateTime        @map("business_date") @db.Date
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  courier       CourierProfile  @relation(fields: [courierUserId], references: [userId], onDelete: Restrict)
   movements     CashMovement[]
+  closure       CashBoxClosure?
 
   @@unique([courierUserId, businessDate])
   @@map("cash_boxes")
+}
+
+/// Cierre de la caja (H11.3): un hecho con autor, hora y notas. Sin fila, la caja está abierta.
+model CashBoxClosure {
+  cashBoxId      String   @id @map("cash_box_id") @db.Uuid
+  closedByUserId String   @map("closed_by_user_id") @db.Uuid
+  closedAt       DateTime @default(dbgenerated("clock_timestamp()")) @map("closed_at") @db.Timestamptz(6)
+  notes          String?
+  cashBox        CashBox  @relation(fields: [cashBoxId], references: [id], onDelete: Restrict)
+  closedBy       User     @relation(fields: [closedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([closedByUserId])
+  @@map("cash_box_closures")
 }
 
 /// Todo peso que se mueve de verdad, una fila inmutable. El signo lo da el tipo (amount siempre > 0).

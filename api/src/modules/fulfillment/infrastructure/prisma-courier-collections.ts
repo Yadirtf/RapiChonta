@@ -76,20 +76,12 @@ export class PrismaCourierCollections extends CourierCollections {
         if (!order) throw new Refused('NOT_FOUND');
         if (order.collected) return { ok: true as const, replayed: true };
         if (!order.delivered && !(COLLECTABLE as readonly string[]).includes(order.status)) throw new Refused('STEP', order.status);
-        // La caja del día del municipio del local, la misma de la compra (se crea si el cobro llega primero, p. ej. sin compra).
+        // La caja del día del municipio del local, la misma de la compra (se crea si el cobro llega primero, p. ej. sin
+        // compra). Si ese día ya se cerró, el cobro tardío cae en la siguiente caja abierta (E11).
         const [box] = await tx.$queryRaw<{ id: string }[]>`
-          WITH day AS (
-            SELECT (${occurredAt}::timestamptz AT TIME ZONE m.time_zone)::date AS business_date
-            FROM orders o JOIN establishments e ON e.id = o.establishment_id JOIN municipalities m ON m.id = e.municipality_id
-            WHERE o.id = ${order.id}::uuid),
-          created AS (
-            INSERT INTO cash_boxes (courier_user_id, business_date)
-            SELECT ${courierUserId}::uuid, business_date FROM day
-            ON CONFLICT (courier_user_id, business_date) DO NOTHING RETURNING id)
-          SELECT id FROM created
-          UNION ALL
-          SELECT b.id FROM cash_boxes b JOIN day ON b.business_date = day.business_date WHERE b.courier_user_id = ${courierUserId}::uuid
-          LIMIT 1`;
+          SELECT fn_courier_open_cash_box(${courierUserId}::uuid, (${occurredAt}::timestamptz AT TIME ZONE m.time_zone)::date) AS id
+          FROM orders o JOIN establishments e ON e.id = o.establishment_id JOIN municipalities m ON m.id = e.municipality_id
+          WHERE o.id = ${order.id}::uuid`;
         // Quién cobró queda en created_by_user_id, como en la compra; la cuenta va solo en los medios de cuenta (disparador).
         await tx.$executeRaw`
           INSERT INTO cash_movements (cash_box_id, movement_type_id, amount, order_id, payment_method_id, collection_account_id, created_by_user_id)

@@ -12,6 +12,8 @@ export const DispatchErrors = {
   courierNotAvailable: () => new ConflictError('COURIER_NOT_AVAILABLE', 'Ese domiciliario ya no está disponible'),
   /** Está en turno pero su teléfono no reporta ubicación hace rato. */
   courierLocationStale: () => new ConflictError('COURIER_LOCATION_STALE', 'Ese domiciliario no está enviando su ubicación'),
+  /** E11: su modo exige base y la caja de hoy no está abierta con ella, o su caja de hoy ya se cerró. */
+  cashBoxNotReady: () => new ConflictError('COURIER_CASH_BOX_NOT_READY', 'Ese domiciliario no tiene la caja de hoy abierta'),
   /** Ya tiene una oferta pendiente de este pedido. */
   offerAlreadyPending: () => new ConflictError('OFFER_ALREADY_PENDING', 'Ese domiciliario ya tiene este pedido en pantalla'),
   noCouriersAvailable: () => new ConflictError('NO_COURIERS_AVAILABLE', 'No hay domiciliarios disponibles en este momento'),

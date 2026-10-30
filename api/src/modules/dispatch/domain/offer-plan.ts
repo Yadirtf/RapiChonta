@@ -10,6 +10,8 @@ export interface OfferCandidate {
   declined: boolean;
   /** Su ubicación llegó hace poco. Sin ella no se le ofrece: no se sabe dónde está ni si la app sigue viva. */
   locationFresh: boolean;
+  /** Su caja de hoy está lista (E11, H11.1): con base si su modo la exige, y sin cerrar. */
+  cashReady: boolean;
 }
 
 /**
@@ -17,6 +19,7 @@ export interface OfferCandidate {
  * vistos hace poco (Docs/14 E07, "Domiciliarios cercanos").
  * - SPECIFIC: el elegido, aunque antes haya dicho que no (el operador pudo llamarlo); nunca dos veces a la vez.
  * - BROADCAST: todos los vistos hace poco que no lo tienen ya en pantalla ni lo rechazaron.
+ * En los dos, nunca a quien no tiene la caja de hoy lista (E11): sin base no puede comprar.
  */
 export function planRecipients(mode: OfferModeCode, candidates: OfferCandidate[], courierUserId?: string): string[] {
   if (mode === OFFER_MODES.SPECIFIC) {
@@ -24,10 +27,11 @@ export function planRecipients(mode: OfferModeCode, candidates: OfferCandidate[]
     const chosen = candidates.find((c) => c.userId === courierUserId);
     if (!chosen) throw DispatchErrors.courierNotAvailable();
     if (!chosen.locationFresh) throw DispatchErrors.courierLocationStale();
+    if (!chosen.cashReady) throw DispatchErrors.cashBoxNotReady();
     if (chosen.hasPendingOffer) throw DispatchErrors.offerAlreadyPending();
     return [chosen.userId];
   }
-  const recipients = candidates.filter((c) => c.locationFresh && !c.hasPendingOffer && !c.declined).map((c) => c.userId);
+  const recipients = candidates.filter((c) => c.locationFresh && c.cashReady && !c.hasPendingOffer && !c.declined).map((c) => c.userId);
   if (!recipients.length) throw DispatchErrors.noCouriersAvailable();
   return recipients;
 }
