@@ -51,6 +51,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
   final _password = TextEditingController();
   final _givenNames = TextEditingController();
   final _familyNames = TextEditingController();
+  final _phoneFocus = FocusNode();
   _Mode _mode = _Mode.customer;
   _Step _step = const _Credentials();
   Set<String> _accepted = {};
@@ -59,11 +60,32 @@ class _SignInPageState extends ConsumerState<SignInPage> {
   bool _busy = false;
   bool _showPassword = false;
 
+  /// El teclado se abre cuando la pantalla terminó de entrar: si sube durante la transición, la pantalla de abajo
+  /// (con el mapa nativo) se redimensiona a cada cuadro y se ve parpadear entre ella y el ingreso.
+  @override
+  void initState() {
+    super.initState();
+    // Tras el primer cuadro: antes de eso la transición todavía no arrancó y la animación se ve completa.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final animation = ModalRoute.of(context)?.animation;
+      if (animation == null || animation.isCompleted) return _phoneFocus.requestFocus();
+      void onStatus(AnimationStatus status) {
+        if (!status.isCompleted) return;
+        animation.removeStatusListener(onStatus);
+        if (mounted) _phoneFocus.requestFocus();
+      }
+
+      animation.addStatusListener(onStatus);
+    });
+  }
+
   @override
   void dispose() {
     for (final c in [_phone, _password, _givenNames, _familyNames]) {
       c.dispose();
     }
+    _phoneFocus.dispose();
     super.dispose();
   }
 
@@ -128,10 +150,15 @@ class _SignInPageState extends ConsumerState<SignInPage> {
     }
   }
 
-  void _back() => setState(() {
-        _step = const _Credentials();
-        _error = null;
-      });
+  void _back() {
+    setState(() {
+      _step = const _Credentials();
+      _error = null;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _phoneFocus.requestFocus();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -218,7 +245,7 @@ class _SignInPageState extends ConsumerState<SignInPage> {
             label: l10n.phoneLabel,
             errorText: _phoneError,
             helperText: _mode == _Mode.customer ? l10n.phoneHint : null,
-            autofocus: true,
+            focusNode: _phoneFocus,
             onSubmitted: (_) => _mode == _Mode.customer ? _submitCredentials() : null,
           ),
           if (_mode == _Mode.courier) ...[

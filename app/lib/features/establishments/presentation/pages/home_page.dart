@@ -49,6 +49,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
 
     return Scaffold(
+      // Aquí no se escribe: el teclado de otra pantalla no debe redimensionar el mapa de fondo.
+      resizeToAvoidBottomInset: false,
       drawer: isTablet ? null : const Drawer(child: SideMenu()),
       appBar: isTablet
           ? null
