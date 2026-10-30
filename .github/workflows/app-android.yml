@@ -2,6 +2,8 @@
 # - En cada PR que toca app/: compila y deja el APK como artefacto del run.
 # - En cada push a develop (y a mano desde Actions): además publica el APK en la pre-release
 #   "app-develop", que se descarga directo desde el teléfono sin iniciar sesión en GitHub.
+# - En cada tag de versión (v1.0.0, ...): adjunta el APK a la release de esa versión, que es permanente.
+# El artefacto del run dura 3 días (90 si es de una versión); limpiar-artefactos.yml borra el resto.
 # La URL de la API se inyecta al compilar (--dart-define=API_URL); se puede cambiar con la
 # variable del repositorio API_URL o con el campo "api_url" al lanzarlo a mano.
 # Con la variable SENTRY_DSN_APP la app reporta sus errores a Sentry (entorno "pruebas").
@@ -13,6 +15,7 @@ name: App Android
 on:
   push:
     branches: [develop]
+    tags: ["v*"] # los filtros de paths no aplican a tags
     paths:
       - "app/**"
       - ".github/workflows/app-android.yml"
@@ -144,7 +147,7 @@ jobs:
         with:
           name: rapichonta-apk-${{ github.run_number }}
           path: dist/*.apk
-          retention-days: 14
+          retention-days: ${{ startsWith(github.ref, 'refs/tags/v') && 90 || 3 }}
 
       - name: Publicar en la pre-release app-develop
         if: github.ref == 'refs/heads/develop' && github.event_name != 'pull_request'
@@ -159,3 +162,15 @@ jobs:
             --target "$GITHUB_SHA" \
             --title "App de prueba (develop #${{ github.run_number }})" \
             --notes "APK de prueba compilado desde develop (${GITHUB_SHA::7}). API: $API_URL"
+
+      - name: Adjuntar a la release de la versión
+        if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # App iOS puede crearla primero: si ya existe, solo se adjunta el archivo.
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 ||
+            gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes --title "RapiChonta $GITHUB_REF_NAME" ||
+            gh release view "$GITHUB_REF_NAME" >/dev/null
+          gh release upload "$GITHUB_REF_NAME" dist/*.apk --clobber

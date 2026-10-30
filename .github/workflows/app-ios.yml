@@ -9,12 +9,15 @@
 #   APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID y APP_STORE_CONNECT_KEY_P8.
 # En cada PR que toca app/ queda como artefacto del run; en cada push a develop (y a mano) además se publica
 # en la pre-release "app-ios-develop" (aparte de "app-develop", que el workflow de Android borra y recrea).
+# En cada tag de versión (v1.0.0, ...) se adjunta a la release de esa versión, que es permanente. El artefacto
+# del run dura 3 días (90 si es de una versión); limpiar-artefactos.yml borra el resto.
 # Guía: "App de iPhone" en Docs/08-despliegue-render.md.
 name: App iOS
 
 on:
   push:
     branches: [develop]
+    tags: ["v*"] # los filtros de paths no aplican a tags
     paths:
       - "app/**"
       - ".github/workflows/app-ios.yml"
@@ -241,7 +244,7 @@ jobs:
         with:
           name: rapichonta-ipa-${{ github.run_number }}
           path: dist/*.ipa
-          retention-days: 14
+          retention-days: ${{ startsWith(github.ref, 'refs/tags/v') && 90 || 3 }}
 
       - name: Subir a TestFlight
         if: steps.sign.outputs.method == 'app-store-connect' && github.event_name != 'pull_request'
@@ -273,6 +276,18 @@ jobs:
             --target "$GITHUB_SHA" \
             --title "App de prueba iPhone (develop #${{ github.run_number }})" \
             --notes "IPA de prueba compilado desde develop (${GITHUB_SHA::7}), firma: $FIRMA. API: $API_URL. Instalación: Docs/08-despliegue-render.md, sección \"App de iPhone\"."
+
+      - name: Adjuntar a la release de la versión
+        if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # App Android puede crearla primero: si ya existe, solo se adjunta el archivo.
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 ||
+            gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes --title "RapiChonta $GITHUB_REF_NAME" ||
+            gh release view "$GITHUB_REF_NAME" >/dev/null
+          gh release upload "$GITHUB_REF_NAME" dist/*.ipa --clobber
 
       - name: Limpiar llavero
         if: always() && steps.sign.outputs.keychain != ''

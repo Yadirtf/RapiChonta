@@ -1,0 +1,67 @@
+# Borra los artefactos de Actions de más de 3 días para no topar la cuota de almacenamiento.
+# Respeta los de versiones: los de runs de un tag v* y los de cualquier run cuyo commit tenga un tag v*.
+# Las pre-releases de prueba (app-develop, app-ios-develop) y las releases no son artefactos: no se tocan
+# y no cuentan para esa cuota. Los workflows ya suben con retention-days: 3; esto limpia lo que quedó con
+# la retención anterior y cubre cualquier artefacto sin retención propia.
+name: Limpiar artefactos
+
+on:
+  schedule:
+    - cron: "30 10 * * *" # 5:30 a. m. en Colombia (solo corre desde la rama por defecto)
+  workflow_dispatch:
+    inputs:
+      dias:
+        description: "Borrar los de más de N días"
+        required: false
+        default: "3"
+      simular:
+        description: "Solo listar lo que se borraría"
+        type: boolean
+        default: false
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: limpiar-artefactos
+
+jobs:
+  limpiar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Borrar artefactos vencidos
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DIAS: ${{ inputs.dias || '3' }}
+          SIMULAR: ${{ inputs.simular || false }}
+        run: |
+          set -euo pipefail
+          limite=$(date -u -d "-${DIAS} days" +%Y-%m-%dT%H:%M:%SZ)
+
+          # Commits con tag de versión (las API de tags ya devuelven el commit, también en tags anotados).
+          versiones=$(gh api "repos/$GITHUB_REPOSITORY/tags" --paginate \
+            --jq '.[] | select(.name | test("^v[0-9]")) | .commit.sha' | sort -u)
+
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" --paginate \
+            --jq '.artifacts[] | select(.expired | not)
+                  | [.id, .created_at, .size_in_bytes, (.workflow_run.head_branch // ""), (.workflow_run.head_sha // ""), .name] | @tsv' \
+            > artefactos.tsv
+
+          borrados=0; bytes=0; conservados=0
+          while IFS=$'\t' read -r id creado tam rama sha nombre; do
+            [[ "$creado" < "$limite" ]] || continue
+            if [[ "$rama" =~ ^v[0-9] ]] || grep -qxF "$sha" <<<"$versiones"; then
+              conservados=$((conservados + 1)); continue
+            fi
+            echo "Borrar $nombre ($((tam / 1048576)) MB, $creado, ${rama:-sin rama})"
+            if [[ "$SIMULAR" != "true" ]]; then
+              gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$id" --silent
+            fi
+            borrados=$((borrados + 1)); bytes=$((bytes + tam))
+          done < artefactos.tsv
+
+          accion=$([[ "$SIMULAR" == "true" ]] && echo "Se borrarían" || echo "Borrados")
+          resumen="$accion $borrados artefactos ($((bytes / 1048576)) MB) de más de $DIAS días; conservados $conservados de versiones."
+          echo "$resumen"
+          echo "$resumen" >> "$GITHUB_STEP_SUMMARY"

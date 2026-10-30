@@ -100,6 +100,14 @@ El identificador, el equipo y el tipo de exportación salen del perfil:
 
 Para las notificaciones push en iPhone falta además subir la llave APNs (`.p8`) a Firebase (Configuración del proyecto → Cloud Messaging → app de Apple), registrar la app iOS en Firebase y copiar su ID a la variable `FIREBASE_IOS_APP_ID`.
 
+## Artefactos de Actions y versiones
+
+Los APK, IPA y registros de Docker que deja cada run son *artefactos* y ocupan la cuota de almacenamiento de Actions. Por eso duran **3 días**, y el flujo **Limpiar artefactos** (`.github/workflows/limpiar-artefactos.yml`, cada día a las 5:30 a. m.) borra los que tengan más que eso, incluidos los que quedaron con la retención anterior. A mano: Actions → Limpiar artefactos → Run workflow (con *Solo listar* para ver qué borraría sin borrar).
+
+- Las pre-releases **app-develop** y **app-ios-develop** no son artefactos: no cuentan para esa cuota y no se borran (cada push a `develop` las reemplaza).
+- Una versión se marca con un tag `v*` (por ejemplo `git tag v1.0.0 && git push origin v1.0.0`): App Android y App iOS compilan ese commit y adjuntan el APK y el IPA a la release `v1.0.0`, que es permanente. Sus artefactos duran 90 días, y la limpieza respeta los de cualquier run cuyo commit tenga un tag `v*`.
+- GitHub recalcula el almacenamiento usado cada 6 a 12 horas, así que lo liberado no se ve al instante.
+
 ## Límites del plan gratuito
 
 - El servicio se duerme tras 15 minutos sin tráfico; la primera petición tarda 30–60 s en despertar. Neon también se suspende y despierta en la primera consulta.
