@@ -190,7 +190,7 @@ export class PrismaDeskReader extends DeskReader {
 
   async cancellationReasons(): Promise<string[]> {
     const rows = await this.prisma.$queryRaw<{ code: string }[]>`
-      SELECT code FROM cancellation_reasons WHERE NOT is_automatic AND deactivated_at IS NULL ORDER BY sort_order`;
+      SELECT code FROM cancellation_reasons WHERE NOT is_automatic AND NOT is_merchant_reason AND deactivated_at IS NULL ORDER BY sort_order`;
     return rows.map((r) => r.code);
   }
 

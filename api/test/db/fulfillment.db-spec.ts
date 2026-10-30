@@ -343,7 +343,8 @@ describe('Compra, preparación y llegada donde el cliente (H08.4-H08.6)', () => 
       expect(mine!.preparation!.delayed).toBe(true);
       expect(mine!.purchase).toEqual({ amount: '18500.00', receiptFileId: photo });
       // El cliente nunca recibe la ubicación del domiciliario.
-      expect(JSON.stringify(mine)).not.toMatch(/courier|ping/i);
+      // El modo (COURIER_PURCHASE) es del pedido, no del domiciliario.
+      expect(JSON.stringify({ ...mine, fulfillmentMode: undefined })).not.toMatch(/courier|ping/i);
 
       // "Ya está listo": va en camino y ahora sí ve a dónde va y a quién llamar.
       // (Hace 30 s, para que las lecturas de la prueba sean posteriores a la salida.)

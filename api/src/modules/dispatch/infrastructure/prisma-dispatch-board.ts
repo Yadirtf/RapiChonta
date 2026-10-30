@@ -4,6 +4,8 @@ import { CatalogIds } from '../../../shared/infrastructure/prisma/catalog-ids';
 import { PrismaService } from '../../../shared/infrastructure/prisma/prisma.service';
 import { DISPATCH_SOURCES, OFFER_TIMEOUT_SETTING, OfferModeCode, RECIPIENT_STATUSES, RecipientStatusCode, RETURN_SOURCES } from '../domain/dispatch.codes';
 import { DISPATCH_ORDER_STATUSES } from '../domain/order-statuses';
+
+const { WAITING, OFFERED } = DISPATCH_ORDER_STATUSES;
 import {
   AvailableCourier,
   BoardOrder,
@@ -23,7 +25,10 @@ interface OrderRow {
   created_at: Date;
   status: string;
   needs_courier: boolean;
-  is_initial: boolean;
+  is_waiting: boolean;
+  fulfillment_mode: string;
+  merchant_ready_eta: Date | null;
+  merchant_ready_at: Date | null;
   waiting_since: Date | null;
   last_source: string | null;
   status_since: Date;
@@ -79,9 +84,11 @@ export class PrismaDispatchBoard extends DispatchBoard {
   }
 
   async activeOrders(municipalityId: number): Promise<BoardOrder[]> {
-    // "Busca domiciliario" = ni terminado ni con domiciliario (flags del catálogo, no códigos).
+    // "Busca domiciliario" = esperando en el panel u ofrecido. Un pedido directo que el comercio aún no acepta, o uno
+    // entregado con foto, no está terminado y tampoco tiene domiciliario, pero no se despacha.
     const rows = await this.prisma.$queryRaw<OrderRow[]>`
-      SELECT o.id, o.code, o.created_at, s.code AS status, NOT s.requires_courier AS needs_courier, s.is_initial,
+      SELECT o.id, o.code, o.created_at, s.code AS status, s.code IN (${WAITING}, ${OFFERED}) AS needs_courier, s.code = ${WAITING} AS is_waiting,
+             fm.code AS fulfillment_mode, mp.estimated_ready_at AS merchant_ready_eta, mp.ready_at AS merchant_ready_at,
              w.occurred_at AS waiting_since, last.source AS last_source, last.occurred_at AS status_since,
              e.id AS establishment_id, e.name AS establishment_name, e.address_line,
              ST_Y(e.location::geometry) AS est_lat, ST_X(e.location::geometry) AS est_lng,
@@ -101,10 +108,12 @@ export class PrismaDispatchBoard extends DispatchBoard {
       JOIN zone_kinds zk ON zk.id = z.zone_kind_id
       JOIN v_order_amounts a ON a.order_id = o.id
       JOIN payment_methods pm ON pm.id = o.payment_method_id
-      -- Inicio de la espera actual: la última entrada al estado inicial que no venga de una oferta (creado o liberado).
+      JOIN fulfillment_modes fm ON fm.id = o.fulfillment_mode_id
+      LEFT JOIN v_merchant_order_preparation mp ON mp.order_id = o.id
+      -- Inicio de la espera actual: la última entrada al panel que no venga de una oferta (creado, aceptado por el comercio o liberado).
       LEFT JOIN LATERAL (
         SELECT h.occurred_at FROM order_status_history h
-        JOIN order_statuses ts ON ts.id = h.to_status_id AND ts.is_initial
+        JOIN order_statuses ts ON ts.id = h.to_status_id AND ts.code = ${WAITING}
         LEFT JOIN order_statuses fs ON fs.id = h.from_status_id
         WHERE h.order_id = o.id AND (fs.id IS NULL OR fs.requires_courier)
         ORDER BY h.recorded_at DESC LIMIT 1) w ON true
@@ -129,7 +138,7 @@ export class PrismaDispatchBoard extends DispatchBoard {
       statusSince: r.status_since,
       needsCourier: r.needs_courier,
       waitingSince: r.needs_courier ? (r.waiting_since ?? r.created_at) : null,
-      returnedBy: r.is_initial && r.last_source && RETURNED.has(r.last_source) ? r.last_source : null,
+      returnedBy: r.is_waiting && r.last_source && RETURNED.has(r.last_source) ? r.last_source : null,
       establishment: { id: r.establishment_id, name: r.establishment_name, addressLine: r.address_line, location: point(r.est_lat, r.est_lng) },
       delivery: { location: point(r.lat, r.lng), reference: r.reference, zoneName: r.zone_name, zoneKind: r.zone_kind },
       itemCount: r.item_count,
@@ -139,6 +148,8 @@ export class PrismaDispatchBoard extends DispatchBoard {
       courier: r.courier_user_id ? { userId: r.courier_user_id, name: name(r.courier_given!, r.courier_family), assignedAt: r.assigned_at! } : null,
       purchase: r.purchase_amount && r.receipt_file_id ? { amount: r.purchase_amount, receiptFileId: r.receipt_file_id } : null,
       preparation: r.estimated_ready_at ? { estimatedReadyAt: r.estimated_ready_at, delayed: r.is_delayed === true } : null,
+      fulfillmentMode: r.fulfillment_mode,
+      merchant: r.merchant_ready_eta ? { estimatedReadyAt: r.merchant_ready_eta, readyAt: r.merchant_ready_at } : null,
     }));
   }
 
@@ -268,13 +279,13 @@ export class PrismaDispatchBoard extends DispatchBoard {
     try {
       return await this.prisma.$transaction(async (tx) => {
         // La fila del pedido bloqueada: un envío a la vez por pedido, y nadie lo acepta a mitad del envío.
-        const [order] = await tx.$queryRaw<{ status_id: number; is_initial: boolean; needs_courier: boolean; municipality_id: number }[]>`
-          SELECT o.status_id, s.is_initial, (NOT s.is_terminal AND NOT s.requires_courier) AS needs_courier, e.municipality_id
+        const [order] = await tx.$queryRaw<{ status_id: number; is_waiting: boolean; needs_courier: boolean; municipality_id: number }[]>`
+          SELECT o.status_id, s.code = ${WAITING} AS is_waiting, s.code IN (${WAITING}, ${OFFERED}) AS needs_courier, e.municipality_id
           FROM orders o JOIN order_statuses s ON s.id = o.status_id JOIN establishments e ON e.id = o.establishment_id
           WHERE o.id = ${offer.orderId}::uuid FOR UPDATE OF o`;
         if (!order?.needs_courier) throw new OrderNoLongerDispatchable();
-        // Desde el estado inicial pasa a OFFERED; si ya estaba ofrecido (escalar de uno a todos) solo se suma la oferta.
-        if (order.is_initial) {
+        // Desde el panel pasa a OFFERED; si ya estaba ofrecido (escalar de uno a todos) solo se suma la oferta.
+        if (order.is_waiting) {
           await tx.$executeRaw`
             INSERT INTO order_status_history (order_id, from_status_id, to_status_id, changed_by_user_id, acting_role_id, source_id)
             VALUES (${offer.orderId}::uuid, ${order.status_id}, ${offeredId}, ${offer.sentByUserId}::uuid, ${roleId}, ${sourceId})`;

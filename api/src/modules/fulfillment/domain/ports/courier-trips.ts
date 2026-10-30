@@ -18,6 +18,10 @@ export interface TripRef {
  */
 export interface Trip extends TripRef {
   acceptedAt: Date;
+  /** E15: COURIER_PURCHASE (compra con factura) o MERCHANT_DIRECT (recoge lo que preparó el comercio aliado). */
+  fulfillmentMode: string;
+  /** E15, pedido directo: cuándo dijo el comercio que estaría listo y si ya lo marcó listo. */
+  merchant: { estimatedReadyAt: Date; readyAt: Date | null } | null;
   establishment: { name: string; addressLine: string; phone: string | null; location: GeoPoint; area: GeoPoint[] };
   zone: { name: string; kind: string };
   /** Líneas efectivas (sin las quitadas): `id` es la línea del pedido, para reportar un faltante. */
@@ -79,6 +83,11 @@ export abstract class CourierTrips {
    * líneas y el aviso al cliente. LINES: alguna línea no es del pedido o ya se quitó.
    */
   abstract openAdjustment(command: TripCommand & { lines: readonly ReportedLine[] }): Promise<TripResult>;
+  /**
+   * E15 "Recogí el pedido" (solo pedido directo): AT_ESTABLISHMENT → ON_THE_WAY en una transacción, con el pago al
+   * comercio (PURCHASE por el valor de los productos del pedido, sin factura) y el código de entrega del cliente.
+   */
+  abstract pickUp(command: TripCommand): Promise<TripResult>;
   /** "Ya está listo": PREPARING → ON_THE_WAY. */
   abstract markReady(command: TripCommand): Promise<TripResult>;
   /** "Sigue en preparación": una fila en order_preparation_delays. */

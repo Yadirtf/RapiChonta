@@ -30,9 +30,11 @@ export function composePush(notification: PendingNotification, texts: PushTexts)
     template = entry;
   } else if (entry) {
     // Una plantilla por variante: el estado nuevo en ORDER_STATUS_CHANGED; en los demás, params.variant (p. ej. cómo
-    // se resolvió una novedad). `_` es la de cualquier otro caso.
-    const variant = notification.type === NOTIFICATION_TYPES.ORDER_STATUS_CHANGED ? notification.status : notification.params?.variant;
-    template = entry[String(variant ?? '')] ?? entry['_'];
+    // se resolvió una novedad). `_` es la de cualquier otro caso. Primero la del modo del pedido (`ESTADO@MODO`): en
+    // un pedido directo el domiciliario recoge, no compra.
+    const variant = String((notification.type === NOTIFICATION_TYPES.ORDER_STATUS_CHANGED ? notification.status : notification.params?.variant) ?? '');
+    const byMode = notification.fulfillmentMode ? entry[`${variant}@${notification.fulfillmentMode}`] : undefined;
+    template = byMode ?? entry[variant] ?? entry['_'];
   }
   if (!template) return null;
 

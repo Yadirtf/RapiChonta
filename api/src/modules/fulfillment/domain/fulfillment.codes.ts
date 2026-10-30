@@ -68,6 +68,13 @@ export const GEOFENCE_MAX_ACCURACY_M = 50;
 /** Solo cuentan lecturas recientes: una lectura vieja que llega desde la cola sin señal no dispara llegadas. */
 export const GEOFENCE_FRESH_SECONDS = 120;
 
+/**
+ * E15: cómo se cumple el pedido. En el directo el comercio aliado lo prepara: el domiciliario no compra ni consulta
+ * faltantes; al recogerlo le paga al comercio lo que vale el pedido (un PURCHASE sin factura) y sale.
+ */
+export const TRIP_MODES = { COURIER_PURCHASE: 'COURIER_PURCHASE', MERCHANT_DIRECT: 'MERCHANT_DIRECT' } as const;
+export type TripModeCode = (typeof TRIP_MODES)[keyof typeof TRIP_MODES];
+
 export const PURCHASE_MOVEMENT = 'PURCHASE';
 /** H10.2: lo que pagó el cliente, un movimiento por medio. */
 export const COLLECTION_MOVEMENT = 'COLLECTION';

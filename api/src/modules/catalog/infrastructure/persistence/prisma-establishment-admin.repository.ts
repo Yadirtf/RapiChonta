@@ -114,6 +114,12 @@ export class PrismaEstablishmentAdminRepository extends EstablishmentAdminReposi
     return row ? { municipalityId: row.municipality_id, status: row.status } : null;
   }
 
+  async servedBy(id: string, userId: string): Promise<boolean> {
+    const [row] = await this.prisma.$queryRaw<{ served: boolean }[]>`
+      SELECT EXISTS (SELECT 1 FROM v_merchant_establishments WHERE establishment_id = ${id}::uuid AND user_id = ${userId}::uuid) AS served`;
+    return row.served;
+  }
+
   async create(data: EstablishmentData, actorUserId: string): Promise<string> {
     return this.prisma.$transaction(async (tx) => {
       const [{ id }] = await tx.$queryRaw<{ id: string }[]>`

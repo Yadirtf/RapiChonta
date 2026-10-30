@@ -39,6 +39,8 @@ export class FulfillmentPresenter {
       status: t.status,
       statusAt: t.lastChangeAt.toISOString(),
       acceptedAt: t.acceptedAt.toISOString(),
+      fulfillmentMode: t.fulfillmentMode,
+      merchant: t.merchant ? { estimatedReadyAt: t.merchant.estimatedReadyAt.toISOString(), readyAt: t.merchant.readyAt?.toISOString() ?? null } : null,
       establishment: {
         name: t.establishment.name,
         addressLine: t.establishment.addressLine,

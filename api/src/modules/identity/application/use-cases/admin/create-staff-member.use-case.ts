@@ -15,7 +15,10 @@ export interface CreateStaffInput extends PersonInput {
   municipalityId?: number;
 }
 
-/** H01.4: el administrador crea operadores (con su municipio) y otros administradores (globales). */
+/**
+ * H01.4: el administrador crea operadores (con su municipio) y otros administradores (globales). Desde E15 también la
+ * cuenta de quien atiende un comercio aliado (MERCHANT, sin municipio): la crea el módulo merchants al darle acceso.
+ */
 @Injectable()
 export class CreateStaffMemberUseCase {
   constructor(
@@ -26,7 +29,7 @@ export class CreateStaffMemberUseCase {
   ) {}
 
   async execute(principal: Principal, input: CreateStaffInput): Promise<string> {
-    if (input.role !== ROLES.OPERATOR && input.role !== ROLES.ADMIN) throw IdentityErrors.invalidOption('role');
+    if (input.role !== ROLES.OPERATOR && input.role !== ROLES.ADMIN && input.role !== ROLES.MERCHANT) throw IdentityErrors.invalidOption('role');
     const password = Password.create(input.password);
 
     const options = await this.options.load();

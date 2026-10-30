@@ -4,7 +4,7 @@ import { CatalogIds } from '../../../shared/infrastructure/prisma/catalog-ids';
 import { PrismaService } from '../../../shared/infrastructure/prisma/prisma.service';
 import { ContentLanguage } from '../../catalog/domain/catalog.codes';
 import { GeoPoint } from '../../catalog/domain/value-objects/geo-point';
-import { FULFILLMENT_MODES, STATUS_CHANGE_SOURCES } from '../domain/orders.codes';
+import { STATUS_CHANGE_SOURCES } from '../domain/orders.codes';
 import { ClientRequestReplayed, NewOrder, OrderCodeTaken, OrderDetail, OrdersRepository, OrderSummary } from '../domain/ports/orders.repository';
 import { insertAddress } from './address-sql';
 import { readOrderAdjustments } from '../../fulfillment/infrastructure/adjustment-read';
@@ -21,6 +21,7 @@ interface SummaryRow {
   status_code: string;
   status_at: Date;
   is_terminal: boolean;
+  fulfillment_mode: string;
   total: string;
   item_count: number;
 }
@@ -28,11 +29,12 @@ interface SummaryRow {
 /** Resumen de Mis pedidos: el estado es el último visible para el cliente, y los montos vienen de las vistas. */
 const SUMMARY_SELECT = Prisma.sql`
   SELECT o.id, o.code, o.created_at, e.id AS establishment_id, e.name AS establishment_name, e.logo_file_id,
-         vs.status_code, vs.occurred_at AS status_at, cs.is_terminal,
+         vs.status_code, vs.occurred_at AS status_at, cs.is_terminal, fm.code AS fulfillment_mode,
          a.customer_total::text AS total,
          (SELECT coalesce(sum(l.quantity), 0)::int FROM v_order_lines l WHERE l.order_id = o.id AND NOT l.is_removed) AS item_count
   FROM orders o
   JOIN order_statuses cs ON cs.id = o.status_id
+  JOIN fulfillment_modes fm ON fm.id = o.fulfillment_mode_id
   JOIN establishments e ON e.id = o.establishment_id
   JOIN v_order_amounts a ON a.order_id = o.id
   JOIN v_order_customer_status vs ON vs.order_id = o.id`;
@@ -42,6 +44,7 @@ const toSummary = (r: SummaryRow): OrderSummary => ({
   establishment: { id: r.establishment_id, name: r.establishment_name, logoFileId: r.logo_file_id },
   createdAt: r.created_at,
   status: { code: r.status_code, at: r.status_at, terminal: r.is_terminal },
+  fulfillmentMode: r.fulfillment_mode,
   itemCount: r.item_count,
   total: r.total,
 });
@@ -74,12 +77,12 @@ export class PrismaOrdersRepository extends OrdersRepository {
 
   /**
    * Orden de la transacción (Docs/14 E04): dirección y destinatario si son nuevos, el pedido en el estado
-   * inicial, sus líneas y la primera fila del historial. Los disparadores diferidos exigen líneas e historial.
+   * inicial de su modo, sus líneas y la primera fila del historial. Los disparadores diferidos exigen líneas e historial.
    */
   private async insert(tx: Tx, order: NewOrder): Promise<void> {
     const [paymentMethodId, fulfillmentModeId, sourceId, customerRoleId] = await Promise.all([
       this.ids.of('payment_methods', order.paymentMethod, tx),
-      this.ids.of('fulfillment_modes', FULFILLMENT_MODES.COURIER_PURCHASE, tx),
+      this.ids.of('fulfillment_modes', order.fulfillmentMode, tx),
       this.ids.of('status_change_sources', STATUS_CHANGE_SOURCES.USER_ACTION, tx),
       this.ids.of('roles', 'CUSTOMER', tx),
     ]);
@@ -91,7 +94,7 @@ export class PrismaOrdersRepository extends OrdersRepository {
                           commission_rate_id, payment_method_id, fulfillment_mode_id, status_id, customer_notes)
       SELECT ${order.code}, ${order.customerUserId}::uuid, ${order.establishmentId}::uuid, ${addressId}::uuid, ${recipientId}::uuid,
              ${order.deliveryZoneFeeId}::uuid, ${order.commissionRateId}::uuid, ${paymentMethodId}, ${fulfillmentModeId}, s.id, ${order.customerNotes}
-      FROM order_statuses s WHERE s.is_initial AND s.deactivated_at IS NULL
+      FROM fulfillment_modes m JOIN order_statuses s ON s.id = m.initial_status_id WHERE m.id = ${fulfillmentModeId}
       RETURNING id, status_id`;
 
     await tx.$executeRaw`
@@ -158,6 +161,9 @@ export class PrismaOrdersRepository extends OrdersRepository {
         is_delayed: boolean | null;
         purchase_amount: string | null;
         receipt_file_id: string | null;
+        merchant_accepted_at: Date | null;
+        merchant_ready_eta: Date | null;
+        merchant_ready_at: Date | null;
         delivery_code: string | null;
         proof_file_id: string | null;
         review_closes_at: Date | null;
@@ -172,6 +178,7 @@ export class PrismaOrdersRepository extends OrdersRepository {
              r.full_name AS recipient_name, r.phone_e164 AS recipient_phone,
              pm.code AS payment_method, o.customer_notes,
              pr.estimated_ready_at, pr.is_delayed, mv.amount::text AS purchase_amount, op.receipt_file_id,
+             mp.accepted_at AS merchant_accepted_at, mp.estimated_ready_at AS merchant_ready_eta, mp.ready_at AS merchant_ready_at,
              -- El código solo mientras el pedido va donde el cliente: después ya no sirve y no se muestra.
              CASE WHEN s.status_code IN ('ON_THE_WAY', 'ARRIVING') THEN dc.code END AS delivery_code,
              dp.file_id AS proof_file_id,
@@ -200,6 +207,7 @@ export class PrismaOrdersRepository extends OrdersRepository {
       LEFT JOIN customer_recipients r ON r.id = o.recipient_id
       JOIN payment_methods pm ON pm.id = o.payment_method_id
       LEFT JOIN v_order_preparation pr ON pr.order_id = o.id
+      LEFT JOIN v_merchant_order_preparation mp ON mp.order_id = o.id
       LEFT JOIN order_purchases op ON op.order_id = o.id
       LEFT JOIN cash_movements mv ON mv.id = op.cash_movement_id
       JOIN establishments e ON e.id = o.establishment_id
@@ -207,7 +215,7 @@ export class PrismaOrdersRepository extends OrdersRepository {
       LEFT JOIN order_delivery_proofs dp ON dp.order_id = o.id`;
     if (!row) return null;
 
-    const [lines, timeline, journey, adjustments] = await Promise.all([
+    const [lines, timeline, journeys, adjustments] = await Promise.all([
       this.prisma.$queryRaw<{ product_id: string; name: string; unit_price: string; quantity: number; notes: string | null; prep_minutes: number }[]>`
         SELECT l.product_id, COALESCE(tl.name, te.name) AS name, l.unit_price::text AS unit_price, l.quantity, l.notes, l.prep_minutes
         FROM v_order_lines l
@@ -221,7 +229,7 @@ export class PrismaOrdersRepository extends OrdersRepository {
         SELECT s.code, h.occurred_at AS at FROM order_status_history h
         JOIN order_statuses s ON s.id = h.to_status_id AND s.is_visible_to_customer
         WHERE h.order_id = ${row.id}::uuid ORDER BY h.recorded_at`,
-      this.journey(),
+      this.journeys(),
       readOrderAdjustments(this.prisma, row.id, language),
     ]);
 
@@ -237,7 +245,11 @@ export class PrismaOrdersRepository extends OrdersRepository {
       customerNotes: row.customer_notes,
       // Si volvió a "Buscando domiciliario" (nadie aceptó la oferta), se ve una vez, desde la primera hora.
       timeline: collapse(timeline),
-      journey,
+      journey: journeys[row.fulfillment_mode] ?? [],
+      merchant:
+        row.merchant_accepted_at && row.merchant_ready_eta
+          ? { acceptedAt: row.merchant_accepted_at, estimatedReadyAt: row.merchant_ready_eta, readyAt: row.merchant_ready_at }
+          : null,
       preparation: row.estimated_ready_at ? { estimatedReadyAt: row.estimated_ready_at, delayed: row.is_delayed === true } : null,
       purchase: row.purchase_amount && row.receipt_file_id ? { amount: row.purchase_amount, receiptFileId: row.receipt_file_id } : null,
       delivery: { code: row.delivery_code, proofFileId: row.proof_file_id, reviewClosesAt: row.review_closes_at },
@@ -255,10 +267,17 @@ export class PrismaOrdersRepository extends OrdersRepository {
     };
   }
 
-  async journey(): Promise<string[]> {
-    const rows = await this.prisma.$queryRaw<{ code: string }[]>`
-      SELECT code FROM order_statuses WHERE is_milestone AND deactivated_at IS NULL ORDER BY sort_order`;
-    return rows.map((r) => r.code);
+  async journeys(): Promise<Record<string, string[]>> {
+    const rows = await this.prisma.$queryRaw<{ mode: string; code: string }[]>`
+      SELECT m.code AS mode, s.code
+      FROM fulfillment_modes m
+      JOIN order_statuses s ON s.is_milestone AND s.deactivated_at IS NULL
+      WHERE s.id = m.initial_status_id
+         OR EXISTS (SELECT 1 FROM order_status_transition_modes tm WHERE tm.fulfillment_mode_id = m.id AND tm.to_status_id = s.id)
+      ORDER BY m.sort_order, s.sort_order`;
+    const journeys: Record<string, string[]> = {};
+    for (const { mode, code } of rows) (journeys[mode] ??= []).push(code);
+    return journeys;
   }
 }
 

@@ -22,6 +22,8 @@ export const DESK_ALERTS = [
   'PROOF_REVIEW',
   /** Nadie aceptó la oferta a tiempo, o todos dijeron que no. */
   'NO_TAKERS',
+  /** E15: pedido directo que el comercio aliado no acepta ni rechaza (merchant.response_alert_seconds). */
+  'MERCHANT_SILENT',
   /** E09: el cliente no respondió y el sistema quitó lo que faltaba. */
   'DECISION_EXPIRED',
   /** Pasó la hora estimada o el local dijo "Sigue en preparación". */

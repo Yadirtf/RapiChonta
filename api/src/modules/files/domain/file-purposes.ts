@@ -13,6 +13,8 @@ export const UPLOADABLE_PURPOSES: Record<string, string> = {
   COLLECTION_QR: 'orders.progress',
   // La imagen de cada medio en "¿Cómo pagas al recibir?" (logo de Nequi, Daviplata...), desde el panel.
   PAYMENT_METHOD_IMAGE: 'settings.manage',
+  // E15: la foto del convenio firmado con el comercio aliado, desde la ficha del local en el panel.
+  PARTNERSHIP_AGREEMENT: 'partners.manage',
 };
 
 /**
@@ -20,7 +22,7 @@ export const UPLOADABLE_PURPOSES: Record<string, string> = {
  * la subió (order_purchases y order_delivery_proofs lo exigen), y el QR es de la cuenta de quien lo subió. Las fotos
  * de catálogo sí se comparten.
  */
-export const PRIVATE_PURPOSES: readonly string[] = ['PURCHASE_RECEIPT', 'DELIVERY_PROOF', 'COLLECTION_QR'];
+export const PRIVATE_PURPOSES: readonly string[] = ['PURCHASE_RECEIPT', 'DELIVERY_PROOF', 'COLLECTION_QR', 'PARTNERSHIP_AGREEMENT'];
 
 /** Tipos que la API acepta aunque el catálogo permita otros: solo imágenes rasterizadas (un SVG puede llevar scripts). */
 export const SAFE_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;

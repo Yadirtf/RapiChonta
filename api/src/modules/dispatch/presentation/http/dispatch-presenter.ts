@@ -35,6 +35,8 @@ export const DispatchPresenter = {
     courier: o.courier ? { userId: o.courier.userId, ...person(o.courier.name), assignedAt: o.courier.assignedAt.toISOString() } : null,
     purchase: o.purchase ? { amount: o.purchase.amount, receiptUrl: receiptUrl(o.purchase.receiptFileId) } : null,
     preparation: o.preparation ? { estimatedReadyAt: o.preparation.estimatedReadyAt.toISOString(), delayed: o.preparation.delayed } : null,
+    fulfillmentMode: o.fulfillmentMode,
+    merchant: o.merchant ? { estimatedReadyAt: o.merchant.estimatedReadyAt.toISOString(), readyAt: o.merchant.readyAt?.toISOString() ?? null } : null,
   }),
 
   courier: (c: AvailableCourier) => ({

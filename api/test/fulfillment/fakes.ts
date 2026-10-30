@@ -67,6 +67,11 @@ export class MemoryCourierTrips extends CourierTrips {
     return this.result;
   }
 
+  async pickUp(command: TripCommand) {
+    this.commands.push({ ...command, kind: 'pickup' });
+    return this.result;
+  }
+
   async reportDelay(command: TripCommand) {
     this.commands.push({ ...command, kind: 'delay' });
     return this.result;

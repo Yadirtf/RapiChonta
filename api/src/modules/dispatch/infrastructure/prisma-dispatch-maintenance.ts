@@ -41,7 +41,7 @@ export class PrismaDispatchMaintenance extends DispatchMaintenance {
         SELECT o.id, ${offered}, initial.id, ${timer}
         FROM orders o CROSS JOIN order_statuses initial
         WHERE o.id = ANY(${locked.map((l) => l.id)}::uuid[]) AND o.status_id = ${offered}
-          AND initial.is_initial AND initial.deactivated_at IS NULL
+          AND initial.code = ${DISPATCH_ORDER_STATUSES.WAITING}
           AND NOT EXISTS (SELECT 1 FROM v_live_offers lo WHERE lo.order_id = o.id)
           AND NOT EXISTS (SELECT 1 FROM order_assignments a WHERE a.order_id = o.id AND a.released_at IS NULL)`;
     });

@@ -1,8 +1,11 @@
 {
   "push": {
     "ORDER_STATUS_CHANGED": {
+      "PENDING_ASSIGNMENT@MERCHANT_DIRECT": { "title": "{store} accepted your order", "body": "They're preparing it. We'll let you know when a courier heads over." },
       "ACCEPTED": { "title": "A courier took your order", "body": "Heading to {store} for your order {code}." },
+      "ACCEPTED@MERCHANT_DIRECT": { "title": "A courier took your order", "body": "Heading to {store} to pick up order {code}." },
       "AT_ESTABLISHMENT": { "title": "Your courier is at {store}", "body": "They're buying everything for order {code}." },
+      "AT_ESTABLISHMENT@MERCHANT_DIRECT": { "title": "Your courier is at {store}", "body": "They're picking up order {code}." },
       "ON_THE_WAY": { "title": "Your order is on its way!", "body": "It left {store}. Have your payment and delivery code ready (it is in the order)." },
       "ARRIVING": { "title": "Your courier is almost there", "body": "Step out to get order {code} and have your delivery code ready." },
       "PENDING_REVIEW": { "title": "Your courier dropped off order {code}", "body": "They left it with a photo. If you didn't get it, tell us from the order." },
@@ -22,6 +25,7 @@
       "_": { "title": "We reviewed order {code}", "body": "The case is closed. Tap to see how it ended." }
     },
     "DELIVERY_PROOF_PENDING": { "title": "Delivery photo missing", "body": "Take the delivery photo for order {code}." },
-    "TRIP_CANCELLED": { "title": "Order {code} was cancelled", "body": "No need to buy it anymore. You are free for another order." }
+    "TRIP_CANCELLED": { "title": "Order {code} was cancelled", "body": "No need to buy it anymore. You are free for another order." },
+    "MERCHANT_ORDER_READY": { "title": "Order {code} is ready", "body": "{store} has it packed. Go pick it up." }
   }
 }

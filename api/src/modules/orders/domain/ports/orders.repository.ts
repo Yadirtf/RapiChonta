@@ -14,6 +14,7 @@ export interface NewOrder {
   deliveryZoneFeeId: string;
   commissionRateId: string;
   paymentMethod: string;
+  fulfillmentMode: string;
   customerNotes: string | null;
   lines: { productVersionId: string; quantity: number; notes: string | null }[];
   /** UUID del dispositivo: confirmar dos veces (doble toque, reintento sin señal) no crea dos pedidos. */
@@ -42,6 +43,8 @@ export interface OrderSummary {
   establishment: { id: string; name: string; logoFileId: string | null };
   createdAt: Date;
   status: OrderStatusStamp;
+  /** E15: COURIER_PURCHASE o MERCHANT_DIRECT; decide qué recorrido (journey) sigue el pedido. */
+  fulfillmentMode: string;
   itemCount: number;
   total: string;
 }
@@ -57,8 +60,10 @@ export interface OrderDetail extends OrderSummary {
   customerNotes: string | null;
   /** Estados visibles por los que pasó, en orden. */
   timeline: { code: string; at: Date }[];
-  /** Pasos del recorrido normal (is_milestone), para mostrar los que faltan. */
+  /** Pasos del recorrido normal de su modo (is_milestone), para mostrar los que faltan. */
   journey: string[];
+  /** E15, pedido directo: cuándo lo aceptó el comercio, cuándo dijo que estaría listo y si ya lo marcó listo. */
+  merchant: { acceptedAt: Date; estimatedReadyAt: Date; readyAt: Date | null } | null;
   /** H08.5: desde la compra, cuándo debería estar listo y si el local tiene alta demanda ("Sigue en preparación"). */
   preparation: { estimatedReadyAt: Date; delayed: boolean } | null;
   /** H08.4: lo que el domiciliario pagó en el local y la foto de la factura. Nunca su ubicación. */
@@ -85,6 +90,9 @@ export abstract class OrdersRepository {
   /** Activos (no terminales) o pasados, del más reciente al más viejo; `before` pagina por created_at. */
   abstract listMine(customerUserId: string, query: { active: boolean; before?: Date; limit: number }): Promise<OrderSummary[]>;
   abstract findMine(customerUserId: string, code: string, language: ContentLanguage): Promise<OrderDetail | null>;
-  /** Hitos del recorrido normal, en orden (order_statuses.is_milestone): la barra de avance del cliente. */
-  abstract journey(): Promise<string[]>;
+  /**
+   * Hitos del recorrido normal de cada modo, en orden (order_statuses.is_milestone): la barra de avance del cliente.
+   * Un modo solo recorre los estados a los que llega en order_status_transition_modes (el directo no tiene compra).
+   */
+  abstract journeys(): Promise<Record<string, string[]>>;
 }

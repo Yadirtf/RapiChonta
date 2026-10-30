@@ -24,14 +24,20 @@ export class PrismaCheckoutReader extends CheckoutReader {
   }
 
   async establishment(id: string): Promise<OrderingEstablishment | null> {
-    const [row] = await this.prisma.$queryRaw<{ id: string; name: string; municipality_id: number; accepts_orders: boolean }[]>`
+    const [row] = await this.prisma.$queryRaw<{ id: string; name: string; municipality_id: number; accepts_orders: boolean; modes: string[] }[]>`
       SELECT e.id, e.name, e.municipality_id,
-             s.accepts_orders AND m.launched_at IS NOT NULL AND m.launched_at <= now() AS accepts_orders
+             s.accepts_orders AND m.launched_at IS NOT NULL AND m.launched_at <= now() AS accepts_orders,
+             ARRAY(SELECT fm.code::text FROM fulfillment_modes fm
+                   WHERE fm.deactivated_at IS NULL
+                     AND (NOT fm.requires_partnership OR EXISTS (SELECT 1 FROM v_establishment_partners p WHERE p.establishment_id = e.id))
+                   ORDER BY fm.sort_order) AS modes
       FROM establishments e
       JOIN establishment_statuses s ON s.id = e.status_id
       JOIN municipalities m ON m.id = e.municipality_id
       WHERE e.id = ${id}::uuid`;
-    return row ? { id: row.id, name: row.name, municipalityId: Number(row.municipality_id), acceptsOrders: row.accepts_orders } : null;
+    return row
+      ? { id: row.id, name: row.name, municipalityId: Number(row.municipality_id), acceptsOrders: row.accepts_orders, fulfillmentModes: row.modes }
+      : null;
   }
 
   async menuVersions(versionIds: string[], language: ContentLanguage): Promise<MenuVersion[]> {

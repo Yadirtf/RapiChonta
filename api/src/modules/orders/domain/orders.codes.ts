@@ -6,7 +6,12 @@
 export const FULFILLMENT_MODES = {
   /** MVP: el domiciliario compra en nombre del cliente. */
   COURIER_PURCHASE: 'COURIER_PURCHASE',
+  /** E15: el comercio aliado recibe el pedido y lo prepara; el domiciliario lo recoge. Solo en locales aliados. */
+  MERCHANT_DIRECT: 'MERCHANT_DIRECT',
 } as const;
+export type FulfillmentModeCode = (typeof FULFILLMENT_MODES)[keyof typeof FULFILLMENT_MODES];
+/** Lo que entiende un cliente que no manda el modo (la app de antes de E15): la compra por RapiChonta. */
+export const DEFAULT_FULFILLMENT_MODE: FulfillmentModeCode = FULFILLMENT_MODES.COURIER_PURCHASE;
 
 export const STATUS_CHANGE_SOURCES = {
   USER_ACTION: 'USER_ACTION',

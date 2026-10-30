@@ -14,6 +14,7 @@ interface ClaimedRow {
   order_code: string | null;
   status: string | null;
   store_name: string | null;
+  fulfillment_mode: string | null;
   params: Record<string, string | number> | null;
 }
 
@@ -41,13 +42,14 @@ export class PrismaNotificationOutbox extends NotificationOutbox {
         RETURNING id, recipient_user_id, notification_type_id, order_id, order_status_history_id, params
       )
       SELECT c.id, c.recipient_user_id, t.code AS type, t.is_high_priority AS high_priority, l.code AS language,
-             o.code AS order_code, s.code AS status, e.name AS store_name, c.params
+             o.code AS order_code, s.code AS status, e.name AS store_name, fm.code AS fulfillment_mode, c.params
       FROM claimed c
       JOIN notification_types t ON t.id = c.notification_type_id
       LEFT JOIN user_preferences up ON up.user_id = c.recipient_user_id
       LEFT JOIN languages l ON l.id = up.language_id
       LEFT JOIN orders o ON o.id = c.order_id
       LEFT JOIN establishments e ON e.id = o.establishment_id
+      LEFT JOIN fulfillment_modes fm ON fm.id = o.fulfillment_mode_id
       LEFT JOIN order_status_history h ON h.id = c.order_status_history_id
       LEFT JOIN order_statuses s ON s.id = h.to_status_id`;
     if (!rows.length) return [];
@@ -71,6 +73,7 @@ export class PrismaNotificationOutbox extends NotificationOutbox {
       orderCode: row.order_code,
       status: row.status,
       storeName: row.store_name,
+      fulfillmentMode: row.fulfillment_mode,
       params: row.params,
       targets: targets
         .filter((t) => t.user_id === row.recipient_user_id)

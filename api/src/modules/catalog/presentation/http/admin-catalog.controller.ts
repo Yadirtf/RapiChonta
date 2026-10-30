@@ -39,7 +39,7 @@ import {
 
 const { ESTABLISHMENTS_MANAGE, PRODUCTS_MANAGE, CATEGORIES_MANAGE } = CATALOG_PERMISSIONS;
 
-/** Panel: establecimientos con su área en el mapa (H02.1), menú (H02.2), fotos (H02.3) y categorías (H02.4). */
+/** Panel: establecimientos con su área en el mapa (H02.1) y categorías (H02.4). El menú está en AdminMenuController. */
 @Controller('admin')
 @Roles(ROLES.ADMIN, ROLES.OPERATOR)
 export class AdminCatalogController {
@@ -50,10 +50,6 @@ export class AdminCatalogController {
     private readonly createEstablishment: CreateEstablishmentUseCase,
     private readonly updateEstablishment: UpdateEstablishmentUseCase,
     private readonly changeStatus: ChangeEstablishmentStatusUseCase,
-    private readonly getMenu: GetMenuAdminUseCase,
-    private readonly sections: ManageSectionsUseCase,
-    private readonly products: ManageProductsUseCase,
-    private readonly images: ManageProductImagesUseCase,
     private readonly categories: ManageCategoriesUseCase,
     private readonly presenter: CatalogPresenter,
   ) {}
@@ -106,6 +102,57 @@ export class AdminCatalogController {
     await this.changeStatus.execute(principal, { id, to: body.status });
     return this.presenter.detail(await this.getEstablishment.execute(principal, id));
   }
+
+  // ─────────────── Categorías (solo administrador) ───────────────
+
+  @Get('categories')
+  @RequirePermissions(CATEGORIES_MANAGE)
+  listCategories() {
+    return this.categories.list();
+  }
+
+  @Post('categories')
+  @RequirePermissions(CATEGORIES_MANAGE)
+  async createCategory(@CurrentPrincipal() principal: Principal, @Body() body: CategoryDto) {
+    return { id: await this.categories.create(principal, body) };
+  }
+
+  @Put('categories/order')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermissions(CATEGORIES_MANAGE)
+  async reorderCategories(@Body() body: CategoryOrderDto) {
+    await this.categories.reorder(body.ids);
+  }
+
+  @Put('categories/:categoryId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermissions(CATEGORIES_MANAGE)
+  async updateCategory(@CurrentPrincipal() principal: Principal, @Param('categoryId', ParseIntPipe) id: number, @Body() body: CategoryDto) {
+    await this.categories.update(principal, id, body);
+  }
+
+  @Post('categories/:categoryId/active')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermissions(CATEGORIES_MANAGE)
+  async categoryActive(@CurrentPrincipal() principal: Principal, @Param('categoryId', ParseIntPipe) id: number, @Body() body: CategoryActiveDto) {
+    await this.categories.setActive(principal, id, body.active);
+  }
+}
+
+/**
+ * Menú (H02.2) y fotos (H02.3). Lo usan el panel y, desde E15, el comercio aliado en su portal: el rol MERCHANT solo
+ * llega a los locales que atiende (MenuAccess lo verifica con establishment_staff y el convenio vigente; si no, 404).
+ */
+@Controller('admin')
+@Roles(ROLES.ADMIN, ROLES.OPERATOR, ROLES.MERCHANT)
+export class AdminMenuController {
+  constructor(
+    private readonly getMenu: GetMenuAdminUseCase,
+    private readonly sections: ManageSectionsUseCase,
+    private readonly products: ManageProductsUseCase,
+    private readonly images: ManageProductImagesUseCase,
+    private readonly presenter: CatalogPresenter,
+  ) {}
 
   // ─────────────── Menú ───────────────
 
@@ -201,40 +248,5 @@ export class AdminCatalogController {
     @Param('fileId', ParseUUIDPipe) fileId: string,
   ) {
     await this.images.remove(principal, productId, fileId);
-  }
-
-  // ─────────────── Categorías (solo administrador) ───────────────
-
-  @Get('categories')
-  @RequirePermissions(CATEGORIES_MANAGE)
-  listCategories() {
-    return this.categories.list();
-  }
-
-  @Post('categories')
-  @RequirePermissions(CATEGORIES_MANAGE)
-  async createCategory(@CurrentPrincipal() principal: Principal, @Body() body: CategoryDto) {
-    return { id: await this.categories.create(principal, body) };
-  }
-
-  @Put('categories/order')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @RequirePermissions(CATEGORIES_MANAGE)
-  async reorderCategories(@Body() body: CategoryOrderDto) {
-    await this.categories.reorder(body.ids);
-  }
-
-  @Put('categories/:categoryId')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @RequirePermissions(CATEGORIES_MANAGE)
-  async updateCategory(@CurrentPrincipal() principal: Principal, @Param('categoryId', ParseIntPipe) id: number, @Body() body: CategoryDto) {
-    await this.categories.update(principal, id, body);
-  }
-
-  @Post('categories/:categoryId/active')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @RequirePermissions(CATEGORIES_MANAGE)
-  async categoryActive(@CurrentPrincipal() principal: Principal, @Param('categoryId', ParseIntPipe) id: number, @Body() body: CategoryActiveDto) {
-    await this.categories.setActive(principal, id, body.active);
   }
 }

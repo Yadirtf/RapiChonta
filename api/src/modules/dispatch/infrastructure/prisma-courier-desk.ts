@@ -229,7 +229,7 @@ export class PrismaCourierDesk extends CourierDesk {
         INSERT INTO order_status_history (order_id, from_status_id, to_status_id, source_id)
         SELECT ${claim.orderId}::uuid, ${offered}, initial.id, ${source}
         FROM order_statuses initial
-        WHERE initial.is_initial AND initial.deactivated_at IS NULL AND ${claim.statusId} = ${offered}
+        WHERE initial.code = ${DISPATCH_ORDER_STATUSES.WAITING} AND ${claim.statusId} = ${offered}
           AND NOT EXISTS (SELECT 1 FROM v_live_offers WHERE order_id = ${claim.orderId}::uuid)
           AND NOT EXISTS (SELECT 1 FROM order_assignments WHERE order_id = ${claim.orderId}::uuid AND released_at IS NULL)`;
       return returned > 0;

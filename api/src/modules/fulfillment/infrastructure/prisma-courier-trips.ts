@@ -14,8 +14,10 @@ import {
   PROOF_PURPOSE,
   PURCHASE_MOVEMENT,
   RECEIPT_PURPOSE,
+  TRIP_MODES,
   TRIP_SOURCES,
   TRIP_STATUSES,
+  TripModeCode,
   TripStatusCode,
 } from '../domain/fulfillment.codes';
 import { ADJUSTMENT_NOTICES, ADJUSTMENT_SETTINGS, DEFAULT_ADJUSTMENT_TIMEOUT_SECONDS, ReportedLine } from '../domain/adjustments';
@@ -75,6 +77,9 @@ export class PrismaCourierTrips extends CourierTrips {
         order_id: string;
         code: string;
         status: string;
+        fulfillment_mode: string;
+        merchant_ready_eta: Date | null;
+        merchant_ready_at: Date | null;
         reveals: boolean;
         last_change_at: Date;
         accepted_at: Date;
@@ -111,6 +116,7 @@ export class PrismaCourierTrips extends CourierTrips {
       }[]
     >`
       SELECT o.id AS order_id, o.code, s.code AS status, s.reveals_delivery_details AS reveals,
+             fm.code AS fulfillment_mode, mp.estimated_ready_at AS merchant_ready_eta, mp.ready_at AS merchant_ready_at,
              (SELECT max(h.occurred_at) FROM order_status_history h WHERE h.order_id = o.id) AS last_change_at,
              a.assigned_at AS accepted_at,
              e.name AS store_name, e.address_line AS store_address,
@@ -139,6 +145,8 @@ export class PrismaCourierTrips extends CourierTrips {
       FROM order_assignments a
       JOIN orders o ON o.id = a.order_id
       JOIN order_statuses s ON s.id = o.status_id
+      JOIN fulfillment_modes fm ON fm.id = o.fulfillment_mode_id
+      LEFT JOIN v_merchant_order_preparation mp ON mp.order_id = o.id
       JOIN establishments e ON e.id = o.establishment_id
       JOIN delivery_zone_fees f ON f.id = o.delivery_zone_fee_id
       JOIN delivery_zones z ON z.id = f.delivery_zone_id
@@ -172,6 +180,8 @@ export class PrismaCourierTrips extends CourierTrips {
       status: row.status,
       lastChangeAt: row.last_change_at,
       acceptedAt: row.accepted_at,
+      fulfillmentMode: row.fulfillment_mode,
+      merchant: row.merchant_ready_eta ? { estimatedReadyAt: row.merchant_ready_eta, readyAt: row.merchant_ready_at } : null,
       establishment: {
         name: row.store_name,
         addressLine: row.store_address,
@@ -240,22 +250,14 @@ export class PrismaCourierTrips extends CourierTrips {
 
   async registerPurchase(command: TripCommand & { amount: string; receiptFileId: string }): Promise<TripResult> {
     const purchase = await this.ids.of('cash_movement_types', PURCHASE_MOVEMENT);
-    return this.step(command, [TRIP_STATUSES.AT_ESTABLISHMENT], async (tx) => {
+    return this.step(command, [TRIP_STATUSES.AT_ESTABLISHMENT], TRIP_MODES.COURIER_PURCHASE, async (tx) => {
       const [receipt] = await tx.$queryRaw<{ usable: boolean }[]>`
         SELECT EXISTS (
           SELECT 1 FROM files f JOIN file_purposes p ON p.id = f.purpose_id AND p.code = ${RECEIPT_PURPOSE}
           WHERE f.id = ${command.receiptFileId}::uuid AND f.uploaded_by_user_id = ${command.courierUserId}::uuid
             AND NOT EXISTS (SELECT 1 FROM order_purchases op WHERE op.receipt_file_id = f.id)) AS usable`;
       if (!receipt.usable) throw new Refused('RECEIPT', TRIP_STATUSES.AT_ESTABLISHMENT);
-      // La caja del día (en la hora del municipio del local) o, si ese día ya se cerró, la siguiente abierta (E11).
-      const [box] = await tx.$queryRaw<{ id: string }[]>`
-        SELECT fn_courier_open_cash_box(${command.courierUserId}::uuid, (${command.occurredAt}::timestamptz AT TIME ZONE m.time_zone)::date) AS id
-        FROM orders o JOIN establishments e ON e.id = o.establishment_id JOIN municipalities m ON m.id = e.municipality_id
-        WHERE o.id = ${command.trip.orderId}::uuid`;
-      const [movement] = await tx.$queryRaw<{ id: string }[]>`
-        INSERT INTO cash_movements (cash_box_id, movement_type_id, amount, order_id, created_by_user_id)
-        VALUES (${box.id}::uuid, ${purchase}, ${command.amount}::numeric, ${command.trip.orderId}::uuid, ${command.courierUserId}::uuid)
-        RETURNING id`;
+      const movement = await this.payStore(tx, command, purchase, Prisma.sql`${command.amount}::numeric`);
       await tx.$executeRaw`
         INSERT INTO order_purchases (order_id, cash_movement_id, receipt_file_id)
         VALUES (${command.trip.orderId}::uuid, ${movement.id}::uuid, ${command.receiptFileId}::uuid)`;
@@ -269,7 +271,7 @@ export class PrismaCourierTrips extends CourierTrips {
    */
   async openAdjustment(command: TripCommand & { lines: readonly ReportedLine[] }): Promise<TripResult> {
     const items = command.lines.map((l) => l.orderItemId);
-    return this.step(command, [TRIP_STATUSES.AT_ESTABLISHMENT], async (tx, status) => {
+    return this.step(command, [TRIP_STATUSES.AT_ESTABLISHMENT], TRIP_MODES.COURIER_PURCHASE, async (tx, status) => {
       const [{ found }] = await tx.$queryRaw<{ found: number }[]>`
         SELECT count(*)::int AS found FROM v_order_lines
         WHERE order_id = ${command.trip.orderId}::uuid AND NOT is_removed AND order_item_id = ANY(${items}::uuid[])`;
@@ -297,14 +299,41 @@ export class PrismaCourierTrips extends CourierTrips {
     });
   }
 
-  /** Sale del local: nace el código de entrega que el cliente ve en su pedido. */
-  async markReady(command: TripCommand): Promise<TripResult> {
-    return this.step(command, [TRIP_STATUSES.PREPARING], async (tx) => {
-      await this.history(tx, command, TRIP_STATUSES.PREPARING, TRIP_STATUSES.ON_THE_WAY);
-      await tx.$executeRaw`
-        INSERT INTO order_delivery_codes (order_id, code) VALUES (${command.trip.orderId}::uuid, ${newDeliveryCode()})
-        ON CONFLICT (order_id) DO NOTHING`;
+  /**
+   * E15: recoge lo que preparó el comercio aliado. Le paga lo que vale el pedido según sus propios precios (los
+   * productos efectivos de v_order_amounts), en la caja del día, y sale con el código de entrega del cliente.
+   */
+  async pickUp(command: TripCommand): Promise<TripResult> {
+    const purchase = await this.ids.of('cash_movement_types', PURCHASE_MOVEMENT);
+    return this.step(command, [TRIP_STATUSES.AT_ESTABLISHMENT], TRIP_MODES.MERCHANT_DIRECT, async (tx) => {
+      await this.payStore(tx, command, purchase, Prisma.sql`(SELECT items_total FROM v_order_amounts WHERE order_id = ${command.trip.orderId}::uuid)`);
+      await this.leaveStore(tx, command, TRIP_STATUSES.AT_ESTABLISHMENT);
     });
+  }
+
+  async markReady(command: TripCommand): Promise<TripResult> {
+    return this.step(command, [TRIP_STATUSES.PREPARING], (tx) => this.leaveStore(tx, command, TRIP_STATUSES.PREPARING));
+  }
+
+  /** Sale del local: nace el código de entrega que el cliente ve en su pedido. */
+  private async leaveStore(tx: Tx, command: TripCommand, from: TripStatusCode): Promise<void> {
+    await this.history(tx, command, from, TRIP_STATUSES.ON_THE_WAY);
+    await tx.$executeRaw`
+      INSERT INTO order_delivery_codes (order_id, code) VALUES (${command.trip.orderId}::uuid, ${newDeliveryCode()})
+      ON CONFLICT (order_id) DO NOTHING`;
+  }
+
+  /** Lo pagado en el local: la caja del día (en la hora del municipio del local) o, si ya se cerró, la siguiente abierta (E11). */
+  private async payStore(tx: Tx, command: TripCommand, purchaseTypeId: number, amount: Prisma.Sql): Promise<{ id: string }> {
+    const [box] = await tx.$queryRaw<{ id: string }[]>`
+      SELECT fn_courier_open_cash_box(${command.courierUserId}::uuid, (${command.occurredAt}::timestamptz AT TIME ZONE m.time_zone)::date) AS id
+      FROM orders o JOIN establishments e ON e.id = o.establishment_id JOIN municipalities m ON m.id = e.municipality_id
+      WHERE o.id = ${command.trip.orderId}::uuid`;
+    const [movement] = await tx.$queryRaw<{ id: string }[]>`
+      INSERT INTO cash_movements (cash_box_id, movement_type_id, amount, order_id, created_by_user_id)
+      VALUES (${box.id}::uuid, ${purchaseTypeId}, ${amount}, ${command.trip.orderId}::uuid, ${command.courierUserId}::uuid)
+      RETURNING id`;
+    return movement;
   }
 
   async markArrived(command: TripCommand): Promise<TripResult> {
@@ -376,18 +405,24 @@ export class PrismaCourierTrips extends CourierTrips {
   private async step(
     command: TripCommand,
     expected: readonly TripStatusCode[],
-    work: (tx: Tx, status: string) => Promise<TripResult | void>,
+    modeOrWork: TripModeCode | ((tx: Tx, status: string) => Promise<TripResult | void>),
+    maybeWork?: (tx: Tx, status: string) => Promise<TripResult | void>,
   ): Promise<TripResult> {
+    // Los pasos del local dependen del modo (E15): la compra y la consulta solo en COURIER_PURCHASE, recoger en el directo.
+    const mode = typeof modeOrWork === 'string' ? modeOrWork : null;
+    const work = typeof modeOrWork === 'string' ? maybeWork! : modeOrWork;
     try {
       return await this.prisma.$transaction(async (tx) => {
-        const [current] = await tx.$queryRaw<{ status: string; mine: boolean }[]>`
-          SELECT s.code AS status,
+        const [current] = await tx.$queryRaw<{ status: string; mode: string; mine: boolean }[]>`
+          SELECT s.code AS status, fm.code AS mode,
                  EXISTS (SELECT 1 FROM order_assignments a WHERE a.order_id = o.id AND a.courier_user_id = ${command.courierUserId}::uuid
                          AND a.released_at IS NULL) AS mine
-          FROM orders o JOIN order_statuses s ON s.id = o.status_id
+          FROM orders o JOIN order_statuses s ON s.id = o.status_id JOIN fulfillment_modes fm ON fm.id = o.fulfillment_mode_id
           WHERE o.id = ${command.trip.orderId}::uuid
           FOR UPDATE OF o`;
-        if (!current?.mine || !(expected as readonly string[]).includes(current.status)) throw new Refused('STEP', current?.status ?? 'UNKNOWN');
+        if (!current?.mine || !(expected as readonly string[]).includes(current.status) || (mode && current.mode !== mode)) {
+          throw new Refused('STEP', current?.status ?? 'UNKNOWN');
+        }
         return (await work(tx, current.status)) ?? { ok: true };
       });
     } catch (error) {
