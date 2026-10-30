@@ -180,7 +180,21 @@
     "LAST_PAYMENT_METHOD": "At least one payment method must stay visible to customers.",
     "PAYMENT_ORDER_MISMATCH": "The list changed while you were sorting it. We reloaded it: try again.",
     "PAYMENT_METHOD_NOT_FOUND": "That payment method no longer exists.",
-    "PAYMENT_METHODS_GLOBAL_ONLY": "Only the general administrator can change payment methods."
+    "PAYMENT_METHODS_GLOBAL_ONLY": "Only the general administrator can change payment methods.",
+    "CASH_BOX_NOT_FOUND": "We couldn't find that cash box.",
+    "CASH_MOVEMENT_NOT_FOUND": "That entry is not in this box.",
+    "CASH_BOX_NO_BASE_MODE": "This courier works with own funds: no float.",
+    "CASH_BOX_ALREADY_OPENED": "Today's box already has its float.",
+    "CASH_BOX_CLOSED": "The box is closed: only adjustments are allowed.",
+    "CASH_BOX_COURIER_BUSY": "They have an order in progress: close the box once the delivery is done.",
+    "CASH_AMOUNT_INVALID": "Write an amount in pesos greater than zero.",
+    "CASH_PAYMENT_METHOD_INVALID": "That method is not used in the cash box.",
+    "CASH_PAYMENT_METHOD_REPEATED": "Each method goes only once.",
+    "CASH_TOO_MANY_METHODS": "Up to three methods.",
+    "CASH_ACCOUNT_REQUIRED": "The courier has no account registered for that method.",
+    "CASH_REVERSAL_INVALID": "That entry was already reversed or cannot be reversed.",
+    "CASH_DATE_INVALID": "Pick a day that has already passed.",
+    "COURIER_CASH_BOX_NOT_READY": "That courier's box isn't open today: hand over the float in Cash boxes."
   },
   "auth": {
     "signInTitle": "Sign in with your phone",
@@ -311,7 +325,8 @@
       "dispatch": "Dispatch",
       "audit": "Audit",
       "desk": "Live orders",
-      "payments": "Payment methods"
+      "payments": "Payment methods",
+      "cash": "Cash boxes"
     },
     "viewSite": "View site",
     "signOut": "Sign out",
@@ -1570,7 +1585,9 @@
     "roadTitle": "{count, plural, one {# order on the way} other {# orders on the way}}",
     "withCourier": "With {name} for {time}",
     "prepDelayed": "Prep running late",
-    "paid": "Paid {amount} at the store"
+    "paid": "Paid {amount} at the store",
+    "noCashBox": "No cash box",
+    "noCashBoxHint": "Their mode needs a float and today's box isn't open. Tap to go to Cash boxes."
   },
   "audit": {
     "eyebrow": "Logbook",
@@ -1872,5 +1889,132 @@
     "previewTitle": "What customers see",
     "previewStep": "How will you pay on delivery?",
     "previewHint": "Upload each method's logo (PNG or JPG, ideally square on a white background). Without one, the icon is used."
+  },
+  "cash": {
+    "eyebrow": "Daily cash count",
+    "title": "Today's cash boxes",
+    "subtitle": "Each courier's money in {municipality}: the float, what they pay at stores, what they collect and what they hand in at closing.",
+    "yourMunicipality": "your municipality",
+    "dayLabel": "Cash day",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "summaryLabel": "Day summary",
+    "summaryDue": "To receive",
+    "summaryBases": "Floats handed out",
+    "summaryPending": "Open boxes",
+    "summaryAwaiting": "Waiting for float",
+    "emptyTitle": "Nobody worked this day",
+    "emptyBody": "Verified couriers of the municipality show up here, plus anyone who moved money that day.",
+    "pickDayTitle": "See another day",
+    "pickDayLabel": "Cash day",
+    "close": "Close",
+    "mode": {
+      "CASH_BOX": "With float",
+      "OWN_FUNDS": "Own funds",
+      "NONE": "No mode"
+    },
+    "busy": "On a trip",
+    "look": {
+      "awaitingBase": "No float",
+      "open": "Open",
+      "closed": "Closed",
+      "idle": "No activity"
+    },
+    "awaitingBody": "Works with a RapiChonta float: no orders until you hand it over.",
+    "giveBase": "Hand over float",
+    "openLedger": "Open {name}'s ledger",
+    "leftAfterClose": "Difference at closing",
+    "owedToCourier": "We owe them",
+    "mustDeliver": "Must hand in",
+    "miniBase": "Float",
+    "miniCollected": "Collected",
+    "miniOrders": "Orders",
+    "idleBody": "No money moved yet this day.",
+    "call": "Call",
+    "ledgerTitle": "Day ledger",
+    "closedBy": "Closed by {name}",
+    "adjust": "Adjustment",
+    "closeBox": "Count and close",
+    "accountTitle": "The day's account",
+    "types": {
+      "OPENING": {
+        "label": "Float handed out"
+      },
+      "PURCHASE": {
+        "label": "Store purchases"
+      },
+      "COLLECTION": {
+        "label": "Customer payments"
+      },
+      "RETURN": {
+        "label": "Handed in to RapiChonta"
+      },
+      "ADJUSTMENT_IN": {
+        "label": "Adjustment for RapiChonta"
+      },
+      "ADJUSTMENT_OUT": {
+        "label": "Adjustment for the courier"
+      }
+    },
+    "times": "{count, plural, one {# time} other {# times}}",
+    "feesLine": "Their delivery fees",
+    "ordersCount": "{count, plural, one {# order} other {# orders}}",
+    "commissionsLine": "RapiChonta commission",
+    "formulaBase": "Float + commissions − handed in. Fees belong to the courier; if the store charged less than what they collected for the products, that difference is handed in too.",
+    "formulaOwn": "Commissions − handed in. They work with their own money: purchases and collections cancel out and fees are theirs.",
+    "uncollectedTitle": "{count, plural, one {# delivery without a recorded payment} other {# deliveries without a recorded payment}}",
+    "uncollectedBody": "They don't count in this box until the courier records the payment in the app.",
+    "reversalOf": "Reversal",
+    "reverse": "Reverse",
+    "ledgerEmpty": "No entries yet.",
+    "ordersTitle": "Orders in this box",
+    "orderFeeLine": "Fee {fee} · commission {commission}",
+    "orderNotCounted": "Cancelled after payment: no fee or commission",
+    "orderExpected": "Should have collected {amount}",
+    "baseDone": "{amount} float handed to {name}. They can take orders now.",
+    "baseTitle": "Float for {name}",
+    "baseBody": "It goes into today's ledger with your signature.",
+    "amountLabel": "Amount in pesos",
+    "amountInvalid": "Write an amount like 100.000",
+    "methodLabel": "How you hand it over",
+    "baseAccountHint": "It goes to the account the courier registered for that method.",
+    "noteOptional": "Note (optional)",
+    "baseConfirm": "Hand over {amount}",
+    "adjustDone": "Adjustment signed in the ledger.",
+    "reverseTitle": "Reverse an entry",
+    "adjustTitle": "Signed adjustment",
+    "adjustBody": "Corrects {name}'s box. Nothing is deleted: the adjustment stays in the ledger with your name.",
+    "reverseHint": "The same amount is recorded in the opposite direction.",
+    "directionLabel": "In whose favor",
+    "direction": {
+      "IN": {
+        "label": "For RapiChonta",
+        "hint": "Raises what they must hand in"
+      },
+      "OUT": {
+        "label": "For the courier",
+        "hint": "Lowers what they must hand in"
+      }
+    },
+    "noteRequired": "Why",
+    "noteSigned": "It is signed in the audit log.",
+    "adjustClosedHint": "This box is already closed: the adjustment changes that day's difference.",
+    "adjustConfirm": "Sign adjustment",
+    "closeDone": {
+      "even": "{name}'s box closed. It balanced.",
+      "short": "{name}'s box closed {amount} short.",
+      "over": "{name}'s box closed {amount} over."
+    },
+    "closeTitle": "Count and close",
+    "closeUncollected": "{count, plural, one {There is # delivery without a recorded payment: it is not in this account.} other {There are # deliveries without a recorded payment: they are not in this account.}}",
+    "receivedLabel": "What they hand in, by method",
+    "gap": {
+      "even": "Balanced",
+      "short": "{amount} short",
+      "over": "{amount} over"
+    },
+    "closeNoteRequired": "Note on the difference",
+    "closeNoteHint": "With a difference, the closing needs an explanation.",
+    "closeConfirm": "Close the box"
   }
 }

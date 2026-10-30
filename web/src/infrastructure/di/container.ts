@@ -4,6 +4,7 @@ import { HttpAccountRepository } from "../repositories/http-account-repository";
 import { HttpAdminRepository } from "../repositories/http-admin-repository";
 import { HttpAuthRepository } from "../repositories/http-auth-repository";
 import { HttpBusinessAdminRepository, HttpBusinessPublicRepository } from "../repositories/http-business-repository";
+import { HttpCashRepository } from "../repositories/http-cash-repository";
 import { HttpDeskRepository } from "../repositories/http-desk-repository";
 import { HttpDispatchRepository } from "../repositories/http-dispatch-repository";
 import { HttpCatalogAdminRepository } from "../repositories/http-catalog-admin-repository";
@@ -26,4 +27,5 @@ export const container = {
   orders: new HttpOrderRepository(),
   dispatch: new HttpDispatchRepository(),
   desk: new HttpDeskRepository(),
+  cash: new HttpCashRepository(),
 };

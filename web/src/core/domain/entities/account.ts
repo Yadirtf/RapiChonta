@@ -24,6 +24,8 @@ export const PERMISSIONS = {
   CANCEL_ORDERS: "orders.cancel",
   REVIEW_DELIVERIES: "deliveries.review",
   RESOLVE_INCIDENTS: "incidents.resolve",
+  MANAGE_CASH: "cash.manage",
+  ADJUST_CASH: "cash.adjust",
 } as const;
 
 export interface LegalDocumentVersion {

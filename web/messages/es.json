@@ -180,7 +180,21 @@
     "LAST_PAYMENT_METHOD": "Debe quedar al menos un medio de pago visible para los clientes.",
     "PAYMENT_ORDER_MISMATCH": "La lista de medios cambió mientras la ordenabas. Ya la recargamos: intenta de nuevo.",
     "PAYMENT_METHOD_NOT_FOUND": "Ese medio de pago ya no existe.",
-    "PAYMENT_METHODS_GLOBAL_ONLY": "Solo el administrador general cambia los medios de pago."
+    "PAYMENT_METHODS_GLOBAL_ONLY": "Solo el administrador general cambia los medios de pago.",
+    "CASH_BOX_NOT_FOUND": "No encontramos esa caja.",
+    "CASH_MOVEMENT_NOT_FOUND": "Ese movimiento no es de esta caja.",
+    "CASH_BOX_NO_BASE_MODE": "Este domiciliario trabaja con fondos propios: no lleva base.",
+    "CASH_BOX_ALREADY_OPENED": "La caja de hoy ya tiene su base.",
+    "CASH_BOX_CLOSED": "La caja ya está cerrada: solo admite ajustes.",
+    "CASH_BOX_COURIER_BUSY": "Tiene un pedido en curso: cierra la caja cuando termine la entrega.",
+    "CASH_AMOUNT_INVALID": "Escribe un valor en pesos mayor que cero.",
+    "CASH_PAYMENT_METHOD_INVALID": "Ese medio no se usa en la caja.",
+    "CASH_PAYMENT_METHOD_REPEATED": "Cada medio va una sola vez.",
+    "CASH_TOO_MANY_METHODS": "Máximo tres medios.",
+    "CASH_ACCOUNT_REQUIRED": "El domiciliario no tiene registrada una cuenta para ese medio.",
+    "CASH_REVERSAL_INVALID": "Ese movimiento ya se anuló o no se puede anular.",
+    "CASH_DATE_INVALID": "Elige un día que ya haya pasado.",
+    "COURIER_CASH_BOX_NOT_READY": "Ese domiciliario no tiene la caja de hoy abierta: entrégale la base en Cajas."
   },
   "auth": {
     "signInTitle": "Entra con tu celular",
@@ -311,7 +325,8 @@
       "dispatch": "Despacho",
       "audit": "Auditoría",
       "desk": "Pedidos en curso",
-      "payments": "Medios de pago"
+      "payments": "Medios de pago",
+      "cash": "Cajas del día"
     },
     "viewSite": "Ver el sitio",
     "signOut": "Cerrar sesión",
@@ -1570,7 +1585,9 @@
     "roadTitle": "{count, plural, one {# pedido en camino} other {# pedidos en camino}}",
     "withCourier": "Con {name} desde hace {time}",
     "prepDelayed": "Preparación retrasada",
-    "paid": "Pagó {amount} en el local"
+    "paid": "Pagó {amount} en el local",
+    "noCashBox": "Sin caja",
+    "noCashBoxHint": "Su modo exige base y la caja de hoy no está abierta. Toca para ir a Cajas."
   },
   "audit": {
     "eyebrow": "Bitácora",
@@ -1872,5 +1889,132 @@
     "previewTitle": "Así lo ve el cliente",
     "previewStep": "¿Cómo pagas al recibir?",
     "previewHint": "Sube el logo de cada medio (PNG o JPG, mejor cuadrado y con fondo blanco). Sin imagen se usa el ícono."
+  },
+  "cash": {
+    "eyebrow": "Arqueo diario",
+    "title": "Cajas del día",
+    "subtitle": "El dinero de cada domiciliario en {municipality}: la base, lo que paga en los locales, lo que cobra y lo que entrega al cerrar.",
+    "yourMunicipality": "tu municipio",
+    "dayLabel": "Día de caja",
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "summaryLabel": "Resumen del día",
+    "summaryDue": "Por recibir",
+    "summaryBases": "Bases entregadas",
+    "summaryPending": "Cajas abiertas",
+    "summaryAwaiting": "Esperan base",
+    "emptyTitle": "Nadie trabajó este día",
+    "emptyBody": "Aquí aparecen los domiciliarios verificados del municipio y cualquiera que haya movido dinero ese día.",
+    "pickDayTitle": "Ver otro día",
+    "pickDayLabel": "Día de caja",
+    "close": "Cerrar",
+    "mode": {
+      "CASH_BOX": "Con base",
+      "OWN_FUNDS": "Fondos propios",
+      "NONE": "Sin modo"
+    },
+    "busy": "En ruta",
+    "look": {
+      "awaitingBase": "Sin base",
+      "open": "Abierta",
+      "closed": "Cerrada",
+      "idle": "Sin movimiento"
+    },
+    "awaitingBody": "Trabaja con base de RapiChonta: hasta que se la entregues no recibe pedidos.",
+    "giveBase": "Entregar base",
+    "openLedger": "Abrir la libreta de {name}",
+    "leftAfterClose": "Diferencia al cierre",
+    "owedToCourier": "Le debemos",
+    "mustDeliver": "Debe entregar",
+    "miniBase": "Base",
+    "miniCollected": "Cobrado",
+    "miniOrders": "Pedidos",
+    "idleBody": "Todavía no ha movido dinero este día.",
+    "call": "Llamar",
+    "ledgerTitle": "Libreta del día",
+    "closedBy": "Cerrada por {name}",
+    "adjust": "Ajuste",
+    "closeBox": "Hacer el arqueo",
+    "accountTitle": "La cuenta del día",
+    "types": {
+      "OPENING": {
+        "label": "Base entregada"
+      },
+      "PURCHASE": {
+        "label": "Compras en locales"
+      },
+      "COLLECTION": {
+        "label": "Cobros a clientes"
+      },
+      "RETURN": {
+        "label": "Entregado a RapiChonta"
+      },
+      "ADJUSTMENT_IN": {
+        "label": "Ajuste a favor de RapiChonta"
+      },
+      "ADJUSTMENT_OUT": {
+        "label": "Ajuste a favor del domiciliario"
+      }
+    },
+    "times": "{count, plural, one {# vez} other {# veces}}",
+    "feesLine": "Tarifas de sus domicilios",
+    "ordersCount": "{count, plural, one {# pedido} other {# pedidos}}",
+    "commissionsLine": "Comisión de RapiChonta",
+    "formulaBase": "Base + comisiones − lo entregado. Las tarifas son del domiciliario; si pagó menos en el local de lo que cobró por los productos, esa diferencia también se entrega.",
+    "formulaOwn": "Comisiones − lo entregado. Trabaja con su dinero: las compras y los cobros se compensan y las tarifas son suyas.",
+    "uncollectedTitle": "{count, plural, one {# entrega sin cobro registrado} other {# entregas sin cobro registrado}}",
+    "uncollectedBody": "No suman a esta caja hasta que el domiciliario registre el cobro en la app.",
+    "reversalOf": "Anulación",
+    "reverse": "Anular",
+    "ledgerEmpty": "Sin movimientos todavía.",
+    "ordersTitle": "Pedidos de esta caja",
+    "orderFeeLine": "Tarifa {fee} · comisión {commission}",
+    "orderNotCounted": "Cancelado después del cobro: no deja tarifa ni comisión",
+    "orderExpected": "Debía cobrar {amount}",
+    "baseDone": "Base de {amount} entregada a {name}. Ya puede recibir pedidos.",
+    "baseTitle": "Base para {name}",
+    "baseBody": "Queda en la libreta de hoy con tu firma.",
+    "amountLabel": "Valor en pesos",
+    "amountInvalid": "Escribe un valor como 100.000",
+    "methodLabel": "Cómo se la entregas",
+    "baseAccountHint": "Va a la cuenta que el domiciliario registró para ese medio.",
+    "noteOptional": "Nota (opcional)",
+    "baseConfirm": "Entregar {amount}",
+    "adjustDone": "Ajuste firmado en la libreta.",
+    "reverseTitle": "Anular un movimiento",
+    "adjustTitle": "Ajuste firmado",
+    "adjustBody": "Corrige la caja de {name}. Nada se borra: el ajuste queda en la libreta con tu nombre.",
+    "reverseHint": "Se registra el mismo valor en sentido contrario.",
+    "directionLabel": "A favor de quién",
+    "direction": {
+      "IN": {
+        "label": "A favor de RapiChonta",
+        "hint": "Sube lo que debe entregar"
+      },
+      "OUT": {
+        "label": "A favor del domiciliario",
+        "hint": "Baja lo que debe entregar"
+      }
+    },
+    "noteRequired": "Por qué",
+    "noteSigned": "Queda firmada en la auditoría.",
+    "adjustClosedHint": "La caja ya está cerrada: el ajuste cambia la diferencia de ese día.",
+    "adjustConfirm": "Firmar ajuste",
+    "closeDone": {
+      "even": "Caja de {name} cerrada. Cuadró.",
+      "short": "Caja de {name} cerrada con un faltante de {amount}.",
+      "over": "Caja de {name} cerrada con un sobrante de {amount}."
+    },
+    "closeTitle": "Arqueo y cierre",
+    "closeUncollected": "{count, plural, one {Hay # entrega sin cobro registrado: no está en esta cuenta.} other {Hay # entregas sin cobro registrado: no están en esta cuenta.}}",
+    "receivedLabel": "Lo que entrega, por medio",
+    "gap": {
+      "even": "Cuadra",
+      "short": "Faltan {amount}",
+      "over": "Sobran {amount}"
+    },
+    "closeNoteRequired": "Nota de la diferencia",
+    "closeNoteHint": "Con diferencia, el cierre lleva la explicación.",
+    "closeConfirm": "Cerrar la caja"
   }
 }
