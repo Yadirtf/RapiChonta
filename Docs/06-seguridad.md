@@ -63,4 +63,5 @@ El lanzamiento es en Colombia, así que aplica la **Ley 1581 de 2012** (habeas d
 - Ningún secreto en el repositorio: solo `.env.example`. En SnapDeploy, variables de entorno del contenedor (`JWT_SECRET` se genera con `openssl rand -hex 32`); nunca secretos en variables `NEXT_PUBLIC_*`.
 - HTTPS en todos los servicios (SnapDeploy lo da por defecto; la conexión a Neon exige `sslmode=require`).
 - Copias de seguridad diarias de la base de datos en producción (Neon guarda historial de restauración; para producción, plan pago o complemento de base de datos de SnapDeploy con copias diarias).
+- Copia manual desde el panel (H12.5): el administrador global genera un `pg_dump` completo, cifrado con una frase que escribe en el momento, y lo descarga a su computador; el servidor no guarda el archivo y cada copia queda en el historial y en la auditoría.
 - Dependencias revisadas con Dependabot y `npm audit` en CI.

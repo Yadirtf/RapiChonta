@@ -824,6 +824,24 @@ epicas:
           - "Hay un guion de prueba con los caminos principales: pedido normal, producto faltante, no lo recibí, entrega con foto, oferta vencida."
           - "Cada camino se ejecuta en el entorno de pruebas con los 2 domiciliarios y los resultados quedan en el issue."
           - "Las cajas del día de prueba cierran sin diferencias."
+      - id: H12.5
+        titulo: Copias de seguridad manuales desde el panel
+        como: administrador
+        quiero: "generar y descargar desde el panel una copia de seguridad de la base de datos cuando lo necesite"
+        para: "guardar los datos reales del piloto en mi computador y poder restaurarlos o migrar a otro proveedor"
+        areas: [api, web, docs]
+        prioridad: alta
+        requerimientos: [RF-84, RNF-07]
+        criterios:
+          - "En el panel hay una sección Copias de seguridad visible solo para el administrador global, con el botón Generar copia."
+          - "La copia es un pg_dump completo en formato personalizado (incluye PostGIS y, con FILE_STORAGE=database, las fotos) que se restaura con pg_restore en cualquier PostgreSQL con PostGIS."
+          - "El archivo se cifra con una frase que el administrador escribe al generarlo; sin esa frase no se puede abrir y la frase no se guarda en el servidor."
+          - "Antes de generar, el panel pide de nuevo la contraseña del administrador y advierte que el archivo contiene datos personales (Ley 1581)."
+          - "El archivo se descarga directo al navegador y no queda guardado en el servidor; si los archivos están en S3/R2, se ofrece aparte un .zip con ellos."
+          - "Cada copia queda en un historial con quién la generó, cuándo, tamaño, huella SHA-256 y estado (catálogo de estados), y en la auditoría."
+          - "Se limita a una copia cada 10 minutos y una copia en curso a la vez."
+          - "El paso a paso para restaurar una copia y verificarla queda en Docs/08; restaurar no se hace desde el panel."
+        notas: "La versión de pg_dump de la imagen Docker debe coincidir con la de PostgreSQL del servidor. Más adelante se puede programar la misma copia de forma automática (por ejemplo, a Google Drive)."
 
   # ═══════════════════════════ FASES 3 a 5 ═══════════════════════════
   - id: E13

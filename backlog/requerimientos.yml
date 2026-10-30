@@ -162,6 +162,9 @@ RF-82:
 RF-83:
   texto: "El panel de métricas muestra tiempo hasta aceptación, tiempo de entrega y desvío frente a la preparación estimada, retrasos por local, producto faltante, incidencias y pedidos recurrentes."
   fuente: Docs/01-vision-y-alcance.md
+RF-84:
+  texto: "El administrador genera y descarga desde el panel una copia de seguridad cifrada de toda la base de datos, restaurable con pg_restore en cualquier PostgreSQL con PostGIS, y cada copia queda registrada en un historial."
+  fuente: Docs/06-seguridad.md
 RF-90:
   texto: "El cliente paga en línea dentro de la app (PSE, Nequi, Daviplata) mediante una pasarela como Wompi o Mercado Pago."
   fuente: Docs/07-roadmap.md
