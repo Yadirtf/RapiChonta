@@ -124,6 +124,7 @@ Este documento se genera desde [`backlog/requerimientos.yml`](../backlog/requeri
 | H12.2 · Distribuir la app a los domiciliarios | Como domiciliario, quiero instalar la app desde una prueba cerrada | app, infra | alta | RF-80, RF-34 |
 | H12.3 · Términos, política de datos y textos de permisos | Como equipo de RapiChonta, quiero publicar términos de intermediación, política de datos y los textos de permisos | docs, web, app | media | RF-07, RF-80 |
 | H12.4 · Prueba de punta a punta del piloto | Como equipo de RapiChonta, quiero ensayar pedidos completos antes de abrir a clientes | docs | alta | RF-22, RF-32, RF-60, RF-72 |
+| H12.5 · Copias de seguridad manuales desde el panel | Como administrador, quiero generar y descargar desde el panel una copia de seguridad de la base de datos cuando lo necesite | api, web, docs | alta | RF-84, RNF-07 |
 
 ### Fase 3 · Publicación y tiempo real
 
@@ -209,6 +210,7 @@ Este documento se genera desde [`backlog/requerimientos.yml`](../backlog/requeri
 | RF-81 | Las pantallas de cliente, domiciliario y operador se actualizan al instante con WebSockets (Socket.IO) y Redis. | [07-roadmap](07-roadmap.md) | H13.2 |
 | RF-82 | El cliente repite un pedido anterior en un toque y guarda establecimientos favoritos. | [07-roadmap](07-roadmap.md) | H13.3 |
 | RF-83 | El panel de métricas muestra tiempo hasta aceptación, tiempo de entrega y desvío frente a la preparación estimada, retrasos por local, producto faltante, incidencias y pedidos recurrentes. | [01-vision-y-alcance](01-vision-y-alcance.md) | H13.4 |
+| RF-84 | El administrador genera y descarga desde el panel una copia de seguridad cifrada de toda la base de datos, restaurable con pg_restore en cualquier PostgreSQL con PostGIS, y cada copia queda registrada en un historial. | [06-seguridad](06-seguridad.md) | H12.5 |
 | RF-90 | El cliente paga en línea dentro de la app (PSE, Nequi, Daviplata) mediante una pasarela como Wompi o Mercado Pago. | [07-roadmap](07-roadmap.md) | H14.1 |
 | RF-91 | El cliente califica al domiciliario y al establecimiento después de cada pedido entregado. | [07-roadmap](07-roadmap.md) | H14.2 |
 | RF-92 | El administrador crea cupones y promociones con reglas de uso. | [07-roadmap](07-roadmap.md) | H14.3 |
@@ -228,7 +230,7 @@ Este documento se genera desde [`backlog/requerimientos.yml`](../backlog/requeri
 | RNF-04 | Accesibilidad: contraste AA, botones de mínimo 48 px y textos que escalan con la configuración del sistema. | [05-flujos-y-ux](05-flujos-y-ux.md) | H02.4, H09.1, H10.1 |
 | RNF-05 | El dinero se guarda en Decimal(12,2) en pesos colombianos, nunca en float. | [04-modelo-de-datos](04-modelo-de-datos.md) | H02.2, H03.1, H04.1, H04.3, H08.4, H11.1, H14.1 |
 | RNF-06 | La ubicación del domiciliario nunca se envía al cliente, se valida en el servidor con varias lecturas y su historial se borra a los 30 días. | [06-seguridad](06-seguridad.md) | H07.2, H08.1, H08.3, H08.6 |
-| RNF-07 | Las acciones de operadores y administradores (asignar, cancelar, resolver, ajustar caja) quedan en un registro de auditoría con quién y cuándo. | [06-seguridad](06-seguridad.md) | H03.3, H07.5, H10.5, H11.1 |
+| RNF-07 | Las acciones de operadores y administradores (asignar, cancelar, resolver, ajustar caja) quedan en un registro de auditoría con quién y cuándo. | [06-seguridad](06-seguridad.md) | H03.3, H07.5, H10.5, H11.1, H12.5 |
 | RNF-08 | Las fotos (productos, facturas, entregas) se suben con URL firmada y vencimiento, validando tipo y tamaño. | [06-seguridad](06-seguridad.md) | H02.3, H08.4, H10.4 |
 | RNF-09 | Cada PR ejecuta en GitHub Actions lint, pruebas y build de los proyectos que toca; main y develop están protegidas y solo reciben cambios por PR con CI en verde. | [09-convenciones](09-convenciones.md) | H05.1, H05.3 |
 | RNF-10 | Los errores de los tres proyectos se reportan a Sentry y la API escribe logs estructurados. | [10-aspectos-adicionales](10-aspectos-adicionales.md) | H05.4 |
