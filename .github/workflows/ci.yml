@@ -158,6 +158,9 @@ jobs:
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
+        env:
+          # La acción sube un artefacto .dockerbuild por run (90 días por defecto); con 3 basta para depurar.
+          DOCKER_BUILD_RECORD_RETENTION_DAYS: 3
 
   ci:
     name: CI
