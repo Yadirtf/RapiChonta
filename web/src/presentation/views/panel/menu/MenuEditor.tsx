@@ -4,7 +4,7 @@ import { AnimatePresence, Reorder, useDragControls } from "framer-motion";
 import { Archive, ChevronDown, CookingPot, GripVertical, ImageOff, Pencil, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
-import type { AdminMenu, AdminProduct, AdminSection, CatalogOptions } from "@/core/domain/entities/catalog-admin";
+import type { AdminMenu, AdminProduct, AdminSection, MenuLimits } from "@/core/domain/entities/catalog-admin";
 import type { Translations } from "@/core/domain/entities/establishment";
 import { container } from "@/infrastructure/di/container";
 import { Alert } from "../../../components/ui/Alert";
@@ -17,7 +17,8 @@ import { SectionDialog } from "./SectionDialog";
 
 interface Props {
   establishmentId: string;
-  options: CatalogOptions;
+  /** Tiempo de preparación e imágenes por producto: el panel los toma de sus opciones y el portal del comercio de las suyas. */
+  limits: MenuLimits;
   /** Avisa que cambió el conteo de productos (el encabezado del local lo muestra). */
   onChanged: () => void;
 }
@@ -28,7 +29,7 @@ type Editing = { productId?: string; sectionId?: string } | null;
  * Pizarra del menú (H02.2): secciones y productos en el orden en que el cliente los verá, con arrastrar
  * para ordenar y un interruptor "Hay / Agotado" que se usa varias veces al día.
  */
-export function MenuEditor({ establishmentId, options, onChanged }: Props) {
+export function MenuEditor({ establishmentId, limits, onChanged }: Props) {
   const t = useTranslations("menuEditor");
   const errorMessage = useErrorMessage();
   const menu = useResource(() => container.catalogAdmin.menu(establishmentId), [establishmentId]);
@@ -172,7 +173,7 @@ export function MenuEditor({ establishmentId, options, onChanged }: Props) {
         sections={sections}
         product={editingProduct}
         defaultSectionId={editing?.sectionId}
-        limits={options.limits}
+        limits={limits}
         onClose={() => setEditing(null)}
         onSaved={async (productId, { created, newVersion }) => {
           await refresh();

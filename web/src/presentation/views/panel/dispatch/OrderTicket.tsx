@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Clock, Megaphone, MapPin, ShoppingBag, UserRound } from "lucide-react";
+import { Clock, Megaphone, MapPin, ShoppingBag, Store, UserRound } from "lucide-react";
 import { createElement } from "react";
 import { useTranslations } from "next-intl";
 import { elapsed, needsAttention, soonestOffer, waitTone, type DispatchOrder } from "@/core/domain/entities/dispatch";
@@ -63,6 +63,17 @@ export function OrderTicket({ order, now, selected, onSelect }: { order: Dispatc
         </div>
       )}
 
+      {order.fulfillmentMode === "MERCHANT_DIRECT" && (
+        <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-leaf/10 px-2.5 py-1 text-[11px] font-extrabold text-leaf">
+          <Store className="size-3.5" aria-hidden />
+          {order.merchant?.readyAt
+            ? t("directReady")
+            : order.merchant
+              ? t("directReadyAt", { time: new Date(order.merchant.estimatedReadyAt) })
+              : t("direct")}
+        </p>
+      )}
+
       <dl className="mt-3 grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1.5 text-[13px]">
         <MapPin className="size-4 text-chonta-strong" aria-hidden />
         <dd className="truncate text-ink/75">
@@ -71,7 +82,9 @@ export function OrderTicket({ order, now, selected, onSelect }: { order: Dispatc
         </dd>
         <ShoppingBag className="size-4 text-ink/50" aria-hidden />
         <dd className="text-ink/75">
-          {t("toBuy", { count: order.itemCount })} <b className="font-extrabold text-ink">{price(order.itemsTotal)}</b>
+          {/* E15: en el pedido directo el domiciliario recoge lo que preparó el comercio (y le paga al recogerlo). */}
+          {order.fulfillmentMode === "MERCHANT_DIRECT" ? t("toPickUp", { count: order.itemCount }) : t("toBuy", { count: order.itemCount })}{" "}
+          <b className="font-extrabold text-ink">{price(order.itemsTotal)}</b>
           <span className="text-ink/45"> · {t("fee")} {price(order.deliveryFee)}</span>
         </dd>
         {createElement(paymentIcon(order.paymentMethod), { className: "size-4 text-ink/50", "aria-hidden": true })}

@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { can, fullName, isStaffSession, PERMISSIONS, STAFF_ROLES, type Account } from "@/core/domain/entities/account";
+import { can, fullName, isMerchantSession, isStaffSession, PERMISSIONS, STAFF_ROLES, type Account } from "@/core/domain/entities/account";
 import { container } from "@/infrastructure/di/container";
 import { useAuth } from "../../auth/AuthProvider";
 import { Alert } from "../../components/ui/Alert";
@@ -46,9 +46,11 @@ export function PanelShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (status === "anonymous") router.replace(`/panel/ingresar?next=${encodeURIComponent(pathname)}`);
-  }, [status, pathname, router]);
+    // El comercio aliado tiene su propio mostrador (E15).
+    if (status === "authenticated" && isMerchantSession(account)) router.replace("/comercio");
+  }, [status, account, pathname, router]);
 
-  if (status !== "authenticated" || !account) {
+  if (status !== "authenticated" || !account || isMerchantSession(account)) {
     return (
       <div className="grid min-h-dvh place-items-center bg-surface" aria-busy>
         <Loader2 className="size-6 animate-spin text-ink/40" aria-hidden />

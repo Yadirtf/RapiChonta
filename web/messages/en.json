@@ -194,7 +194,22 @@
     "CASH_ACCOUNT_REQUIRED": "The courier has no account registered for that method.",
     "CASH_REVERSAL_INVALID": "That entry was already reversed or cannot be reversed.",
     "CASH_DATE_INVALID": "Pick a day that has already passed.",
-    "COURIER_CASH_BOX_NOT_READY": "That courier's box isn't open today: hand over the float in Cash boxes."
+    "COURIER_CASH_BOX_NOT_READY": "That courier's box isn't open today: hand over the float in Cash boxes.",
+    "STORE_NOT_FOUND": "You don't run that store, or its agreement with RapiChonta ended.",
+    "STORE_ORDER_NOT_FOUND": "That order isn't from your store.",
+    "STORE_ORDER_STEP_NOT_ALLOWED": "That order already changed (it was cancelled or answered). Check the counter.",
+    "PREPARATION_MINUTES_INVALID": "Preparation time goes from 1 to 240 minutes.",
+    "DECLINE_REASON_INVALID": "Choose why you can't take the order.",
+    "MENU_EMPTY": "Turn on at least one product in your menu before opening.",
+    "STORE_STATUS_NOT_ALLOWED": "RapiChonta makes that change to the store. Write to us if you need it.",
+    "PARTNERSHIP_ACTIVE": "This store already has a current or scheduled agreement.",
+    "PARTNERSHIP_NOT_FOUND": "This store has no open agreement.",
+    "PARTNERSHIP_DATES_INVALID": "Check the dates: the agreement starts today or later and ends after it starts.",
+    "PARTNERSHIP_REQUIRED": "Sign the agreement first: without it the store has no portal.",
+    "MERCHANT_PERSON_REQUIRED": "That number has no store account. Fill in name, ID and password.",
+    "STORE_STAFF_EXISTS": "That person already runs this store.",
+    "STORE_STAFF_NOT_FOUND": "That person no longer runs this store.",
+    "FULFILLMENT_MODE_UNAVAILABLE": "That kind of order is no longer available at this store. Choose another."
   },
   "auth": {
     "signInTitle": "Sign in with your phone",
@@ -293,7 +308,8 @@
     "CUSTOMER": "Customer",
     "COURIER": "Courier",
     "OPERATOR": "Operator",
-    "ADMIN": "Administrator"
+    "ADMIN": "Administrator",
+    "MERCHANT": "Partner store"
   },
   "panelSignIn": {
     "title": "Staff sign in",
@@ -822,7 +838,8 @@
       "goToMenu": "Go to menu",
       "stepPublish": "Tap “Publish” above",
       "stepReopen": "Tap “Open” above to show it again"
-    }
+    },
+    "tabPartner": "Partner store"
   },
   "menuEditor": {
     "eyebrow": "Menu board",
@@ -1234,7 +1251,21 @@
     "missingRecipientPhone": "Enter a 10-digit mobile number starting with 3",
     "cashExactNote": "Paying the exact amount",
     "storeClosed": "This store is not taking orders",
-    "outsideDistance": "Coverage starts {distance} from this point."
+    "outsideDistance": "Coverage starts {distance} from this point.",
+    "stepHow": "How do you want your order?",
+    "mode": {
+      "label": "How your order gets to you",
+      "partner": "Partner",
+      "samePrice": "Same price and same delivery fee. You pay on delivery, as always.",
+      "MERCHANT_DIRECT": {
+        "title": "Straight from {store}",
+        "body": "{store} gets your order, prepares it and a RapiChonta courier picks it up."
+      },
+      "COURIER_PURCHASE": {
+        "title": "RapiChonta buys it for you",
+        "body": "A courier goes to {store}, buys your things with a receipt and brings them."
+      }
+    }
   },
   "payment": {
     "CASH": "Cash",
@@ -1290,6 +1321,26 @@
     "OFFERED": {
       "label": "Offered",
       "body": "We let nearby couriers know."
+    },
+    "AWAITING_MERCHANT": {
+      "label": "Waiting for the store",
+      "body": "The store is looking at your order. As soon as it accepts, we find a courier."
+    },
+    "byMode": {
+      "MERCHANT_DIRECT": {
+        "PENDING_ASSIGNMENT": {
+          "label": "The store is preparing it",
+          "body": "The store accepted your order and is preparing it. We're finding a courier to pick it up."
+        },
+        "ACCEPTED": {
+          "label": "Courier assigned",
+          "body": "They're heading to the store to pick up your order."
+        },
+        "AT_ESTABLISHMENT": {
+          "label": "Picking up at the store",
+          "body": "The courier is picking up your order."
+        }
+      }
     }
   },
   "orders": {
@@ -1373,7 +1424,10 @@
       "ESTABLISHMENT_CLOSED": "The store was closed",
       "ALL_ITEMS_UNAVAILABLE": "None of the products were available",
       "CUSTOMER_UNREACHABLE": "We couldn't reach you",
-      "INCIDENT_RESOLUTION": "We settled it while reviewing your case"
+      "INCIDENT_RESOLUTION": "We settled it while reviewing your case",
+      "MERCHANT_OUT_OF_STOCK": "The store ran out of something in your order",
+      "MERCHANT_TOO_BUSY": "The store had too many orders",
+      "MERCHANT_CLOSING": "The store was about to close"
     },
     "case": {
       "tab": "Case {code}",
@@ -1398,7 +1452,9 @@
       },
       "now": "now",
       "contact": "If we need anything else we'll call the number on your account. Keep your phone at hand."
-    }
+    },
+    "merchantReadyAround": "{store} will have it ready around {time}",
+    "merchantReady": "{store} has it ready"
   },
   "adjustments": {
     "kicker": "Your courier is asking",
@@ -1587,7 +1643,11 @@
     "prepDelayed": "Prep running late",
     "paid": "Paid {amount} at the store",
     "noCashBox": "No cash box",
-    "noCashBoxHint": "Their mode needs a float and today's box isn't open. Tap to go to Cash boxes."
+    "noCashBoxHint": "Their mode needs a float and today's box isn't open. Tap to go to Cash boxes.",
+    "toPickUp": "{count, plural, one {Pick up 1 product} other {Pick up # products}}, pay the store",
+    "direct": "Direct order",
+    "directReadyAt": "Direct · ready around {time, time, short}",
+    "directReady": "Direct · the store has it ready"
   },
   "audit": {
     "eyebrow": "Logbook",
@@ -1727,6 +1787,10 @@
       "COLLECTION_MISMATCH": {
         "short": "Collection doesn't match",
         "body": "What was collected differs from the order total. Check with the courier before closing the cash box."
+      },
+      "MERCHANT_SILENT": {
+        "short": "Store not answering",
+        "body": "The partner store hasn't accepted or declined the order. Call them; if they can't, cancel it with the reason."
       }
     },
     "customer": "Customer",
@@ -2016,5 +2080,143 @@
     "closeNoteRequired": "Note on the difference",
     "closeNoteHint": "With a difference, the closing needs an explanation.",
     "closeConfirm": "Close the box"
+  },
+  "merchant": {
+    "metaTitle": "My store",
+    "eyebrow": "Partner store",
+    "pickStore": "Choose store",
+    "partnerSince": "{municipality} · RapiChonta partner since {date, date, long}",
+    "bellOn": "Bell on: it rings with every new order",
+    "bellOff": "Bell off: tap it to hear new orders",
+    "signOut": "Sign out",
+    "sections": "Portal sections",
+    "tabs": {
+      "counter": "Counter",
+      "menu": "My menu"
+    },
+    "footer": "Your direct orders arrive here. RapiChonta brings the courier.",
+    "noStoreTitle": "Your portal is closed",
+    "noStoreBody": "There is no current agreement with your store yet, or RapiChonta hasn't given you access. Once it starts, your orders will arrive at this counter.",
+    "door": {
+      "open": "Open",
+      "paused": "Paused",
+      "closed": "Closed",
+      "tapToPause": "tap to pause",
+      "tapToOpen": "tap to open",
+      "byRapiChonta": "managed by RapiChonta",
+      "pauseHint": "Pause: customers can't order until you open again",
+      "openHint": "Open: customers see your menu again and can order",
+      "lockedHint": "RapiChonta publishes or retires the store"
+    },
+    "counter": {
+      "documentTitle": "Counter · {store}",
+      "pausedNotice": "Your store is paused: no new orders come in. Flip the door sign to open.",
+      "lanes": {
+        "INCOMING": "To accept",
+        "PREPARING": "On the stove",
+        "READY": "Ready for pickup"
+      },
+      "hints": {
+        "INCOMING": "Answer soon: the customer is waiting",
+        "PREPARING": "The time you promised, and who is coming",
+        "READY": "Packed, waiting for the courier"
+      },
+      "empty": {
+        "INCOMING": "No new orders",
+        "PREPARING": "Nothing being prepared",
+        "READY": "Nothing waiting for a courier"
+      },
+      "emptyTitle": "Counter is clear",
+      "emptyBody": "When a customer orders from you directly, the ticket shows up here and the bell rings.",
+      "emptyPausedTitle": "Store paused",
+      "emptyPausedBody": "Customers see your store as closed for now. Flip the door sign when you want orders."
+    },
+    "ticket": {
+      "for": "For {name}",
+      "waitingTitle": "Time waiting for your answer",
+      "courierPays": "The courier pays you at pickup",
+      "howLong": "How long will it take?",
+      "menuTime": "menu",
+      "otherMinutes": "Other time, in minutes",
+      "decline": "Can't",
+      "accept": "Accept · {minutes} min",
+      "markReady": "Ready for pickup",
+      "readyStamp": "Ready",
+      "readyShort": "ready",
+      "left": "{minutes} min left",
+      "late": "{minutes} min late",
+      "promiseTitle": "You promised {minutes} minutes",
+      "call": "Call",
+      "courier": {
+        "SEARCHING": "RapiChonta is finding a courier",
+        "COMING": "{name} is on the way",
+        "HERE": "{name} is at the store"
+      }
+    },
+    "decline": {
+      "title": "Don't take {code}",
+      "body": "The customer is told you couldn't take it, with no charge.",
+      "reason": "Reason",
+      "notes": "Comment (optional)",
+      "cancel": "Back",
+      "confirm": "Don't take the order"
+    },
+    "declineReasons": {
+      "MERCHANT_OUT_OF_STOCK": "I ran out of something in the order",
+      "MERCHANT_TOO_BUSY": "I'm too busy right now",
+      "MERCHANT_CLOSING": "I'm about to close"
+    },
+    "closed": {
+      "title": "What left in the last {hours} hours",
+      "summary": "{count, plural, =0 {No orders picked up} one {1 order picked up} other {# orders picked up}} · {total} in products",
+      "PICKED_UP": "Picked up",
+      "DECLINED": "Not taken",
+      "CANCELLED": "Cancelled"
+    }
+  },
+  "partnership": {
+    "title": "Partner store agreement",
+    "currentLead": "Active: customers can order directly from this store.",
+    "upcomingLead": "Signed: it starts on the agreed date.",
+    "noneLead": "No agreement: RapiChonta buys at this store for the customer.",
+    "point1": "The customer chooses: direct order to the store or RapiChonta buys it.",
+    "point2": "The store gets its orders in its portal, says how long it takes and marks it ready.",
+    "point3": "The RapiChonta courier picks it up and pays for the products at pickup.",
+    "startOn": "Starts on",
+    "agreementUpload": "Upload photo of the signed agreement",
+    "agreementHint": "Photo of the signed agreement (optional, only the admin sees it).",
+    "agreementReady": "Photo ready: it is saved when you sign.",
+    "agreementAlt": "Signed agreement",
+    "signAction": "Sign agreement",
+    "signedNotice": "Agreement signed. Give portal access to whoever runs the store.",
+    "stampCurrent": "Partner",
+    "stampUpcoming": "Upcoming",
+    "since": "Partner since {date, date, long}",
+    "startsOn": "Starts on {date, date, long}",
+    "until": "until {date, date, long}",
+    "signedBy": "Recorded by {name} on {at}",
+    "endOn": "Ends on",
+    "endHint": "From that day the portal closes and RapiChonta buys at the store again. Orders in progress continue.",
+    "cancelHint": "The agreement hasn't started: it is cancelled with no effect.",
+    "endAction": "End agreement",
+    "cancelAction": "Cancel agreement",
+    "endedNotice": "Done: the agreement ends on that date.",
+    "back": "Back",
+    "history": "{count, plural, one {1 previous agreement} other {# previous agreements}}",
+    "pastRange": "From {from, date, medium} to {to, date, medium}",
+    "membersTitle": "Portal access",
+    "membersLead": "Who gets the orders and runs the store menu at rapichonta /comercio.",
+    "noMembers": "Nobody runs the portal yet.",
+    "membersNeedAgreement": "Sign the agreement to give portal access.",
+    "memberPhone": "Mobile of whoever runs the store",
+    "newAccount": "That number has no store account: fill in their details and hand them the password in person.",
+    "grant": "Give access",
+    "createAndGrant": "Create account and give access",
+    "portalHint": "They sign in with their mobile and password through the panel sign-in; the site takes them to their counter.",
+    "memberAdded": "Access granted.",
+    "memberRevoked": "Access removed.",
+    "revoke": "Remove access",
+    "lastSignIn": "signed in {at}",
+    "neverSignedIn": "hasn't signed in yet"
   }
 }

@@ -1,5 +1,5 @@
 /** Códigos de rol del catálogo `roles` (la API los verifica al arrancar). */
-export type RoleCode = "CUSTOMER" | "COURIER" | "OPERATOR" | "ADMIN";
+export type RoleCode = "CUSTOMER" | "COURIER" | "OPERATOR" | "ADMIN" | "MERCHANT";
 export type UserStatusCode = "ACTIVE" | "SUSPENDED" | "DEACTIVATED" | "CLOSED";
 export type LegalDocumentType = "TERMS_OF_SERVICE" | "DATA_PROCESSING_POLICY" | "COURIER_LOCATION_AUTHORIZATION";
 
@@ -26,6 +26,10 @@ export const PERMISSIONS = {
   RESOLVE_INCIDENTS: "incidents.resolve",
   MANAGE_CASH: "cash.manage",
   ADJUST_CASH: "cash.adjust",
+  // E15: el comercio aliado en su portal, y el administrador con sus convenios.
+  RESPOND_STORE_ORDERS: "store.respond_orders",
+  MANAGE_STORE_STATUS: "store.manage_status",
+  MANAGE_PARTNERS: "partners.manage",
 } as const;
 
 export interface LegalDocumentVersion {
@@ -55,6 +59,9 @@ export const fullName = (a: { givenNames: string; familyNames: string | null }) 
 export const can = (account: Account | null, permission: string) => !!account?.permissions.includes(permission);
 
 export const isStaffSession = (account: Account | null) => !!account && STAFF_ROLES.includes(account.activeRole);
+
+/** E15: quien atiende un comercio aliado entra con contraseña, como el personal, pero su lugar es /comercio. */
+export const isMerchantSession = (account: Account | null) => account?.activeRole === "MERCHANT";
 
 /** Requiere contraseña: personal y domiciliarios (roles.requires_password). */
 export const usesPassword = (account: Account) => account.roles.some((r) => r !== "CUSTOMER");

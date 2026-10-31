@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { MAX_PRODUCT_IMAGES } from '../../catalog/application/admin/menu.use-cases';
+import { PREP_MINUTES } from '../../catalog/domain/value-objects/price';
 import { Principal } from '../../identity/domain/principal';
 import { Notifier } from '../../notifications/application/notifier';
 import { OrderCode } from '../../orders/domain/value-objects/order-code';
@@ -26,7 +28,13 @@ export class MerchantPortalUseCase {
   }
 
   async options() {
-    return { declineReasons: await this.desk.declineReasons(), preparationMinutes: PREPARATION_MINUTES, closedWindowHours: CLOSED_WINDOW_HOURS };
+    return {
+      declineReasons: await this.desk.declineReasons(),
+      preparationMinutes: PREPARATION_MINUTES,
+      closedWindowHours: CLOSED_WINDOW_HOURS,
+      // Los mismos límites del editor del menú en el panel.
+      menuLimits: { prepMinutes: PREP_MINUTES, productImages: MAX_PRODUCT_IMAGES },
+    };
   }
 
   /** El mostrador: cada pedido con su columna y el tiempo sugerido para aceptarlo, lo más urgente primero. */

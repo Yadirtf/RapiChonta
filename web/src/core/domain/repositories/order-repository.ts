@@ -2,6 +2,7 @@ import type {
   AdjustmentDecision,
   CheckoutItem,
   DeliveryChoice,
+  FulfillmentMode,
   MyOrdersPage,
   OrderDetail,
   OrderQuote,
@@ -23,6 +24,8 @@ export interface PlaceOrderInput {
   notes: string | null;
   /** UUID por intento de compra: reintentar no crea un segundo pedido. */
   clientRequestId: string;
+  /** E15: directo al comercio aliado o compra por RapiChonta (sin él, la compra de siempre). */
+  fulfillmentMode?: FulfillmentMode;
 }
 
 /** Puerto del cliente para pedir y seguir sus pedidos (E04). */

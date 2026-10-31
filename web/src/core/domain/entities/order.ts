@@ -20,6 +20,7 @@ export interface AdminPaymentOption extends PaymentOption {
 
 /** Estados que puede ver el cliente. La lista y su orden vienen de la API (`journey`); aquí solo se nombran. */
 export type OrderStatusCode =
+  | "AWAITING_MERCHANT"
   | "PENDING_ASSIGNMENT"
   | "ACCEPTED"
   | "AT_ESTABLISHMENT"
@@ -32,6 +33,13 @@ export type OrderStatusCode =
   | "DELIVERED"
   | "CANCELLED"
   | (string & {});
+
+/**
+ * E15: cómo se surte el pedido. En un comercio aliado el cliente elige: directo (el comercio lo prepara y el
+ * domiciliario lo recoge) o la compra de siempre (el domiciliario compra por él).
+ */
+export type FulfillmentMode = "MERCHANT_DIRECT" | "COURIER_PURCHASE" | (string & {});
+export const DEFAULT_FULFILLMENT_MODE: FulfillmentMode = "COURIER_PURCHASE";
 
 export interface SavedAddress {
   id: string;
@@ -67,6 +75,8 @@ export interface CheckoutItem {
 
 export interface OrderQuote {
   establishment: { id: string; name: string };
+  /** E15: modos que ofrece el local; el primero es el que se sugiere. */
+  fulfillmentModes: FulfillmentMode[];
   lines: { productId: string; productVersionId: string; name: string; unitPrice: string; quantity: number; subtotal: string }[];
   itemsTotal: string;
   deliveryFee: string;
@@ -86,6 +96,7 @@ export interface OrderSummary {
   active: boolean;
   itemCount: number;
   total: string;
+  fulfillmentMode: FulfillmentMode;
 }
 
 export interface OrderDetail extends OrderSummary {
@@ -103,6 +114,8 @@ export interface OrderDetail extends OrderSummary {
   journey: OrderStatusCode[];
   /** Mientras se prepara (E08): la hora estimada y si el domiciliario avisó retraso (alta demanda). */
   preparation: OrderPreparation | null;
+  /** Pedido directo (E15): cuándo lo aceptó el comercio, a qué hora dijo que estaría y si ya lo marcó listo. */
+  merchant: { acceptedAt: string; estimatedReadyAt: string; readyAt: string | null } | null;
   /** Lo que pagó el domiciliario en el local, con la factura (URL firmada, vence sola). */
   purchase: OrderPurchase | null;
   /** Cierre de la entrega (E10): el código mientras va en camino, y la foto si el domiciliario lo dejó sin código. */
@@ -216,6 +229,8 @@ export interface MyOrdersPage {
   nextBefore: string | null;
   /** Hitos del recorrido normal, para la barra de avance de los activos. */
   journey: OrderStatusCode[];
+  /** E15: el recorrido de cada modo (el directo espera al comercio y no pasa por la compra). */
+  journeys?: Record<string, OrderStatusCode[]>;
 }
 
 export type RouteStop =

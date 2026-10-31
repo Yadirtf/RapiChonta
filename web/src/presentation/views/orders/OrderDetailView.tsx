@@ -22,6 +22,7 @@ import { DeliveryCodePass, LeftWithPhoto } from "../../components/orders/Deliver
 import { IncidentCase } from "../../components/orders/IncidentCase";
 import { HighDemandNote, ReceiptButton } from "../../components/orders/PurchaseReceipt";
 import { StatusBadge } from "../../components/orders/StatusBadge";
+import { useStatusText } from "../../components/orders/useStatusText";
 import { Alert } from "../../components/ui/Alert";
 import { Button } from "../../components/ui/Button";
 import { formatPhone } from "../../format";
@@ -158,7 +159,8 @@ function PlacedBanner({ code }: { code: string }) {
 
 function StatusTicket({ order }: { order: OrderDetail }) {
   const t = useTranslations("orders");
-  const ts = useTranslations("orderStatus");
+  const text = useStatusText(order.fulfillmentMode);
+  const body = text(order.status, "body");
   const when = useOrderDate();
   const time = useOrderTime();
   return (
@@ -177,8 +179,8 @@ function StatusTicket({ order }: { order: OrderDetail }) {
           <span className="shrink-0 rounded-lg bg-white/10 px-2 py-1 font-mono text-sm font-bold tracking-wider text-brand">{order.code}</span>
         </div>
         <div className="mt-5">
-          <StatusBadge status={order.status} className="!px-3 !py-1.5 !text-sm" />
-          {ts.has(`${order.status}.body`) && <p className="mt-2.5 text-[15px] text-white/80">{ts(`${order.status}.body`)}</p>}
+          <StatusBadge status={order.status} mode={order.fulfillmentMode} className="!px-3 !py-1.5 !text-sm" />
+          {body && <p className="mt-2.5 text-[15px] text-white/80">{body}</p>}
           {order.status === "CANCELLED" && order.cancellationReason && (
             <p className="mt-3 inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 text-sm">
               <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/55">{t("cancelledBecause")}</span>
@@ -197,7 +199,14 @@ function StatusTicket({ order }: { order: OrderDetail }) {
         ) : (
           <span>{t("items", { count: order.itemCount })}</span>
         )}
-        {order.status === "PREPARING" && order.preparation ? (
+        {order.merchant && order.active && !order.merchant.readyAt && ["PENDING_ASSIGNMENT", "ACCEPTED", "AT_ESTABLISHMENT"].includes(order.status) ? (
+          // Pedido directo (E15): la hora que prometió el comercio al aceptarlo.
+          <span className="flex items-center gap-1">
+            <Clock3 className="size-3.5" aria-hidden /> {t("merchantReadyAround", { store: order.establishment.name, time: time(order.merchant.estimatedReadyAt) })}
+          </span>
+        ) : order.merchant?.readyAt && order.active && order.status !== "ON_THE_WAY" && order.status !== "ARRIVING" ? (
+          <span className="flex items-center gap-1 font-semibold text-brand">{t("merchantReady", { store: order.establishment.name })}</span>
+        ) : order.status === "PREPARING" && order.preparation ? (
           <span className="flex items-center gap-3">
             <PrepCountdown preparation={order.preparation} />
             <span className="hidden text-white/45 sm:inline">{t("readyAround", { time: time(order.preparation.estimatedReadyAt) })}</span>

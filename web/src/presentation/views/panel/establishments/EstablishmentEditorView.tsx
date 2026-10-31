@@ -1,12 +1,14 @@
 "use client";
 
-import { ArrowLeft, ClipboardList, ExternalLink, MapPinned, Store } from "lucide-react";
+import { ArrowLeft, ClipboardList, ExternalLink, Handshake, MapPinned, Store } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import { can, PERMISSIONS } from "@/core/domain/entities/account";
 import type { AdminEstablishment } from "@/core/domain/entities/catalog-admin";
 import { container } from "@/infrastructure/di/container";
+import { useAuth } from "../../../auth/AuthProvider";
 import { CategoryIcon } from "../../../components/catalog/CategoryIcon";
 import { EstablishmentStatusSign, STATUS_LOOK } from "../../../components/catalog/EstablishmentStatus";
 import { Alert } from "../../../components/ui/Alert";
@@ -16,11 +18,12 @@ import { useResource } from "../../../hooks/useResource";
 import { MenuEditor } from "../menu/MenuEditor";
 import { EstablishmentForm } from "./EstablishmentForm";
 import { MapVisibilityNotice } from "./MapVisibilityNotice";
+import { PartnershipPanel } from "./PartnershipPanel";
 import { StatusControl } from "./StatusControl";
 
-type Tab = "place" | "menu";
+type Tab = "place" | "menu" | "partner";
 
-/** H02.1 + H02.2: un local en dos pestañas, "Local y área" y "Menú", con su estado arriba. */
+/** H02.1 + H02.2: un local en pestañas, "Local y área" y "Menú" (y, para el administrador, "Comercio aliado", E15), con su estado arriba. */
 export function EstablishmentEditorView({ id }: { id?: string }) {
   const t = useTranslations("establishmentEditor");
   const router = useRouter();
@@ -28,6 +31,8 @@ export function EstablishmentEditorView({ id }: { id?: string }) {
   const options = useCatalogOptions();
   const establishment = useResource<AdminEstablishment | null>(() => (id ? container.catalogAdmin.establishment(id) : Promise.resolve(null)), [id]);
   const [tab, setTab] = useState<Tab>("place");
+  const { account } = useAuth();
+  const managesPartners = can(account, PERMISSIONS.MANAGE_PARTNERS);
 
   // Recién creado, el local llega con #menu: el siguiente paso natural es cargar productos.
   useEffect(() => {
@@ -91,6 +96,7 @@ export function EstablishmentEditorView({ id }: { id?: string }) {
               <nav className="flex items-center gap-1 border-t border-ink/5 px-3" role="tablist" aria-label={t("tabs")}>
                 <TabButton active={tab === "place"} onClick={() => setTab("place")} icon={<MapPinned className="size-4" />} label={t("tabPlace")} />
                 <TabButton active={tab === "menu"} onClick={() => setTab("menu")} icon={<ClipboardList className="size-4" />} label={t("tabMenu")} />
+                {managesPartners && <TabButton active={tab === "partner"} onClick={() => setTab("partner")} icon={<Handshake className="size-4" />} label={t("tabPartner")} />}
                 {data.status === "ACTIVE" && (
                   <Link href={`/local/${data.id}`} target="_blank" className="ml-auto inline-flex items-center gap-1.5 px-3 text-sm font-semibold text-ink/55 hover:text-ink">
                     {t("viewAsCustomer")} <ExternalLink className="size-3.5" aria-hidden />
@@ -112,8 +118,10 @@ export function EstablishmentEditorView({ id }: { id?: string }) {
                 else establishment.setData(saved);
               }}
             />
+          ) : tab === "partner" ? (
+            <PartnershipPanel establishmentId={data.id} />
           ) : (
-            <MenuEditor establishmentId={data.id} options={options.data} onChanged={() => void establishment.reload()} />
+            <MenuEditor establishmentId={data.id} limits={options.data.limits} onChanged={() => void establishment.reload()} />
           )}
         </>
       )}

@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { applyCheckoutCorrections, checkoutItems, type Cart } from "@/core/domain/entities/cart";
 import { toCents } from "@/core/domain/entities/money";
-import type { OrderQuote } from "@/core/domain/entities/order";
+import { DEFAULT_FULFILLMENT_MODE, type FulfillmentMode, type OrderQuote } from "@/core/domain/entities/order";
 import { container } from "@/infrastructure/di/container";
 import { isApiError, type ApiError } from "@/infrastructure/http/api-client";
 import { useAuth } from "../../auth/AuthProvider";
@@ -25,6 +25,7 @@ import { CheckoutReceipt } from "./CheckoutReceipt";
 import { DeliveryStep, type ZoneState } from "./DeliveryStep";
 import { PaymentStep } from "./PaymentStep";
 import { RecipientStep } from "./RecipientStep";
+import { ModeStep } from "./ModeStep";
 import { StepCard } from "./StepCard";
 
 const STEP_OF: Record<DraftProblem, number> = { point: 1, reference: 1, recipient: 2, payment: 3 };
@@ -83,6 +84,7 @@ function Checkout({ cart }: { cart: Cart }) {
 
   const [draft, setDraft] = useState<CheckoutDraft | null>(null);
   const [quote, setQuote] = useState<OrderQuote | null>(null);
+  const [mode, setMode] = useState<FulfillmentMode | null>(null);
   const [zone, setZone] = useState<ZoneState>({ kind: "idle" });
   const [quoteError, setQuoteError] = useState<unknown>(null);
   const [notice, setNotice] = useState<{ removed: string[]; repriced: string[] } | null>(null);
@@ -150,6 +152,12 @@ function Checkout({ cart }: { cart: Cart }) {
     };
   }, [quoteKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // E15: el modo elegido mientras el local lo ofrezca; si no, el que sugiere la API (el primero).
+  const modes = quote?.fulfillmentModes ?? [];
+  const fulfillmentMode = mode && modes.includes(mode) ? mode : (modes[0] ?? DEFAULT_FULFILLMENT_MODE);
+  const choosesMode = modes.length > 1;
+  const offset = choosesMode ? 1 : 0;
+
   const totalCents = quote && zone.kind === "zone" ? toCents(quote.total) : null;
   const closed = opening?.tone === "closed" || store.data?.acceptsOrders === false;
   const blocked = closed || zone.kind !== "zone" || !quote || !!quote.newCustomerLimit?.exceeded;
@@ -161,7 +169,7 @@ function Checkout({ cart }: { cart: Cart }) {
     if (!draft || blocked) return;
     setShowErrors(true);
     if (problems.length) {
-      document.getElementById(`step-${STEP_OF[problems[0]]}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document.getElementById(`step-${STEP_OF[problems[0]] + offset}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
     setPlacing(true);
@@ -176,6 +184,7 @@ function Checkout({ cart }: { cart: Cart }) {
           paymentMethod: draft.payment!,
           notes: courierNotes(draft, (paysWith) => (paysWith === "exact" ? t("cashExactNote") : t("cashNote", { amount: money.cents(paysWith) }))),
           clientRequestId: clientRequestId.current,
+          fulfillmentMode,
         },
         locale,
       );
@@ -215,13 +224,18 @@ function Checkout({ cart }: { cart: Cart }) {
                 {notice.repriced.length > 0 && <p>{t("repriced", { names: notice.repriced.join(", ") })}</p>}
               </Alert>
             )}
-            <StepCard number={1} title={t("stepWhere")} done={!problems.includes("point") && !problems.includes("reference") && zone.kind === "zone"}>
+            {choosesMode && (
+              <StepCard number={1} title={t("stepHow")} done>
+                <ModeStep modes={modes} value={fulfillmentMode} store={quote!.establishment.name} onChange={setMode} />
+              </StepCard>
+            )}
+            <StepCard number={1 + offset} title={t("stepWhere")} done={!problems.includes("point") && !problems.includes("reference") && zone.kind === "zone"}>
               <DeliveryStep draft={draft} onChange={patch} addresses={book.data![0]} last={book.data![3]} zone={zone} store={store.data?.location} showErrors={showErrors} />
             </StepCard>
-            <StepCard number={2} title={t("stepWho")} done={!problems.includes("recipient")}>
+            <StepCard number={2 + offset} title={t("stepWho")} done={!problems.includes("recipient")}>
               <RecipientStep draft={draft} onChange={patch} recipients={book.data![1]} myPhone={account?.phone ?? null} showErrors={showErrors} />
             </StepCard>
-            <StepCard number={3} title={t("stepPay")} done={!!draft.payment}>
+            <StepCard number={3 + offset} title={t("stepPay")} done={!!draft.payment}>
               <PaymentStep draft={draft} onChange={patch} methods={book.data![2]} totalCents={totalCents} showErrors={showErrors} />
             </StepCard>
           </div>
