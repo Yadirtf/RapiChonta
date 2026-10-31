@@ -35,7 +35,7 @@ class PushTap {
   String get route => switch (type) {
         'ORDER_OFFERED' || 'OFFER_WITHDRAWN' => '/turno',
         _ when forCourier && type.startsWith('INCIDENT_') => '/turno',
-        'PREPARATION_TIME_REACHED' || 'ADJUSTMENT_RESOLVED' when orderCode != null => '/turno/pedido/$orderCode',
+        'PREPARATION_TIME_REACHED' || 'ADJUSTMENT_RESOLVED' || 'MERCHANT_ORDER_READY' when orderCode != null => '/turno/pedido/$orderCode',
         'TRIP_CANCELLED' when orderCode != null => '/turno/pedido/$orderCode?cancelado=1',
         _ when orderCode != null => '/pedidos/$orderCode',
         _ => '/avisos',
@@ -43,7 +43,8 @@ class PushTap {
 
   /// Aviso del lado del domiciliario (refresca su turno, no los pedidos del cliente).
   bool get forCourier =>
-      const {'ORDER_OFFERED', 'OFFER_WITHDRAWN', 'PREPARATION_TIME_REACHED', 'ADJUSTMENT_RESOLVED', 'TRIP_CANCELLED', 'INCIDENT_OPENED'}.contains(type) ||
+      const {'ORDER_OFFERED', 'OFFER_WITHDRAWN', 'PREPARATION_TIME_REACHED', 'ADJUSTMENT_RESOLVED', 'TRIP_CANCELLED', 'INCIDENT_OPENED', 'MERCHANT_ORDER_READY'}
+          .contains(type) ||
       audience == 'COURIER';
 
   static PushTap? fromData(Map<dynamic, dynamic>? data) {

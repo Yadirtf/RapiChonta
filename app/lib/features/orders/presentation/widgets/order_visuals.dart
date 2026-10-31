@@ -11,6 +11,7 @@ import '../../domain/entities/order.dart';
 enum StatusTone { attention, done, off, progress }
 
 IconData statusIcon(String status) => switch (status) {
+      'AWAITING_MERCHANT' => Icons.soup_kitchen_outlined,
       'PENDING_ASSIGNMENT' => Icons.search_rounded,
       'ACCEPTED' => Icons.how_to_reg_rounded,
       'AT_ESTABLISHMENT' => Icons.storefront_rounded,
@@ -39,7 +40,15 @@ StatusTone statusTone(String status) => switch (status) {
       StatusTone.progress => (background: AppColors.brand, foreground: AppColors.ink),
     };
 
-String statusLabel(AppLocalizations l10n, String status) => switch (status) {
+/// En el pedido directo (E15) algunos hitos se cuentan distinto: el local prepara y el domiciliario recoge.
+String statusLabel(AppLocalizations l10n, String status, {String? mode}) => switch ((status, mode)) {
+      ('PENDING_ASSIGNMENT', directFulfillmentMode) => l10n.statusDirectPendingAssignmentLabel,
+      ('AT_ESTABLISHMENT', directFulfillmentMode) => l10n.statusDirectAtEstablishmentLabel,
+      _ => _statusLabel(l10n, status),
+    };
+
+String _statusLabel(AppLocalizations l10n, String status) => switch (status) {
+      'AWAITING_MERCHANT' => l10n.statusAwaitingMerchantLabel,
       'PENDING_ASSIGNMENT' => l10n.statusPendingAssignmentLabel,
       'ACCEPTED' => l10n.statusAcceptedLabel,
       'AT_ESTABLISHMENT' => l10n.statusAtEstablishmentLabel,
@@ -54,7 +63,15 @@ String statusLabel(AppLocalizations l10n, String status) => switch (status) {
       _ => status,
     };
 
-String? statusBody(AppLocalizations l10n, String status) => switch (status) {
+String? statusBody(AppLocalizations l10n, String status, {String? mode}) => switch ((status, mode)) {
+      ('PENDING_ASSIGNMENT', directFulfillmentMode) => l10n.statusDirectPendingAssignmentBody,
+      ('ACCEPTED', directFulfillmentMode) => l10n.statusDirectAcceptedBody,
+      ('AT_ESTABLISHMENT', directFulfillmentMode) => l10n.statusDirectAtEstablishmentBody,
+      _ => _statusBody(l10n, status),
+    };
+
+String? _statusBody(AppLocalizations l10n, String status) => switch (status) {
+      'AWAITING_MERCHANT' => l10n.statusAwaitingMerchantBody,
       'PENDING_ASSIGNMENT' => l10n.statusPendingAssignmentBody,
       'ACCEPTED' => l10n.statusAcceptedBody,
       'AT_ESTABLISHMENT' => l10n.statusAtEstablishmentBody,
@@ -122,6 +139,9 @@ String paymentLabel(AppLocalizations l10n, String method) => switch (method) {
 String cancelReasonText(AppLocalizations l10n, String reason) => switch (reason) {
       'CUSTOMER_REQUEST' => l10n.cancelReasonCustomerRequest,
       'NO_COURIER_AVAILABLE' => l10n.cancelReasonNoCourier,
+      'MERCHANT_OUT_OF_STOCK' => l10n.cancelReasonMerchantOutOfStock,
+      'MERCHANT_TOO_BUSY' => l10n.cancelReasonMerchantTooBusy,
+      'MERCHANT_CLOSING' => l10n.cancelReasonMerchantClosing,
       'ESTABLISHMENT_CLOSED' => l10n.cancelReasonStoreClosed,
       'ALL_ITEMS_UNAVAILABLE' => l10n.cancelReasonAllUnavailable,
       'CUSTOMER_UNREACHABLE' => l10n.cancelReasonUnreachable,
@@ -131,10 +151,13 @@ String cancelReasonText(AppLocalizations l10n, String reason) => switch (reason)
 
 /// Estado en lenguaje claro ("Buscando domiciliario", "En camino") en una píldora del tono del estado.
 class StatusBadge extends StatelessWidget {
-  const StatusBadge({super.key, required this.status, this.large = false});
+  const StatusBadge({super.key, required this.status, this.large = false, this.mode});
 
   final String status;
   final bool large;
+
+  /// Modo del pedido (E15): el directo nombra algunos hitos a su manera.
+  final String? mode;
 
   @override
   Widget build(BuildContext context) {
@@ -149,7 +172,7 @@ class StatusBadge extends StatelessWidget {
           const SizedBox(width: 6),
           Flexible(
             child: Text(
-              statusLabel(AppLocalizations.of(context), status),
+              statusLabel(AppLocalizations.of(context), status, mode: mode),
               overflow: TextOverflow.ellipsis,
               style: TextStyle(color: colors.foreground, fontWeight: FontWeight.w800, fontSize: large ? 14 : 12),
             ),

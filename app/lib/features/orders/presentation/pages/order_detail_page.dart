@@ -437,7 +437,8 @@ class _StatusTicket extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final language = Localizations.localeOf(context).languageCode;
-    final body = statusBody(l10n, order.status);
+    final body = statusBody(l10n, order.status, mode: order.fulfillmentMode);
+    final merchant = order.active ? order.merchant : null;
     return ClipPath(
       clipper: const TicketClipper(notchAt: 0.72),
       child: Container(
@@ -465,7 +466,7 @@ class _StatusTicket extends StatelessWidget {
                 ),
               ]),
               const SizedBox(height: 16),
-              StatusBadge(status: order.status, large: true),
+              StatusBadge(status: order.status, large: true, mode: order.fulfillmentMode),
               if (body != null) ...[const SizedBox(height: 10), Text(body, style: const TextStyle(color: Colors.white70, fontSize: 15))],
             ]),
           ),
@@ -480,7 +481,19 @@ class _StatusTicket extends StatelessWidget {
               ] else
                 Text(l10n.ordersItems(order.itemCount), style: const TextStyle(color: Colors.white54, fontSize: 12)),
               const Spacer(),
-              if (order.status == 'PREPARING' && order.preparation != null)
+              // E15: en el pedido directo, la hora que prometió el comercio (o que ya lo tiene listo).
+              if (merchant != null && const {'PENDING_ASSIGNMENT', 'ACCEPTED', 'AT_ESTABLISHMENT'}.contains(order.status))
+                Flexible(
+                  child: Text(
+                    merchant.readyAt != null
+                        ? l10n.orderMerchantReady(order.establishmentName)
+                        : l10n.orderMerchantReadyAround(order.establishmentName, orderTime(merchant.estimatedReadyAt, language)),
+                    textAlign: TextAlign.end,
+                    maxLines: 2,
+                    style: TextStyle(color: merchant.readyAt != null ? Colors.white : AppColors.brand, fontSize: 12, fontWeight: FontWeight.w800),
+                  ),
+                )
+              else if (order.status == 'PREPARING' && order.preparation != null)
                 Flexible(
                   child: Text(
                     l10n.ordersReadyAround(orderTime(order.preparation!.estimatedReadyAt, language)),

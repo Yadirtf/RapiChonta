@@ -47,7 +47,7 @@ class OrderRoute extends StatelessWidget {
                           spacing: 8,
                           children: [
                             Text(
-                              statusLabel(l10n, stops[i].status),
+                              statusLabel(l10n, stops[i].status, mode: order.fulfillmentMode),
                               style: TextStyle(
                                 fontWeight: FontWeight.w800,
                                 fontSize: 15,
@@ -58,10 +58,10 @@ class OrderRoute extends StatelessWidget {
                               Text(orderTime(stops[i].at!, language), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.ink.withValues(alpha: 0.45))),
                           ],
                         ),
-                        if (stops[i].state == StopState.current && statusBody(l10n, stops[i].status) != null)
+                        if (stops[i].state == StopState.current && statusBody(l10n, stops[i].status, mode: order.fulfillmentMode) != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
-                            child: Text(statusBody(l10n, stops[i].status)!, style: TextStyle(fontSize: 13, color: AppColors.ink.withValues(alpha: 0.6))),
+                            child: Text(statusBody(l10n, stops[i].status, mode: order.fulfillmentMode)!, style: TextStyle(fontSize: 13, color: AppColors.ink.withValues(alpha: 0.6))),
                           ),
                         // H09.1: mientras se prepara, la parada lleva su fogón con la cuenta regresiva.
                         if (stops[i].state == StopState.current && stops[i].status == 'PREPARING' && order.preparation != null) PrepStove(order: order),

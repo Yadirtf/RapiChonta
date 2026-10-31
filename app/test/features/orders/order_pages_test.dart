@@ -152,8 +152,14 @@ OrderDetail _awaiting({required DateTime expiresAt}) => OrderDetail(
     );
 
 class _Orders implements OrderRepository {
-  _Orders({this.missing = false, this.detail, this.methods = const [PaymentOption('CASH'), PaymentOption('NEQUI'), PaymentOption('DAVIPLATA'), PaymentOption('BANK_TRANSFER')]});
+  _Orders({
+    this.missing = false,
+    this.detail,
+    this.methods = const [PaymentOption('CASH'), PaymentOption('NEQUI'), PaymentOption('DAVIPLATA'), PaymentOption('BANK_TRANSFER')],
+    this.modes = const [defaultFulfillmentMode],
+  });
   final bool missing;
+  final List<String> modes;
   final List<PaymentOption> methods;
   final OrderDetail? detail;
   final closed = <String>[];
@@ -195,8 +201,8 @@ class _Orders implements OrderRepository {
 
   @override
   Future<OrderQuote> quote({required String establishmentId, required List<Map<String, dynamic>> items, required DeliveryTarget delivery, required String language}) async =>
-      const OrderQuote(itemsCents: 2000000, feeCents: 300000, totalCents: 2300000, prepMinutes: 15, zoneName: 'Centro',
-          newCustomerLimit: NewCustomerLimit(limitCents: 10000000, availableCents: 7400000, exceeded: false));
+      OrderQuote(itemsCents: 2000000, feeCents: 300000, totalCents: 2300000, prepMinutes: 15, zoneName: 'Centro',
+          newCustomerLimit: const NewCustomerLimit(limitCents: 10000000, availableCents: 7400000, exceeded: false), fulfillmentModes: modes);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -455,6 +461,63 @@ void main() {
     expect(find.text('Transferencia'), findsNothing);
     expect(tester.getTopLeft(find.text('Nequi')).dx, lessThan(tester.getTopLeft(find.text('Efectivo')).dx));
     expect(find.byWidgetPredicate((w) => w is Image && w.image is NetworkImage && (w.image as NetworkImage).url == 'https://example.test/nequi.png'), findsOneWidget);
+  });
+
+  testWidgets('E15: en un comercio aliado el cliente elige directo o que RapiChonta se lo compre', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 3600));
+    final store = _MemoryCart(const Cart(establishmentId: 'e1', establishmentName: 'Burger Demo', lines: [
+      CartLine(productId: 'p1', versionId: 'v1', name: 'Hamburguesa sencilla', priceCents: 1400000, quantity: 1),
+    ]));
+    final orders = _Orders(modes: const [directFulfillmentMode, defaultFulfillmentMode]);
+    await tester.pumpWidget(_app(const CheckoutPage(), orders: orders, cart: store));
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    expect(find.text('¿Cómo te llega el pedido?'), findsOneWidget);
+    expect(find.text('Directo de Burger Demo'), findsOneWidget);
+    expect(find.text('ALIADO'), findsOneWidget);
+    expect(find.text('RapiChonta te lo compra'), findsOneWidget);
+    // Los pasos que siguen corren un número.
+    expect(find.text('4'), findsOneWidget);
+  });
+
+  testWidgets('E15: el pedido directo cuenta sus hitos a su manera y dice cuándo lo tiene el local', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 3000));
+    final detail = OrderDetail(
+      code: 'RC-D1R3',
+      establishmentId: 'e1',
+      establishmentName: 'Burger Demo',
+      createdAt: DateTime.utc(2026, 10, 21, 20),
+      status: 'PENDING_ASSIGNMENT',
+      statusAt: DateTime.utc(2026, 10, 21, 20, 2),
+      active: true,
+      itemCount: 1,
+      totalCents: 1700000,
+      fulfillmentMode: directFulfillmentMode,
+      merchant: (estimatedReadyAt: DateTime.utc(2026, 10, 21, 20, 20), readyAt: null),
+      lines: const [OrderLine(productId: 'p1', name: 'Hamburguesa sencilla', unitCents: 1400000, quantity: 1)],
+      itemsCents: 1400000,
+      feeCents: 300000,
+      prepMinutes: 15,
+      zoneName: 'Centro',
+      address: const SavedAddress(id: 'a1', label: 'Casa', reference: 'Casa azul', location: GeoPoint(1.03, -76.61), isDefault: true),
+      paymentMethod: 'CASH',
+      timeline: [
+        TimelineEntry('AWAITING_MERCHANT', DateTime.utc(2026, 10, 21, 20)),
+        TimelineEntry('PENDING_ASSIGNMENT', DateTime.utc(2026, 10, 21, 20, 2)),
+      ],
+      journey: const ['AWAITING_MERCHANT', 'PENDING_ASSIGNMENT', 'ACCEPTED', 'AT_ESTABLISHMENT', 'ON_THE_WAY', 'ARRIVING', 'DELIVERED'],
+    );
+    await tester.pumpWidget(_app(const OrderDetailPage(code: 'RC-D1R3'), orders: _Orders(detail: detail)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('El local lo está preparando'), findsWidgets);
+    expect(find.text('Esperando al local'), findsOneWidget);
+    expect(find.text('Recogiendo en el local'), findsOneWidget);
+    expect(find.text('Preparando'), findsNothing);
+    expect(find.textContaining('Burger Demo lo tiene listo hacia las'), findsOneWidget);
   });
 
   group('E09: la pregunta del domiciliario', () {

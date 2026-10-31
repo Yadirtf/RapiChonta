@@ -154,6 +154,8 @@ class Trip extends Equatable {
     required this.paymentMethod,
     this.storePhone,
     this.notes,
+    this.fulfillmentMode = 'COURIER_PURCHASE',
+    this.merchant,
     this.destination,
     this.preparation,
     this.purchase,
@@ -182,6 +184,15 @@ class Trip extends Equatable {
   final int customerTotalCents;
   final String paymentMethod;
   final String? notes;
+
+  /// E15: directo al comercio aliado (el local lo prepara y se recoge pagándole lo suyo) o la compra de siempre.
+  final String fulfillmentMode;
+
+  /// Pedido directo: la hora que prometió el comercio y cuándo lo marcó listo.
+  final ({DateTime estimatedReadyAt, DateTime? readyAt})? merchant;
+
+  bool get direct => fulfillmentMode == 'MERCHANT_DIRECT';
+
   final TripDestination? destination;
   final TripPreparation? preparation;
   final ({int amountCents, String? receiptUrl})? purchase;
@@ -194,7 +205,7 @@ class Trip extends Equatable {
   final TripCollection? collection;
 
   @override
-  List<Object?> get props => [code, status, statusAt, lines, destination, preparation, purchase, delivery, adjustment, collection];
+  List<Object?> get props => [code, status, statusAt, fulfillmentMode, merchant, lines, destination, preparation, purchase, delivery, adjustment, collection];
 }
 
 // ── H10.2 · Cobro contra entrega ──
@@ -380,6 +391,9 @@ abstract interface class CourierRepository {
 
   Future<StepOutcome> purchase(String code, TripStepEvent event, {required String amount, required String receiptFileId});
   Future<StepOutcome> ready(String code, TripStepEvent event);
+
+  /// E15: "Recogí el pedido" en un pedido directo (AT_ESTABLISHMENT → ON_THE_WAY); se le paga al local lo suyo.
+  Future<StepOutcome> pickUp(String code, TripStepEvent event);
   Future<StepOutcome> delay(String code, TripStepEvent event);
 
   /// "Falta algo / cambió el precio": una sola pregunta al cliente con todas las líneas marcadas (H09.2).

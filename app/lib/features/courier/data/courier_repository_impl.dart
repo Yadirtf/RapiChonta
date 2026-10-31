@@ -122,6 +122,9 @@ class CourierRepositoryImpl implements CourierRepository {
   Future<StepOutcome> ready(String code, TripStepEvent event) => _step(code, 'ready', event.toJson());
 
   @override
+  Future<StepOutcome> pickUp(String code, TripStepEvent event) => _step(code, 'pickup', event.toJson());
+
+  @override
   Future<StepOutcome> delay(String code, TripStepEvent event) => _step(code, 'delay', event.toJson());
 
   @override
@@ -252,6 +255,7 @@ Trip tripFromJson(Map<String, dynamic> json) {
   final preparation = json['preparation'] as Map<String, dynamic>?;
   final purchase = json['purchase'] as Map<String, dynamic>?;
   final delivery = json['delivery'] as Map<String, dynamic>?;
+  final merchant = json['merchant'] as Map<String, dynamic>?;
   return Trip(
     code: json['code'] as String,
     status: json['status'] as String,
@@ -269,6 +273,8 @@ Trip tripFromJson(Map<String, dynamic> json) {
     customerTotalCents: _cents(json['customerTotal']),
     paymentMethod: json['paymentMethod'] as String,
     notes: json['notes'] as String?,
+    fulfillmentMode: json['fulfillmentMode'] as String? ?? 'COURIER_PURCHASE',
+    merchant: merchant == null ? null : (estimatedReadyAt: DateTime.parse(merchant['estimatedReadyAt'] as String), readyAt: _date(merchant['readyAt'])),
     destination: destination == null
         ? null
         : TripDestination(

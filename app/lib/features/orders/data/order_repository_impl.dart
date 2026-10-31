@@ -49,6 +49,7 @@ class OrderRepositoryImpl implements OrderRepository {
     required String? notes,
     required String clientRequestId,
     required String language,
+    String? fulfillmentMode,
   }) =>
       _call(() async {
         final response = await _authed.post<Map<String, dynamic>>('/orders', data: {
@@ -56,6 +57,7 @@ class OrderRepositoryImpl implements OrderRepository {
           'items': items,
           'delivery': delivery.toJson(),
           'paymentMethod': paymentMethod,
+          'fulfillmentMode': ?fulfillmentMode,
           'recipient': recipient?.toJson(),
           'notes': notes,
           'clientRequestId': clientRequestId,
@@ -74,6 +76,10 @@ class OrderRepositoryImpl implements OrderRepository {
           past: list('past'),
           nextBefore: json['nextBefore'] as String?,
           journey: (json['journey'] as List? ?? const []).cast<String>(),
+          journeys: {
+            for (final MapEntry(:key, :value) in (json['journeys'] as Map? ?? const {}).entries)
+              if (key is String && value is List) key: value.cast<String>(),
+          },
         );
       });
 
@@ -164,6 +170,10 @@ OrderQuote quoteFromJson(Map<String, dynamic> json) {
     newCustomerLimit: limit == null
         ? null
         : NewCustomerLimit(limitCents: _cents(limit['limit']), availableCents: _cents(limit['available']), exceeded: limit['exceeded'] as bool? ?? false),
+    fulfillmentModes: switch (json['fulfillmentModes']) {
+      final List modes when modes.isNotEmpty => modes.cast<String>(),
+      _ => const [defaultFulfillmentMode],
+    },
   );
 }
 
@@ -180,6 +190,7 @@ OrderSummary summaryFromJson(Map<String, dynamic> json) {
     active: json['active'] as bool? ?? false,
     itemCount: (json['itemCount'] as num?)?.toInt() ?? 0,
     totalCents: _cents(json['total']),
+    fulfillmentMode: json['fulfillmentMode'] as String? ?? defaultFulfillmentMode,
   );
 }
 
@@ -189,6 +200,7 @@ OrderDetail detailFromJson(Map<String, dynamic> json) {
   final preparation = json['preparation'] as Map<String, dynamic>?;
   final purchase = json['purchase'] as Map<String, dynamic>?;
   final delivery = json['delivery'] as Map<String, dynamic>? ?? const {};
+  final merchant = json['merchant'] as Map<String, dynamic>?;
   return OrderDetail(
     code: s.code,
     establishmentId: s.establishmentId,
@@ -200,6 +212,10 @@ OrderDetail detailFromJson(Map<String, dynamic> json) {
     active: s.active,
     itemCount: s.itemCount,
     totalCents: s.totalCents,
+    fulfillmentMode: s.fulfillmentMode,
+    merchant: merchant == null
+        ? null
+        : (estimatedReadyAt: DateTime.parse(merchant['estimatedReadyAt'] as String), readyAt: DateTime.tryParse(merchant['readyAt'] as String? ?? '')),
     lines: [
       for (final l in (json['lines'] as List? ?? const []).cast<Map<String, dynamic>>())
         OrderLine(

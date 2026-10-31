@@ -22,6 +22,7 @@ import '../../domain/entities/order.dart';
 import '../checkout_draft.dart';
 import '../providers/orders_providers.dart';
 import '../widgets/checkout_sections.dart';
+import '../widgets/fulfillment_mode_section.dart';
 import '../widgets/store_page.dart';
 
 /// Confirmar el pedido (H04.1–H04.2): dónde, quién recibe y cómo paga, con la comanda debajo y el botón
@@ -102,6 +103,16 @@ class _CheckoutState extends ConsumerState<_Checkout> {
   Timer? _debounce;
   ({List<String> removed, List<String> repriced})? _notice;
   bool _showErrors = false;
+
+  /// E15: lo que eligió el cliente en un comercio aliado; null mientras no elija (vale el sugerido).
+  String? _mode;
+
+  /// Cómo se surte el pedido: lo elegido si el local lo ofrece, si no el primero que sugiere la cotización.
+  String? get _fulfillmentMode {
+    final modes = _quote?.fulfillmentModes ?? const [];
+    if (modes.length < 2) return null;
+    return modes.contains(_mode) ? _mode : modes.first;
+  }
 
   /// Dónde dice el GPS que está el cliente ahora; [_locating] mientras responde.
   GeoPoint? _gps;
@@ -280,6 +291,7 @@ class _CheckoutState extends ConsumerState<_Checkout> {
             items: cart.checkoutItems,
             delivery: _draft.deliveryTarget((label) => placeLabelText(l10n, label)),
             paymentMethod: _draft.payment!,
+            fulfillmentMode: _fulfillmentMode,
             recipient: _draft.recipient,
             notes: _draft.courierNotes((cash) => switch (cash) {
                   ExactCash() => l10n.checkoutCashExactNote,
@@ -318,6 +330,9 @@ class _CheckoutState extends ConsumerState<_Checkout> {
     final totalCents = _quote != null && _zone is ZoneFound ? _quote!.totalCents : null;
     final blocked = closed || _zone is! ZoneFound || _quote == null || (_quote!.newCustomerLimit?.exceeded ?? false);
     final problems = _draft.problems;
+    final mode = _fulfillmentMode;
+    // Con la elección del modo (E15), los pasos que siguen a "dónde" corren un número.
+    final shift = mode == null ? 0 : 1;
 
     return Scaffold(
       bottomNavigationBar: SafeArea(
@@ -385,9 +400,21 @@ class _CheckoutState extends ConsumerState<_Checkout> {
                     store: store?.location,
                   ),
                 ),
+                if (mode != null)
+                  StepCard(
+                    number: 2,
+                    title: l10n.checkoutStepHow,
+                    done: true,
+                    child: FulfillmentModeSection(
+                      modes: _quote!.fulfillmentModes,
+                      selected: mode,
+                      store: store?.name ?? cart.establishmentName,
+                      onSelect: (value) => setState(() => _mode = value),
+                    ),
+                  ),
                 StepCard(
                   key: _stepKeys[1],
-                  number: 2,
+                  number: 2 + shift,
                   title: l10n.checkoutStepWho,
                   done: !problems.contains(DraftProblem.recipient),
                   child: RecipientSection(
@@ -402,7 +429,7 @@ class _CheckoutState extends ConsumerState<_Checkout> {
                 ),
                 StepCard(
                   key: _stepKeys[2],
-                  number: 3,
+                  number: 3 + shift,
                   title: l10n.checkoutStepPay,
                   done: _draft.payment != null,
                   child: PaymentSection(draft: _draft, onChange: _change, methods: widget.methods, totalCents: totalCents, notesController: _notes, showErrors: _showErrors),
