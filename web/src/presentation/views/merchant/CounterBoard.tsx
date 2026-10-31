@@ -147,7 +147,7 @@ function Lane({
   children: ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-6 rounded-[28px] bg-white/60 p-4 ring-1 ring-ink/5">
+    <section className="flex min-w-0 flex-col gap-6 rounded-[28px] bg-white/60 p-4 ring-1 ring-ink/5">
       {/* El riel: una barra de metal de la que cuelgan las comandas. */}
       <header className="flex items-center gap-3">
         <span className={`grid size-10 place-items-center rounded-2xl ${tone}`}>

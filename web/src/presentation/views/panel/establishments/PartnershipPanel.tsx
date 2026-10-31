@@ -246,7 +246,7 @@ function Members({ data, establishmentId, run }: { data: PartnershipView; establ
                 <p className="truncate font-bold">{[m.givenNames, m.familyNames].filter(Boolean).join(" ")}</p>
                 <p className="flex items-center gap-1 text-xs text-ink/55">
                   <Phone className="size-3" aria-hidden /> {formatPhone(m.phone)} ·{" "}
-                  {m.lastSignInAt ? t("lastSignIn", { at: format.relativeTime(new Date(m.lastSignInAt)) }) : t("neverSignedIn")}
+                  {m.lastSignInAt ? t("lastSignIn", { at: format.relativeTime(new Date(m.lastSignInAt), new Date()) }) : t("neverSignedIn")}
                 </p>
               </div>
               <Button variant="ghost" size="sm" aria-label={t("revoke")} title={t("revoke")} onClick={() => void run(() => container.partnerships.revokeMember(establishmentId, m.staffId), t("memberRevoked"))}>

@@ -86,66 +86,70 @@ function Storefront() {
       <header className="relative z-10 bg-white shadow-[0_1px_0_rgb(20_18_31/0.06)]">
         <div className="awning h-9" aria-hidden />
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 pb-4 pt-7 sm:px-8">
-          <div className="flex flex-wrap items-center gap-4">
-            <StoreBadge store={store} />
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-chonta-strong">{t("eyebrow")}</p>
-              {list.length > 1 ? (
-                <label className="relative mt-0.5 inline-flex max-w-full items-center">
-                  <span className="sr-only">{t("pickStore")}</span>
-                  <select
-                    value={store?.id}
-                    onChange={(e) => go({ local: e.target.value })}
-                    className="max-w-full appearance-none truncate bg-transparent pr-7 font-display text-2xl font-extrabold tracking-tight outline-none sm:text-3xl"
-                  >
-                    {list.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                        {s.waiting ? ` (${s.waiting})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-0 size-5 text-ink/50" aria-hidden />
-                </label>
-              ) : (
-                <h1 className="truncate font-display text-2xl font-extrabold tracking-tight sm:text-3xl">{store?.name ?? t("noStoreTitle")}</h1>
-              )}
-              {store && (
-                <p className="text-sm text-ink/55">
-                  {t("partnerSince", {
-                    municipality: store.municipality.name,
-                    date: new Date(`${store.partnership.startedOn}T12:00:00`),
-                  })}
-                </p>
-              )}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+            <div className="flex min-w-0 flex-1 basis-[min(100%,26rem)] items-center gap-4">
+              <StoreBadge store={store} />
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-chonta-strong">{t("eyebrow")}</p>
+                {list.length > 1 ? (
+                  <label className="relative mt-0.5 inline-flex max-w-full items-center">
+                    <span className="sr-only">{t("pickStore")}</span>
+                    <select
+                      value={store?.id}
+                      onChange={(e) => go({ local: e.target.value })}
+                      className="max-w-full appearance-none truncate bg-transparent pr-7 font-display text-2xl font-extrabold tracking-tight outline-none sm:text-3xl"
+                    >
+                      {list.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                          {s.waiting ? ` (${s.waiting})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-0 size-5 text-ink/50" aria-hidden />
+                  </label>
+                ) : (
+                  <h1 className="truncate font-display text-2xl font-extrabold tracking-tight sm:text-3xl">{store?.name ?? t("noStoreTitle")}</h1>
+                )}
+                {store && (
+                  <p className="text-sm text-ink/55">
+                    {t("partnerSince", {
+                      municipality: store.municipality.name,
+                      date: new Date(`${store.partnership.startedOn}T12:00:00`),
+                    })}
+                  </p>
+                )}
+              </div>
             </div>
-            {store && <DoorSignToggle store={store} onChanged={() => void stores.refresh()} />}
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={bell.toggle}
-                aria-pressed={bell.enabled}
-                title={bell.enabled ? t("bellOn") : t("bellOff")}
-                className={`grid size-11 place-items-center rounded-2xl transition-colors ${bell.enabled ? "bg-brand text-ink" : "bg-ink/5 text-ink/60 hover:bg-ink/10"}`}
-              >
-                {bell.enabled ? <Bell className="size-5" aria-hidden /> : <BellOff className="size-5" aria-hidden />}
-                <span className="sr-only">{bell.enabled ? t("bellOn") : t("bellOff")}</span>
-              </button>
-              <span className="hidden items-center gap-2 rounded-2xl bg-ink/5 py-1 pl-1 pr-3 sm:flex">
-                <span className="grid size-9 place-items-center rounded-xl bg-ink text-xs font-extrabold text-brand">
-                  {initials(account!.givenNames, account!.familyNames)}
+            <div className="ml-auto flex items-center gap-3">
+              {store && <DoorSignToggle store={store} onChanged={() => void stores.refresh()} />}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={bell.toggle}
+                  aria-pressed={bell.enabled}
+                  title={bell.enabled ? t("bellOn") : t("bellOff")}
+                  className={`grid size-11 place-items-center rounded-2xl transition-colors ${bell.enabled ? "bg-brand text-ink" : "bg-ink/5 text-ink/60 hover:bg-ink/10"}`}
+                >
+                  {bell.enabled ? <Bell className="size-5" aria-hidden /> : <BellOff className="size-5" aria-hidden />}
+                  <span className="sr-only">{bell.enabled ? t("bellOn") : t("bellOff")}</span>
+                </button>
+                <span className="hidden items-center gap-2 rounded-2xl bg-ink/5 py-1 pl-1 pr-3 sm:flex">
+                  <span className="grid size-9 place-items-center rounded-xl bg-ink text-xs font-extrabold text-brand">
+                    {initials(account!.givenNames, account!.familyNames)}
+                  </span>
+                  <span className="max-w-36 truncate text-sm font-semibold">{fullName(account!)}</span>
                 </span>
-                <span className="max-w-36 truncate text-sm font-semibold">{fullName(account!)}</span>
-              </span>
-              <button
-                type="button"
-                onClick={leave}
-                title={t("signOut")}
-                className="grid size-11 place-items-center rounded-2xl text-ink/60 hover:bg-ink/5 hover:text-ink"
-              >
-                <LogOut className="size-5" aria-hidden />
-                <span className="sr-only">{t("signOut")}</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={leave}
+                  title={t("signOut")}
+                  className="grid size-11 place-items-center rounded-2xl text-ink/60 hover:bg-ink/5 hover:text-ink"
+                >
+                  <LogOut className="size-5" aria-hidden />
+                  <span className="sr-only">{t("signOut")}</span>
+                </button>
+              </div>
             </div>
           </div>
 

@@ -103,7 +103,7 @@ function AcceptControls({ order, busy, limits, onAccept, onDecline }: Pick<Props
 
   return (
     <div className="mt-4 flex flex-col gap-3">
-      <fieldset>
+      <fieldset className="min-w-0">
         <legend className="text-xs font-extrabold uppercase tracking-wider text-ink/55">{t("howLong")}</legend>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {quick.map((value) => (
