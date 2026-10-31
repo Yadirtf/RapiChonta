@@ -1,4 +1,4 @@
-import type { OrderPreparation, OrderPurchase, OrderStatusCode, PaymentMethodCode } from "./order";
+import type { FulfillmentMode, OrderPreparation, OrderPurchase, OrderStatusCode, PaymentMethodCode } from "./order";
 
 /** E07: la central de despacho del operador. Los códigos los da la API; la vista los traduce. */
 export type OfferMode = "SPECIFIC" | "BROADCAST";
@@ -40,6 +40,9 @@ export interface DispatchOrder {
   /** E08: la compra con su factura y la preparación (con la alerta de retraso que reporta el domiciliario). */
   purchase: OrderPurchase | null;
   preparation: OrderPreparation | null;
+  /** E15: directo al comercio aliado (se recoge, no se compra) con la hora que prometió el comercio. */
+  fulfillmentMode: FulfillmentMode;
+  merchant: { estimatedReadyAt: string; readyAt: string | null } | null;
 }
 
 export interface DispatchBoardSnapshot {

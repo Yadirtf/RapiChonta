@@ -105,7 +105,7 @@ function OrdersList() {
           <div className="flex flex-col gap-4">
             {page.active.map((order, i) => (
               <motion.div key={order.code} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                <ActiveTicket order={order} journey={page.journey} />
+                <ActiveTicket order={order} journey={page.journeys?.[order.fulfillmentMode] ?? page.journey} />
               </motion.div>
             ))}
           </div>
@@ -161,7 +161,7 @@ function ActiveTicket({ order, journey }: { order: OrderSummary; journey: OrderS
           <span className="shrink-0 rounded-lg bg-white/10 px-2 py-1 font-mono text-sm font-bold tracking-wider text-brand">{order.code}</span>
         </div>
         <div className="mt-5 flex items-center justify-between gap-3">
-          <StatusBadge status={order.status} />
+          <StatusBadge status={order.status} mode={order.fulfillmentMode} />
         </div>
         <div className="relative mt-4 h-2 rounded-full bg-white/10" aria-hidden>
           <div className="h-full rounded-full bg-brand transition-[width] duration-700" style={{ width: `${Math.max(4, progress * 100)}%` }} />
@@ -199,7 +199,7 @@ function PastRow({ order }: { order: OrderSummary }) {
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <span className="font-display font-extrabold tabular-nums">{money.price(order.total)}</span>
-          <StatusBadge status={order.status} className="!px-2 !py-0.5 !text-[11px]" />
+          <StatusBadge status={order.status} mode={order.fulfillmentMode} className="!px-2 !py-0.5 !text-[11px]" />
         </div>
       </Link>
     </li>

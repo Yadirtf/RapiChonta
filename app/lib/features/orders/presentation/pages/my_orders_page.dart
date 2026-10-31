@@ -101,7 +101,7 @@ class _MyOrdersPageState extends ConsumerState<MyOrdersPage> {
             if (page.active.isNotEmpty) ...[
               _SectionTitle(icon: Icons.circle, iconColor: AppColors.brand, text: l10n.ordersActive),
               for (final order in page.active)
-                Padding(padding: const EdgeInsets.only(bottom: 14), child: ActiveTicket(order: order, journey: page.journey)),
+                Padding(padding: const EdgeInsets.only(bottom: 14), child: ActiveTicket(order: order, journey: page.journeyOf(order))),
               const SizedBox(height: 18),
             ],
             _SectionTitle(icon: Icons.receipt_long_rounded, iconColor: AppColors.chonta, text: l10n.ordersHistory),
@@ -192,7 +192,7 @@ class ActiveTicket extends StatelessWidget {
                   _Code(code: order.code),
                 ]),
                 const SizedBox(height: 14),
-                StatusBadge(status: order.status),
+                StatusBadge(status: order.status, mode: order.fulfillmentMode),
                 const SizedBox(height: 16),
                 LayoutBuilder(
                   builder: (context, constraints) => SizedBox(
@@ -291,7 +291,7 @@ class _PastRow extends StatelessWidget {
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Text(formatPesos(order.totalCents, language), style: const TextStyle(fontWeight: FontWeight.w900)),
             const SizedBox(height: 4),
-            StatusBadge(status: order.status),
+            StatusBadge(status: order.status, mode: order.fulfillmentMode),
           ]),
         ]),
       ),

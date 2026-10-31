@@ -45,7 +45,7 @@ export class PrismaDeskActions extends DeskActions {
         SELECT EXISTS (SELECT 1 FROM order_status_transition_roles tr
                        WHERE tr.from_status_id = ${order.status_id} AND tr.role_id = ${await this.ids.of('roles', actor.role)}
                          AND tr.to_status_id = ${await this.ids.of('order_statuses', TRIP_STATUSES.CANCELLED)}) AS allowed,
-               (SELECT id FROM cancellation_reasons WHERE code = ${reason} AND NOT is_automatic AND deactivated_at IS NULL) AS reason_id`;
+               (SELECT id FROM cancellation_reasons WHERE code = ${reason} AND NOT is_automatic AND NOT is_merchant_reason AND deactivated_at IS NULL) AS reason_id`;
       if (!check.allowed) throw new Refused('STEP', order.status);
       if (check.reason_id === null) throw new Refused('REASON');
       // Las ofertas pendientes se retiran (el disparador avisa OFFER_WITHDRAWN a cada domiciliario).

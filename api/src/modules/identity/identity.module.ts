@@ -145,6 +145,6 @@ function otpProviderFactory(config: ConfigService): OtpProvider {
     { provide: APP_GUARD, useClass: AuthenticationGuard },
     { provide: APP_GUARD, useClass: AuthorizationGuard },
   ],
-  exports: [AuthenticateUseCase, RolePermissions],
+  exports: [AuthenticateUseCase, RolePermissions, CreateStaffMemberUseCase],
 })
 export class IdentityModule {}

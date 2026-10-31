@@ -9,6 +9,7 @@ import { HttpDeskRepository } from "../repositories/http-desk-repository";
 import { HttpDispatchRepository } from "../repositories/http-dispatch-repository";
 import { HttpCatalogAdminRepository } from "../repositories/http-catalog-admin-repository";
 import { HttpEstablishmentRepository } from "../repositories/http-establishment-repository";
+import { HttpMerchantRepository, HttpPartnershipRepository } from "../repositories/http-merchant-repository";
 import { HttpOrderRepository } from "../repositories/http-order-repository";
 
 /** Composición de dependencias: único lugar donde se conectan casos de uso con sus adaptadores. */
@@ -28,4 +29,6 @@ export const container = {
   dispatch: new HttpDispatchRepository(),
   desk: new HttpDeskRepository(),
   cash: new HttpCashRepository(),
+  merchant: new HttpMerchantRepository(),
+  partnerships: new HttpPartnershipRepository(),
 };

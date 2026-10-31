@@ -8,7 +8,7 @@ import { ManageAddressesUseCase, ManageRecipientsUseCase } from '../../applicati
 import { CreateOrderInput, CreateOrderUseCase, DeliveryTarget, QuoteOrderUseCase } from '../../application/checkout.use-cases';
 import { ListPaymentMethodsUseCase, ManagePaymentOptionsUseCase } from '../../application/payment-options.use-cases';
 import { GetMyOrderUseCase, ListMyOrdersUseCase } from '../../application/my-orders.use-cases';
-import { ORDER_PERMISSIONS, PAYMENT_OPTIONS_PERMISSION } from '../../domain/orders.codes';
+import { DEFAULT_FULFILLMENT_MODE, ORDER_PERMISSIONS, PAYMENT_OPTIONS_PERMISSION } from '../../domain/orders.codes';
 import { CreateOrderDto, DeliveryDto, MyOrdersQueryDto, OrderQueryDto, PaymentOptionDto, PaymentOrderDto, QuoteOrderDto, RecipientDto, SaveAddressDto } from './orders.dto';
 import { OrdersPresenter } from './orders-presenter';
 
@@ -58,6 +58,7 @@ export class OrdersController {
       delivery: delivery(body.delivery),
       language: body.lang,
       paymentMethod: body.paymentMethod,
+      fulfillmentMode: body.fulfillmentMode,
       recipient: recipient(body.recipient),
       notes: body.notes,
       clientRequestId: body.clientRequestId,
@@ -71,7 +72,14 @@ export class OrdersController {
   @RequirePermissions(ORDER_PERMISSIONS.READ_OWN)
   async mine(@CurrentPrincipal() principal: Principal, @Query() query: MyOrdersQueryDto) {
     const page = await this.listMine.execute(principal, { before: query.before ? new Date(query.before) : undefined, limit: query.limit });
-    return { active: page.active.map((o) => this.presenter.summary(o)), past: page.past.map((o) => this.presenter.summary(o)), nextBefore: page.nextBefore, journey: page.journey };
+    return {
+      active: page.active.map((o) => this.presenter.summary(o)),
+      past: page.past.map((o) => this.presenter.summary(o)),
+      nextBefore: page.nextBefore,
+      // `journey` es el de la compra por RapiChonta, para las apps de antes de E15; cada pedido sigue el de su modo.
+      journey: page.journeys[DEFAULT_FULFILLMENT_MODE] ?? [],
+      journeys: page.journeys,
+    };
   }
 
   /** GET /api/v1/orders/RC-7K3M — detalle y línea de tiempo (RF-50). */

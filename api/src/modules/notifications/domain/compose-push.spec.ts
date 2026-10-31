@@ -19,6 +19,15 @@ describe('Texto de los avisos (H06.2)', () => {
     expect(composePush(pending({ status: 'PREPARING' }), texts)!.title).toBe('Tu pedido RC-7K3M cambió');
   });
 
+  it('en un pedido directo (E15) el texto del modo gana: el domiciliario recoge, no compra', () => {
+    const direct = (status: string) => composePush(pending({ status, fulfillmentMode: 'MERCHANT_DIRECT' }), texts)!;
+    expect(direct('PENDING_ASSIGNMENT').title).toBe('Asadero La Chonta aceptó tu pedido');
+    expect(direct('AT_ESTABLISHMENT').body).toBe('Está recogiendo tu pedido RC-7K3M.');
+    // Sin variante del modo, el del estado.
+    expect(direct('ON_THE_WAY').title).toBe('¡Tu pedido va en camino!');
+    expect(composePush(pending({ status: 'AT_ESTABLISHMENT', fulfillmentMode: 'COURIER_PURCHASE' }), texts)!.body).toBe('Ya está comprando lo de tu pedido RC-7K3M.');
+  });
+
   it('lleva los datos para abrir el pedido al tocarlo y una etiqueta por pedido', () => {
     const message = composePush(pending({ id: 'n-1', status: 'ARRIVING' }), texts)!;
     expect(message.data).toEqual({ type: 'ORDER_STATUS_CHANGED', notificationId: 'n-1', orderCode: 'RC-7K3M', status: 'ARRIVING' });

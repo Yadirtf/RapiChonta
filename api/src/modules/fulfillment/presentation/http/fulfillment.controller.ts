@@ -96,6 +96,14 @@ export class CourierTripController {
     });
   }
 
+  /** POST /api/v1/courier/trip/:code/pickup — "Recogí el pedido" en un pedido directo a un comercio aliado (H15.2). */
+  @Post(':code/pickup')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermissions(P.PROGRESS)
+  pickUp(@CurrentPrincipal() principal: Principal, @Param('code') code: string, @Body() body: TripEventDto) {
+    return this.trips.pickUp(principal, orderCode(code), event(body));
+  }
+
   /** POST /api/v1/courier/trip/:code/ready — "Ya está listo" (H08.5). */
   @Post(':code/ready')
   @HttpCode(HttpStatus.OK)

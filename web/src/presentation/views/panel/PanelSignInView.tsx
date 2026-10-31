@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { isStaffSession } from "@/core/domain/entities/account";
+import { isMerchantSession, isStaffSession } from "@/core/domain/entities/account";
 import type { SentCode } from "@/core/domain/entities/session";
 import { container } from "@/infrastructure/di/container";
 import { useAuth } from "../../auth/AuthProvider";
@@ -19,8 +19,11 @@ import { SidebarBackdrop } from "../../components/layout/SidebarBackdrop";
 import { Logo, LogoEmblem } from "../../components/ui/Logo";
 import { useErrorMessage } from "../../hooks/useErrorMessage";
 
-/** Solo se vuelve a rutas del panel (evita redirecciones abiertas con ?next=). */
-const safeNext = (next: string | null) => (next && /^\/panel(\/|$)/.test(next) ? next : "/panel");
+/** Solo se vuelve a rutas del panel o del portal del comercio (evita redirecciones abiertas con ?next=). */
+const safeNext = (next: string | null) => (next && /^\/(panel|comercio)(\/|$)/.test(next) ? next : "/panel");
+/** El comercio aliado (E15) entra por la misma puerta, pero su lugar es su mostrador. */
+const MERCHANT_HOME = "/comercio";
+const homeOf = (next: string, merchant: boolean) => (merchant ? (next.startsWith(MERCHANT_HOME) ? next : MERCHANT_HOME) : next.startsWith(MERCHANT_HOME) ? "/panel" : next);
 
 /** H01.4: ingreso del personal con contraseña + código. */
 export function PanelSignInView() {
@@ -41,7 +44,7 @@ export function PanelSignInView() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (status === "authenticated" && isStaffSession(account)) router.replace(next);
+    if (status === "authenticated" && (isStaffSession(account) || isMerchantSession(account))) router.replace(homeOf(next, isMerchantSession(account)));
   }, [status, account, next, router]);
 
   const start = async () => {
@@ -64,6 +67,11 @@ export function PanelSignInView() {
 
   const verify = async (code: string) => {
     const result = await container.auth.completePasswordSignIn(sent!.code.challengeId, code);
+    if (isMerchantSession(result.account)) {
+      signedIn(result.account);
+      router.replace(homeOf(next, true));
+      return;
+    }
     if (!isStaffSession(result.account)) {
       // Un domiciliario con contraseña válida: su lugar es la app, no el panel.
       await signOut();
@@ -73,7 +81,7 @@ export function PanelSignInView() {
       return;
     }
     signedIn(result.account);
-    router.replace(next);
+    router.replace(homeOf(next, false));
   };
 
   return (

@@ -32,9 +32,13 @@ class OrderCodesCheck implements OnApplicationBootstrap {
       const found = new Set(rows.map((r) => r.code));
       missing.push(...codes.filter((c) => !found.has(c)).map((c) => `${table}.${c}`));
     }
-    const [{ initial }] = await this.prisma.$queryRaw<{ initial: number }[]>`
-      SELECT count(*)::int AS initial FROM order_statuses WHERE is_initial AND deactivated_at IS NULL`;
-    if (initial !== 1) missing.push('order_statuses (un único estado inicial)');
+    // Cada modo activo nace en un estado inicial vigente y tiene su máquina de estados (E15).
+    const broken = await this.prisma.$queryRaw<{ code: string }[]>`
+      SELECT m.code FROM fulfillment_modes m JOIN order_statuses s ON s.id = m.initial_status_id
+      WHERE m.deactivated_at IS NULL
+        AND (NOT s.is_initial OR s.deactivated_at IS NOT NULL
+             OR NOT EXISTS (SELECT 1 FROM order_status_transition_modes tm WHERE tm.fulfillment_mode_id = m.id))`;
+    missing.push(...broken.map((b) => `fulfillment_modes.${b.code} (estado inicial y transiciones)`));
     if (missing.length) throw new Error(`Faltan códigos de catálogo (ejecute la semilla): ${missing.join(', ')}`);
     new Logger('OrdersModule').log('Catálogos de pedidos verificados');
   }

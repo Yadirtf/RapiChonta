@@ -7,6 +7,11 @@ export interface OrderingEstablishment {
   municipalityId: number;
   /** El estado del local admite pedidos (ACTIVE; no TEMPORARILY_CLOSED ni DRAFT). */
   acceptsOrders: boolean;
+  /**
+   * Cómo se puede pedir hoy (E15), en el orden en que se sugieren: en un comercio aliado el pedido directo y la compra
+   * por RapiChonta; en los demás solo la compra por RapiChonta.
+   */
+  fulfillmentModes: string[];
 }
 
 /** Lecturas para armar el pedido: el menú vigente, la exposición del cliente y la configuración del municipio. */

@@ -1,10 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useLocale, useTranslations } from "next-intl";
+import { useLocale } from "next-intl";
 import { orderRoute, type OrderDetail } from "@/core/domain/entities/order";
 import { statusIcon, statusTone } from "./orderVisuals";
 import { PrepStove } from "./PrepClock";
+import { useStatusText } from "./useStatusText";
 
 /**
  * Línea de tiempo del pedido (RF-50) como la ruta de la moto: paradas cumplidas en chontaduro, la actual
@@ -14,10 +15,10 @@ export function OrderRoute({
   order,
   timeZone = "America/Bogota",
 }: {
-  order: Pick<OrderDetail, "timeline" | "journey" | "active"> & Partial<Pick<OrderDetail, "preparation">>;
+  order: Pick<OrderDetail, "timeline" | "journey" | "active"> & Partial<Pick<OrderDetail, "preparation" | "fulfillmentMode">>;
   timeZone?: string;
 }) {
-  const t = useTranslations("orderStatus");
+  const text = useStatusText(order.fulfillmentMode);
   const locale = useLocale();
   const time = (iso: string) =>
     new Intl.DateTimeFormat(locale === "en" ? "en-US" : "es-CO", { hour: "numeric", minute: "2-digit", timeZone }).format(new Date(iso));
@@ -30,7 +31,8 @@ export function OrderRoute({
         const last = index === stops.length - 1;
         const nextDone = !last && stops[index + 1].state !== "upcoming";
         const attention = stop.state === "current" && statusTone(stop.status) === "attention";
-        const label = t.has(`${stop.status}.label`) ? t(`${stop.status}.label`) : stop.status;
+        const label = text(stop.status, "label");
+        const body = stop.state === "current" ? text(stop.status, "body") : null;
         return (
           <motion.li
             key={`${stop.status}-${index}`}
@@ -59,7 +61,7 @@ export function OrderRoute({
                 {label}
                 {stop.at && <span className="text-xs font-semibold tabular-nums text-ink/45">{time(stop.at)}</span>}
               </p>
-              {stop.state === "current" && t.has(`${stop.status}.body`) && <p className="mt-0.5 text-sm text-ink/60">{t(`${stop.status}.body`)}</p>}
+              {body && <p className="mt-0.5 text-sm text-ink/60">{body}</p>}
               {stop.state === "current" && stop.status === "PREPARING" && order.preparation && <PrepStove order={{ timeline: order.timeline, preparation: order.preparation }} />}
             </div>
           </motion.li>

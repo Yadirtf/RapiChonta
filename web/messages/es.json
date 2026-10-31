@@ -194,7 +194,22 @@
     "CASH_ACCOUNT_REQUIRED": "El domiciliario no tiene registrada una cuenta para ese medio.",
     "CASH_REVERSAL_INVALID": "Ese movimiento ya se anuló o no se puede anular.",
     "CASH_DATE_INVALID": "Elige un día que ya haya pasado.",
-    "COURIER_CASH_BOX_NOT_READY": "Ese domiciliario no tiene la caja de hoy abierta: entrégale la base en Cajas."
+    "COURIER_CASH_BOX_NOT_READY": "Ese domiciliario no tiene la caja de hoy abierta: entrégale la base en Cajas.",
+    "STORE_NOT_FOUND": "No atiendes ese local, o su convenio con RapiChonta terminó.",
+    "STORE_ORDER_NOT_FOUND": "Ese pedido no es de tu local.",
+    "STORE_ORDER_STEP_NOT_ALLOWED": "Ese pedido ya cambió (lo cancelaron o ya se respondió). Mira cómo quedó en el mostrador.",
+    "PREPARATION_MINUTES_INVALID": "El tiempo de preparación va de 1 a 240 minutos.",
+    "DECLINE_REASON_INVALID": "Elige por qué no puedes atender el pedido.",
+    "MENU_EMPTY": "Activa al menos un producto en tu menú antes de abrir.",
+    "STORE_STATUS_NOT_ALLOWED": "Ese cambio del local lo hace RapiChonta. Escríbenos si lo necesitas.",
+    "PARTNERSHIP_ACTIVE": "Este local ya tiene un convenio vigente o programado.",
+    "PARTNERSHIP_NOT_FOUND": "Este local no tiene un convenio abierto.",
+    "PARTNERSHIP_DATES_INVALID": "Revisa las fechas: el convenio empieza hoy o después, y termina después de empezar.",
+    "PARTNERSHIP_REQUIRED": "Primero firma el convenio: sin él el comercio no tiene portal.",
+    "MERCHANT_PERSON_REQUIRED": "Ese número no tiene cuenta de comercio. Completa nombre, documento y contraseña.",
+    "STORE_STAFF_EXISTS": "Esa persona ya atiende este local.",
+    "STORE_STAFF_NOT_FOUND": "Esa persona ya no atiende este local.",
+    "FULFILLMENT_MODE_UNAVAILABLE": "Ese tipo de pedido ya no está disponible en este local. Elige otro."
   },
   "auth": {
     "signInTitle": "Entra con tu celular",
@@ -293,7 +308,8 @@
     "CUSTOMER": "Cliente",
     "COURIER": "Domiciliario",
     "OPERATOR": "Operador",
-    "ADMIN": "Administrador"
+    "ADMIN": "Administrador",
+    "MERCHANT": "Comercio aliado"
   },
   "panelSignIn": {
     "title": "Ingreso del personal",
@@ -822,7 +838,8 @@
       "goToMenu": "Ir al menú",
       "stepPublish": "Toca «Publicar» arriba",
       "stepReopen": "Toca «Abrir» arriba para volver a mostrarlo"
-    }
+    },
+    "tabPartner": "Comercio aliado"
   },
   "menuEditor": {
     "eyebrow": "Pizarra del menú",
@@ -1234,7 +1251,21 @@
     "missingRecipientPhone": "Escribe un celular de 10 dígitos que empiece por 3",
     "cashExactNote": "Pago con el valor exacto",
     "storeClosed": "Este local no está recibiendo pedidos",
-    "outsideDistance": "La cobertura empieza a {distance} de este punto."
+    "outsideDistance": "La cobertura empieza a {distance} de este punto.",
+    "stepHow": "¿Cómo quieres tu pedido?",
+    "mode": {
+      "label": "Cómo te llega el pedido",
+      "partner": "Aliado",
+      "samePrice": "Mismo precio y mismo domicilio. Pagas al recibir, como siempre.",
+      "MERCHANT_DIRECT": {
+        "title": "Directo de {store}",
+        "body": "{store} recibe tu pedido, lo prepara y un domiciliario de RapiChonta pasa a recogerlo."
+      },
+      "COURIER_PURCHASE": {
+        "title": "RapiChonta te lo compra",
+        "body": "Un domiciliario va a {store}, compra lo tuyo con factura y te lo lleva."
+      }
+    }
   },
   "payment": {
     "CASH": "Efectivo",
@@ -1290,6 +1321,26 @@
     "OFFERED": {
       "label": "Ofrecido",
       "body": "Le avisamos a los domiciliarios cercanos."
+    },
+    "AWAITING_MERCHANT": {
+      "label": "Esperando al local",
+      "body": "El local está viendo tu pedido. Apenas lo acepte, buscamos domiciliario."
+    },
+    "byMode": {
+      "MERCHANT_DIRECT": {
+        "PENDING_ASSIGNMENT": {
+          "label": "El local lo está preparando",
+          "body": "El local aceptó tu pedido y lo está preparando. Ya buscamos domiciliario para recogerlo."
+        },
+        "ACCEPTED": {
+          "label": "Domiciliario asignado",
+          "body": "Ya va al local a recoger tu pedido."
+        },
+        "AT_ESTABLISHMENT": {
+          "label": "Recogiendo en el local",
+          "body": "El domiciliario está recogiendo tu pedido."
+        }
+      }
     }
   },
   "orders": {
@@ -1373,7 +1424,10 @@
       "ESTABLISHMENT_CLOSED": "El local estaba cerrado",
       "ALL_ITEMS_UNAVAILABLE": "No había ningún producto",
       "CUSTOMER_UNREACHABLE": "No logramos contactarte",
-      "INCIDENT_RESOLUTION": "Lo resolvimos al revisar tu caso"
+      "INCIDENT_RESOLUTION": "Lo resolvimos al revisar tu caso",
+      "MERCHANT_OUT_OF_STOCK": "Al local se le acabó algo de tu pedido",
+      "MERCHANT_TOO_BUSY": "El local tenía demasiados pedidos",
+      "MERCHANT_CLOSING": "El local estaba por cerrar"
     },
     "case": {
       "tab": "Caso {code}",
@@ -1398,7 +1452,9 @@
       },
       "now": "ahora",
       "contact": "Si necesitamos algo más te llamamos al número de tu cuenta. Ten el teléfono a mano."
-    }
+    },
+    "merchantReadyAround": "{store} lo tiene listo hacia las {time}",
+    "merchantReady": "{store} ya lo tiene listo"
   },
   "adjustments": {
     "kicker": "Pregunta de tu domiciliario",
@@ -1587,7 +1643,11 @@
     "prepDelayed": "Preparación retrasada",
     "paid": "Pagó {amount} en el local",
     "noCashBox": "Sin caja",
-    "noCashBoxHint": "Su modo exige base y la caja de hoy no está abierta. Toca para ir a Cajas."
+    "noCashBoxHint": "Su modo exige base y la caja de hoy no está abierta. Toca para ir a Cajas.",
+    "toPickUp": "{count, plural, one {Recoge 1 producto} other {Recoge # productos}}, paga al local",
+    "direct": "Pedido directo",
+    "directReadyAt": "Directo · listo hacia las {time, time, short}",
+    "directReady": "Directo · el local ya lo tiene listo"
   },
   "audit": {
     "eyebrow": "Bitácora",
@@ -1727,6 +1787,10 @@
       "COLLECTION_MISMATCH": {
         "short": "Cobro no cuadra",
         "body": "Lo cobrado no es igual al total del pedido. Confírmalo con el domiciliario antes de cerrar la caja."
+      },
+      "MERCHANT_SILENT": {
+        "short": "Local sin responder",
+        "body": "El comercio aliado no ha aceptado ni rechazado el pedido. Llámalo; si no puede, cancélalo con el motivo."
       }
     },
     "customer": "Cliente",
@@ -2016,5 +2080,143 @@
     "closeNoteRequired": "Nota de la diferencia",
     "closeNoteHint": "Con diferencia, el cierre lleva la explicación.",
     "closeConfirm": "Cerrar la caja"
+  },
+  "merchant": {
+    "metaTitle": "Mi comercio",
+    "eyebrow": "Comercio aliado",
+    "pickStore": "Elegir local",
+    "partnerSince": "{municipality} · aliado de RapiChonta desde el {date, date, long}",
+    "bellOn": "Campana encendida: suena con cada pedido nuevo",
+    "bellOff": "Campana apagada: tócala para oír los pedidos nuevos",
+    "signOut": "Salir",
+    "sections": "Secciones del portal",
+    "tabs": {
+      "counter": "Mostrador",
+      "menu": "Mi menú"
+    },
+    "footer": "Tus pedidos directos llegan aquí. RapiChonta pone el domiciliario.",
+    "noStoreTitle": "Tu portal está cerrado",
+    "noStoreBody": "Aún no hay un convenio vigente con tu local, o RapiChonta no te ha dado acceso. Cuando empiece, tus pedidos llegarán a este mostrador.",
+    "door": {
+      "open": "Abierto",
+      "paused": "En pausa",
+      "closed": "Cerrado",
+      "tapToPause": "toca para pausar",
+      "tapToOpen": "toca para abrir",
+      "byRapiChonta": "lo maneja RapiChonta",
+      "pauseHint": "Pausar: los clientes no podrán pedirte hasta que vuelvas a abrir",
+      "openHint": "Abrir: los clientes vuelven a ver tu menú y pueden pedirte",
+      "lockedHint": "Publicar o dar de baja el local lo hace RapiChonta"
+    },
+    "counter": {
+      "documentTitle": "Mostrador · {store}",
+      "pausedNotice": "Tu local está en pausa: no llegan pedidos nuevos. Voltea el aviso de la puerta para abrir.",
+      "lanes": {
+        "INCOMING": "Por aceptar",
+        "PREPARING": "En el fogón",
+        "READY": "Listos para recoger"
+      },
+      "hints": {
+        "INCOMING": "Respóndelos pronto: el cliente está esperando",
+        "PREPARING": "La hora que prometiste, y quién viene por él",
+        "READY": "Empacados, esperando al domiciliario"
+      },
+      "empty": {
+        "INCOMING": "Sin pedidos nuevos",
+        "PREPARING": "Nada en preparación",
+        "READY": "Nada esperando domiciliario"
+      },
+      "emptyTitle": "Mostrador despejado",
+      "emptyBody": "Cuando un cliente te pida directo, la comanda aparece aquí y suena la campana.",
+      "emptyPausedTitle": "Local en pausa",
+      "emptyPausedBody": "Los clientes ven tu local cerrado por ahora. Voltea el aviso de la puerta cuando quieras recibir pedidos."
+    },
+    "ticket": {
+      "for": "Para {name}",
+      "waitingTitle": "Tiempo esperando tu respuesta",
+      "courierPays": "El domiciliario te paga al recoger",
+      "howLong": "¿Cuánto te demoras?",
+      "menuTime": "menú",
+      "otherMinutes": "Otro tiempo, en minutos",
+      "decline": "No puedo",
+      "accept": "Aceptar · {minutes} min",
+      "markReady": "Listo para recoger",
+      "readyStamp": "Listo",
+      "readyShort": "listo",
+      "left": "faltan {minutes} min",
+      "late": "{minutes} min tarde",
+      "promiseTitle": "Prometiste {minutes} minutos",
+      "call": "Llamar",
+      "courier": {
+        "SEARCHING": "RapiChonta está buscando domiciliario",
+        "COMING": "{name} viene en camino",
+        "HERE": "{name} ya llegó al local"
+      }
+    },
+    "decline": {
+      "title": "No atender {code}",
+      "body": "El cliente recibe el aviso de que no pudiste atenderlo, sin cobro.",
+      "reason": "Motivo",
+      "notes": "Comentario (opcional)",
+      "cancel": "Volver",
+      "confirm": "No atender el pedido"
+    },
+    "declineReasons": {
+      "MERCHANT_OUT_OF_STOCK": "Se me acabó algo del pedido",
+      "MERCHANT_TOO_BUSY": "Estoy con mucho trabajo ahora",
+      "MERCHANT_CLOSING": "Ya voy a cerrar"
+    },
+    "closed": {
+      "title": "Lo que salió en las últimas {hours} horas",
+      "summary": "{count, plural, =0 {Ningún pedido recogido} one {1 pedido recogido} other {# pedidos recogidos}} · {total} en productos",
+      "PICKED_UP": "Recogido",
+      "DECLINED": "No atendido",
+      "CANCELLED": "Cancelado"
+    }
+  },
+  "partnership": {
+    "title": "Convenio de comercio aliado",
+    "currentLead": "Vigente: el cliente puede pedirle directo a este local.",
+    "upcomingLead": "Firmado: empieza en la fecha acordada.",
+    "noneLead": "Sin convenio: RapiChonta compra en este local por el cliente.",
+    "point1": "El cliente elige: pedido directo al comercio o compra por RapiChonta.",
+    "point2": "El comercio recibe sus pedidos en su portal, dice cuánto tarda y lo marca listo.",
+    "point3": "El domiciliario de RapiChonta lo recoge y le paga lo de los productos al recogerlo.",
+    "startOn": "Empieza el",
+    "agreementUpload": "Subir foto del convenio firmado",
+    "agreementHint": "Foto del convenio firmado (opcional, solo la ve el administrador).",
+    "agreementReady": "Foto lista: se guarda al firmar.",
+    "agreementAlt": "Convenio firmado",
+    "signAction": "Firmar convenio",
+    "signedNotice": "Convenio firmado. Dale acceso al portal a quien atiende el local.",
+    "stampCurrent": "Aliado",
+    "stampUpcoming": "Próximo",
+    "since": "Aliado desde el {date, date, long}",
+    "startsOn": "Empieza el {date, date, long}",
+    "until": "hasta el {date, date, long}",
+    "signedBy": "Lo registró {name} el {at}",
+    "endOn": "Termina el",
+    "endHint": "Desde ese día el portal se cierra y el local vuelve a ser de compra por RapiChonta. Los pedidos en curso siguen.",
+    "cancelHint": "El convenio aún no empieza: se cancela sin efecto.",
+    "endAction": "Terminar convenio",
+    "cancelAction": "Cancelar convenio",
+    "endedNotice": "Listo: el convenio queda terminado en esa fecha.",
+    "back": "Volver",
+    "history": "{count, plural, one {1 convenio anterior} other {# convenios anteriores}}",
+    "pastRange": "Del {from, date, medium} al {to, date, medium}",
+    "membersTitle": "Acceso al portal",
+    "membersLead": "Quién recibe los pedidos y maneja el menú del local en rapichonta /comercio.",
+    "noMembers": "Nadie atiende el portal todavía.",
+    "membersNeedAgreement": "Firma el convenio para dar acceso al portal.",
+    "memberPhone": "Celular de quien atiende el local",
+    "newAccount": "Ese número no tiene cuenta de comercio: completa sus datos y entrégale la contraseña en persona.",
+    "grant": "Dar acceso",
+    "createAndGrant": "Crear cuenta y dar acceso",
+    "portalHint": "Entra con su celular y contraseña por el ingreso del panel; la web lo lleva a su mostrador.",
+    "memberAdded": "Acceso concedido.",
+    "memberRevoked": "Acceso retirado.",
+    "revoke": "Quitar acceso",
+    "lastSignIn": "entró {at}",
+    "neverSignedIn": "aún no ha entrado"
   }
 }

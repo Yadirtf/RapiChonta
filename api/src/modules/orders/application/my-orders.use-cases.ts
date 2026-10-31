@@ -18,16 +18,16 @@ export class ListMyOrdersUseCase {
   async execute(
     principal: Principal,
     query: { before?: Date; limit?: number } = {},
-  ): Promise<{ active: OrderSummary[]; past: OrderSummary[]; nextBefore: string | null; journey: string[] }> {
+  ): Promise<{ active: OrderSummary[]; past: OrderSummary[]; nextBefore: string | null; journeys: Record<string, string[]> }> {
     const limit = Math.min(PAGE.max, Math.max(1, Math.trunc(query.limit ?? PAGE.default)));
-    const [active, past, journey] = await Promise.all([
+    const [active, past, journeys] = await Promise.all([
       // El historial pide la segunda página sin repetir los activos.
       query.before ? Promise.resolve([]) : this.orders.listMine(principal.userId, { active: true, limit: PAGE.max }),
       this.orders.listMine(principal.userId, { active: false, before: query.before, limit: limit + 1 }),
-      this.orders.journey(),
+      this.orders.journeys(),
     ]);
     const page = past.slice(0, limit);
-    return { active, past: page, nextBefore: past.length > limit ? page[page.length - 1].createdAt.toISOString() : null, journey };
+    return { active, past: page, nextBefore: past.length > limit ? page[page.length - 1].createdAt.toISOString() : null, journeys };
   }
 }
 

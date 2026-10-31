@@ -19,6 +19,9 @@ export interface CatalogOptions {
   };
 }
 
+/** Lo que el editor del menú necesita saber de los límites (lo usan el panel y el portal del comercio). */
+export type MenuLimits = Pick<CatalogOptions["limits"], "prepMinutes" | "productImages">;
+
 export interface EstablishmentPhone {
   phone: string;
   label: string | null;
@@ -117,4 +120,4 @@ export interface CategoryInput {
   names: Translations<string>;
 }
 
-export type UploadPurpose = "PRODUCT_IMAGE" | "ESTABLISHMENT_LOGO" | "PAYMENT_METHOD_IMAGE";
+export type UploadPurpose = "PRODUCT_IMAGE" | "ESTABLISHMENT_LOGO" | "PAYMENT_METHOD_IMAGE" | "PARTNERSHIP_AGREEMENT";

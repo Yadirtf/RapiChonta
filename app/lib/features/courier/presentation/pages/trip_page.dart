@@ -89,14 +89,19 @@ class _TripPageState extends ConsumerState<TripPage> {
   }
 }
 
-/// Etapas del recorrido en el riel de arriba (las de la ruta del cliente, contadas desde la moto).
+/// Etapas del recorrido en el riel de arriba (las de la ruta del cliente, contadas desde la moto). En el pedido
+/// directo (E15) no hay compra ni preparación a cargo del domiciliario: se recoge lo que el local ya preparó.
 const _rail = ['ACCEPTED', 'AT_ESTABLISHMENT', 'PREPARING', 'ON_THE_WAY', 'ARRIVING'];
+const _directRail = ['ACCEPTED', 'AT_ESTABLISHMENT', 'ON_THE_WAY', 'ARRIVING'];
 
-int _railIndex(String status) => switch (status) {
-      'AWAITING_CUSTOMER' => 1,
-      'PENDING_REVIEW' || 'DISPUTED' => 4,
-      _ => _rail.indexOf(status),
-    };
+int _railIndex(String status, {required bool direct}) {
+  final rail = direct ? _directRail : _rail;
+  return switch (status) {
+    'AWAITING_CUSTOMER' => 1,
+    'PENDING_REVIEW' || 'DISPUTED' => rail.length - 1,
+    _ => rail.indexOf(status),
+  };
+}
 
 bool _onMap(String status) => const {'ACCEPTED', 'ON_THE_WAY', 'ARRIVING'}.contains(status);
 
@@ -159,12 +164,12 @@ class _TripView extends ConsumerWidget {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 640),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  _StageRail(current: _railIndex(status)),
+                  _StageRail(current: _railIndex(status, direct: trip.direct), direct: trip.direct),
                   const SizedBox(height: 16),
                   PendingStepsRibbon(orderCode: trip.code),
                   ...switch (status) {
                     'ACCEPTED' => [_ToStoreStage(trip: trip)],
-                    'AT_ESTABLISHMENT' => [_BuyStage(trip: trip)],
+                    'AT_ESTABLISHMENT' => [trip.direct ? _PickUpStage(trip: trip) : _BuyStage(trip: trip)],
                     'AWAITING_CUSTOMER' => [WaitingCustomerStage(trip: trip), const SizedBox(height: 16), _BillTicket(trip: trip, language: Localizations.localeOf(context).languageCode)],
                     'PREPARING' => [_PrepStage(trip: trip, purchaseQueued: trip.status != 'PREPARING')],
                     'ON_THE_WAY' || 'ARRIVING' => [_DeliverStage(trip: trip, arriving: status == 'ARRIVING', arrivalQueued: trip.status == 'ON_THE_WAY')],
@@ -216,17 +221,22 @@ class _CodeTag extends StatelessWidget {
       );
 }
 
-/// Riel de cinco sellos: los hechos en hoja, el actual en chontaduro inclinado, los que faltan en blanco.
+/// Riel de sellos: los hechos en hoja, el actual en chontaduro inclinado, los que faltan en blanco.
 class _StageRail extends StatelessWidget {
-  const _StageRail({required this.current});
+  const _StageRail({required this.current, required this.direct});
 
   final int current;
+  final bool direct;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final labels = [l10n.railStore, l10n.railBuy, l10n.railPrep, l10n.railRoad, l10n.railDoor];
-    final icons = [Icons.storefront_rounded, Icons.receipt_long_rounded, Icons.soup_kitchen_rounded, Icons.two_wheeler_rounded, Icons.where_to_vote_rounded];
+    final labels = direct
+        ? [l10n.railStore, l10n.railPickUp, l10n.railRoad, l10n.railDoor]
+        : [l10n.railStore, l10n.railBuy, l10n.railPrep, l10n.railRoad, l10n.railDoor];
+    final icons = direct
+        ? [Icons.storefront_rounded, Icons.takeout_dining_rounded, Icons.two_wheeler_rounded, Icons.where_to_vote_rounded]
+        : [Icons.storefront_rounded, Icons.receipt_long_rounded, Icons.soup_kitchen_rounded, Icons.two_wheeler_rounded, Icons.where_to_vote_rounded];
     return Semantics(
       label: current >= 0 ? l10n.tripStageOf(current + 1, labels.length, labels[current]) : null,
       child: ExcludeSemantics(
@@ -578,6 +588,124 @@ class _BuyStageState extends ConsumerState<_BuyStage> {
       const SizedBox(height: 8),
       Text(l10n.tripPurchaseHint, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: AppColors.ink.withValues(alpha: 0.55))),
     ]);
+  }
+}
+
+// ── AT_ESTABLISHMENT en un pedido directo (E15): el local lo preparó; se revisa, se le paga lo suyo y se recoge ──
+
+class _PickUpStage extends ConsumerStatefulWidget {
+  const _PickUpStage({required this.trip});
+
+  final Trip trip;
+
+  @override
+  ConsumerState<_PickUpStage> createState() => _PickUpStageState();
+}
+
+class _PickUpStageState extends ConsumerState<_PickUpStage> {
+  final _checked = <int>{};
+  bool _busy = false;
+  String? _error;
+
+  Future<void> _pickUp() async {
+    final l10n = AppLocalizations.of(context);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final sent = await ref.read(pendingStepsProvider.notifier).submit(orderCode: widget.trip.code, kind: StepKind.pickUp);
+      if (!sent && mounted) _queuedNotice(context);
+    } catch (error) {
+      if (mounted) setState(() => _error = errorText(l10n, error));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final language = Localizations.localeOf(context).languageCode;
+    final trip = widget.trip;
+    final merchant = trip.merchant;
+    final ready = merchant?.readyAt != null;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (merchant != null) ...[
+        _MerchantReadiness(ready: ready, at: orderTime(merchant.readyAt ?? merchant.estimatedReadyAt, language)),
+        const SizedBox(height: 16),
+      ],
+      _BillTicket(trip: trip, language: language),
+      const SizedBox(height: 16),
+      StepCard(
+        number: 1,
+        title: l10n.tripPickUpCheck,
+        done: _checked.length == trip.lines.length,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text(l10n.tripChecked(_checked.length, trip.lines.length), style: TextStyle(fontSize: 12, color: AppColors.ink.withValues(alpha: 0.55))),
+          _ShoppingList(
+            trip: trip,
+            checked: _checked,
+            onToggle: (i) => setState(() => _checked.contains(i) ? _checked.remove(i) : _checked.add(i)),
+          ),
+        ]),
+      ),
+      StepCard(
+        number: 2,
+        title: l10n.tripPayMerchant,
+        done: false,
+        child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Expanded(child: Text(l10n.tripPayMerchantHint, style: TextStyle(fontSize: 13, color: AppColors.ink.withValues(alpha: 0.65)))),
+          const SizedBox(width: 12),
+          Text(
+            formatPesos(trip.itemsCents, language),
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.6, color: AppColors.chontaStrong, fontFeatures: [FontFeature.tabularFigures()]),
+          ),
+        ]),
+      ),
+      if (_error != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_error!, style: const TextStyle(color: AppColors.chontaStrong, fontWeight: FontWeight.w700))),
+      FilledButton.icon(
+        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(58), backgroundColor: AppColors.ink, foregroundColor: AppColors.brand),
+        onPressed: _busy ? null : _pickUp,
+        icon: _busy ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.brand)) : const Icon(Icons.takeout_dining_rounded),
+        label: Text(l10n.tripConfirmPickUp),
+      ),
+      const SizedBox(height: 8),
+      Text(l10n.tripPickUpHint, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: AppColors.ink.withValues(alpha: 0.55))),
+    ]);
+  }
+}
+
+/// Lo que dijo el comercio aliado: a qué hora lo tendría o que ya está empacado.
+class _MerchantReadiness extends StatelessWidget {
+  const _MerchantReadiness({required this.ready, required this.at});
+
+  final bool ready;
+  final String at;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final tone = ready ? AppColors.leaf : AppColors.brand;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 16, 12),
+      decoration: BoxDecoration(color: tone.withValues(alpha: ready ? 0.12 : 0.22), borderRadius: BorderRadius.circular(20)),
+      child: Row(children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(color: ready ? AppColors.leaf : AppColors.ink, borderRadius: BorderRadius.circular(13)),
+          child: Icon(ready ? Icons.inventory_2_rounded : Icons.soup_kitchen_rounded, color: ready ? Colors.white : AppColors.brand, size: 21),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(ready ? l10n.tripMerchantReady : l10n.tripMerchantPreparing(at), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+            Text(ready ? l10n.tripMerchantReadyAt(at) : l10n.tripMerchantPreparingHint, style: TextStyle(fontSize: 12, color: AppColors.ink.withValues(alpha: 0.6))),
+          ]),
+        ),
+      ]),
+    );
   }
 }
 

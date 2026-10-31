@@ -23,7 +23,7 @@ import { PrismaCategoryRepository } from './infrastructure/persistence/prisma-ca
 import { PrismaEstablishmentAdminRepository } from './infrastructure/persistence/prisma-establishment-admin.repository';
 import { PrismaMenuRepository } from './infrastructure/persistence/prisma-menu.repository';
 import { PrismaPublicCatalogRepository } from './infrastructure/persistence/prisma-public-catalog.repository';
-import { AdminCatalogController } from './presentation/http/admin-catalog.controller';
+import { AdminCatalogController, AdminMenuController } from './presentation/http/admin-catalog.controller';
 import { CatalogPresenter } from './presentation/http/catalog-presenter';
 import { PublicCatalogController } from './presentation/http/public-catalog.controller';
 
@@ -48,7 +48,7 @@ class CatalogCodesCheck implements OnApplicationBootstrap {
 /** Módulo `catalog` (Docs/14-base-de-datos/E02): establecimientos, categorías, menú y productos versionados. */
 @Module({
   imports: [FilesModule],
-  controllers: [PublicCatalogController, AdminCatalogController],
+  controllers: [PublicCatalogController, AdminCatalogController, AdminMenuController],
   providers: [
     { provide: PublicCatalogRepository, useClass: PrismaPublicCatalogRepository },
     { provide: EstablishmentAdminRepository, useClass: PrismaEstablishmentAdminRepository },

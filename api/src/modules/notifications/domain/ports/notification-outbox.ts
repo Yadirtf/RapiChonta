@@ -12,6 +12,8 @@ export interface PendingNotification {
   /** En ORDER_STATUS_CHANGED, el estado nuevo. */
   status: string | null;
   storeName: string | null;
+  /** Cómo se surte el pedido (E15): el mismo estado se cuenta distinto en un pedido directo. */
+  fulfillmentMode?: string | null;
   params: Record<string, string | number> | null;
   targets: PushTarget[];
 }

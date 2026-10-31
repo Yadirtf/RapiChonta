@@ -285,6 +285,8 @@ class PendingStepsController extends Notifier<PendingState> {
         await _repository.purchase(current.orderCode, event, amount: current.amount!, receiptFileId: current.receiptFileId!);
       case StepKind.ready:
         await _repository.ready(step.orderCode, event);
+      case StepKind.pickUp:
+        await _repository.pickUp(step.orderCode, event);
       case StepKind.delay:
         await _repository.delay(step.orderCode, event);
       case StepKind.arrived:

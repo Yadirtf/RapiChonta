@@ -17,7 +17,13 @@ export const customer: Principal = {
   municipalityId: null,
 };
 
-export const ESTABLISHMENT: OrderingEstablishment = { id: 'local-1', name: 'Asadero La Chonta', municipalityId: 1, acceptsOrders: true };
+export const ESTABLISHMENT: OrderingEstablishment = {
+  id: 'local-1',
+  name: 'Asadero La Chonta',
+  municipalityId: 1,
+  acceptsOrders: true,
+  fulfillmentModes: ['COURIER_PURCHASE'],
+};
 
 /** Producto vigente del menú: la versión que envía el cliente es la actual. */
 export const version = (id: string, price: string, overrides: Partial<MenuVersion> = {}): MenuVersion => ({
@@ -140,8 +146,11 @@ export class MemoryOrders extends OrdersRepository {
     const o = this.details.get(code);
     return o && o.customer === customerUserId ? o : null;
   }
-  async journey() {
-    return ['PENDING_ASSIGNMENT', 'ACCEPTED', 'AT_ESTABLISHMENT', 'PREPARING', 'ON_THE_WAY', 'ARRIVING', 'DELIVERED'];
+  async journeys() {
+    return {
+      MERCHANT_DIRECT: ['AWAITING_MERCHANT', 'PENDING_ASSIGNMENT', 'ACCEPTED', 'AT_ESTABLISHMENT', 'ON_THE_WAY', 'ARRIVING', 'DELIVERED'],
+      COURIER_PURCHASE: ['PENDING_ASSIGNMENT', 'ACCEPTED', 'AT_ESTABLISHMENT', 'PREPARING', 'ON_THE_WAY', 'ARRIVING', 'DELIVERED'],
+    };
   }
 }
 

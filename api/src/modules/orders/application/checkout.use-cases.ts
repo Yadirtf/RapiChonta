@@ -7,6 +7,7 @@ import { GeoPoint } from '../../catalog/domain/value-objects/geo-point';
 import { Principal } from '../../identity/domain/principal';
 import { PhoneNumber } from '../../identity/domain/value-objects/phone-number';
 import { CartItem, Checkout, CHECKOUT_LIMITS } from '../domain/checkout';
+import { DEFAULT_FULFILLMENT_MODE } from '../domain/orders.codes';
 import { OrderErrors } from '../domain/orders.errors';
 import { AddressBook, NewAddress, RecipientBook } from '../domain/ports/address-book';
 import { CheckoutReader, OrderingEstablishment } from '../domain/ports/checkout.reader';
@@ -26,6 +27,8 @@ export interface QuoteInput {
 
 export interface CreateOrderInput extends QuoteInput {
   paymentMethod: string;
+  /** E15: MERCHANT_DIRECT (lo prepara el comercio aliado) o COURIER_PURCHASE (lo compra el domiciliario). */
+  fulfillmentMode?: string | null;
   /** Pedido para otra persona: uno guardado o nombre y teléfono nuevos. */
   recipient?: { recipientId: string } | { fullName: string; phone: string } | null;
   notes?: string | null;
@@ -96,8 +99,9 @@ export class QuoteOrderUseCase {
 
 /**
  * H04.3: confirma el pedido. Rechaza fuera de horario, con productos no disponibles o con otro precio,
- * fuera de cobertura y por encima del tope de cliente nuevo. Crea el pedido en PENDING_ASSIGNMENT con
- * código RC-XXXX; cada línea apunta a la versión vigente del producto (nombre, precio y tiempo fijados).
+ * fuera de cobertura y por encima del tope de cliente nuevo. Crea el pedido en el estado inicial de su modo
+ * (PENDING_ASSIGNMENT, o AWAITING_MERCHANT si es directo a un comercio aliado, H15.2) con código RC-XXXX; cada
+ * línea apunta a la versión vigente del producto (nombre, precio y tiempo fijados).
  */
 @Injectable()
 export class CreateOrderUseCase {
@@ -118,6 +122,8 @@ export class CreateOrderUseCase {
     await this.ensureOpen.execute(establishment.municipalityId, now);
     checkout.assertWithinNewCustomerLimit();
 
+    const fulfillmentMode = input.fulfillmentMode || DEFAULT_FULFILLMENT_MODE;
+    if (!establishment.fulfillmentModes.includes(fulfillmentMode)) throw OrderErrors.fulfillmentModeUnavailable(establishment.fulfillmentModes);
     const [methods, commissionRateId] = await Promise.all([this.reader.paymentMethods(), this.reader.commissionRateId(establishment.municipalityId)]);
     if (!methods.includes(input.paymentMethod)) throw OrderErrors.paymentMethodUnavailable();
     if (!commissionRateId) throw OrderErrors.ordersNotConfigured();
@@ -131,6 +137,7 @@ export class CreateOrderUseCase {
       deliveryZoneFeeId: delivery.deliveryZoneFeeId,
       commissionRateId,
       paymentMethod: input.paymentMethod,
+      fulfillmentMode,
       customerNotes: clean(input.notes, CHECKOUT_LIMITS.customerNotes),
       lines: checkout.lines.map((l) => ({ productVersionId: l.productVersionId, quantity: l.quantity, notes: l.notes })),
       clientRequestId: input.clientRequestId,

@@ -84,6 +84,11 @@ export class CourierTripUseCase {
     );
   }
 
+  /** E15 "Recogí el pedido" (pedido directo): le paga al comercio lo que vale y sale → ON_THE_WAY, igual que "Ya está listo". */
+  pickUp(principal: Principal, code: string, event: TripEvent, now = new Date()) {
+    return this.step(principal, code, event, [TRIP_STATUSES.AT_ESTABLISHMENT], TRIP_STATUSES.ON_THE_WAY, now, (command) => this.trips.pickUp(command));
+  }
+
   /** H08.5 "Ya está listo" → ON_THE_WAY (el cliente recibe "Tu pedido va en camino" y ve su código de entrega). */
   ready(principal: Principal, code: string, event: TripEvent, now = new Date()) {
     return this.step(principal, code, event, [TRIP_STATUSES.PREPARING], TRIP_STATUSES.ON_THE_WAY, now, (command) => this.trips.markReady(command));

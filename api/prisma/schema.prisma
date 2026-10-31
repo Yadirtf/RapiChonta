@@ -158,6 +158,7 @@ model File {
   purchaseReceipts      OrderPurchase[]
   deliveryProofs        OrderDeliveryProof[]
   paymentMethodImages   CheckoutPaymentMethod[]
+  partnershipAgreements EstablishmentPartnership[]
   content               FileContent?
 
   @@index([purposeId, sha256])
@@ -344,6 +345,13 @@ model User {
   adjustmentsDecided     OrderItemAdjustment[]
   incidentsReported      Incident[]
   incidentStatusChanges  IncidentStatusHistory[]
+  partnershipsCreated    EstablishmentPartnership[]   @relation("PartnershipCreatedBy")
+  partnershipsEnded      EstablishmentPartnership[]   @relation("PartnershipEndedBy")
+  storeMemberships       EstablishmentStaff[]         @relation("EstablishmentStaffUser")
+  storeStaffGranted      EstablishmentStaff[]         @relation("EstablishmentStaffGrantedBy")
+  storeStaffRevoked      EstablishmentStaff[]         @relation("EstablishmentStaffRevokedBy")
+  merchantAcceptances    MerchantOrderAcceptance[]
+  merchantReadyMarks     MerchantOrderReadiness[]
 
   @@index([statusId])
   @@map("users")
@@ -936,6 +944,8 @@ model Establishment {
   menuSections  MenuSection[]
   products      Product[]
   orders        Order[]
+  partnerships  EstablishmentPartnership[]
+  staff         EstablishmentStaff[]
 
   @@index([location], type: Gist)
   @@index([area], type: Gist)
@@ -1294,13 +1304,19 @@ model CustomerRecipient {
   @@map("customer_recipients")
 }
 
-/// Quién compra: el domiciliario (MVP) o el comercio aliado (E15).
+/// Quién compra: el domiciliario (MVP) o el comercio aliado, que prepara y entrega al domiciliario (E15).
 model FulfillmentMode {
-  id            Int       @id @default(autoincrement()) @db.SmallInt
-  code          String    @unique @db.VarChar(40)
-  sortOrder     Int       @map("sort_order") @db.SmallInt
-  deactivatedAt DateTime? @map("deactivated_at") @db.Timestamptz(6)
-  orders        Order[]
+  id                  Int                         @id @default(autoincrement()) @db.SmallInt
+  code                String                      @unique @db.VarChar(40)
+  sortOrder           Int                         @map("sort_order") @db.SmallInt
+  deactivatedAt       DateTime?                   @map("deactivated_at") @db.Timestamptz(6)
+  /// Estado con que nace un pedido de este modo (MERCHANT_DIRECT empieza esperando al comercio, E15).
+  initialStatusId     Int                         @map("initial_status_id") @db.SmallInt
+  /// Solo se ofrece en locales con un convenio vigente (comercio aliado, E15).
+  requiresPartnership Boolean                     @default(false) @map("requires_partnership")
+  initialStatus       OrderStatus                 @relation("FulfillmentModeInitialStatus", fields: [initialStatusId], references: [id], onDelete: Restrict)
+  orders              Order[]
+  transitions         OrderStatusTransitionMode[]
 
   @@map("fulfillment_modes")
 }
@@ -1330,6 +1346,7 @@ model OrderStatus {
   transitionsTo       OrderStatusTransition[]  @relation("OrderTransitionTo")
   historyTo           OrderStatusHistory[]     @relation("OrderHistoryTo")
   incidentResolutions IncidentResolutionType[]
+  initialOfModes      FulfillmentMode[]        @relation("FulfillmentModeInitialStatus")
 
   @@map("order_statuses")
 }
@@ -1342,10 +1359,24 @@ model OrderStatusTransition {
   fromStatus   OrderStatus                 @relation("OrderTransitionFrom", fields: [fromStatusId], references: [id], onDelete: Restrict)
   toStatus     OrderStatus                 @relation("OrderTransitionTo", fields: [toStatusId], references: [id], onDelete: Restrict)
   roles        OrderStatusTransitionRole[]
+  modes        OrderStatusTransitionMode[]
   history      OrderStatusHistory[]
 
   @@id([fromStatusId, toStatusId])
   @@map("order_status_transitions")
+}
+
+/// En qué modo de cumplimiento existe cada cambio (E15): el pedido directo no pasa por la compra del domiciliario.
+model OrderStatusTransitionMode {
+  fromStatusId      Int                   @map("from_status_id") @db.SmallInt
+  toStatusId        Int                   @map("to_status_id") @db.SmallInt
+  fulfillmentModeId Int                   @map("fulfillment_mode_id") @db.SmallInt
+  transition        OrderStatusTransition @relation(fields: [fromStatusId, toStatusId], references: [fromStatusId, toStatusId], onDelete: Cascade)
+  fulfillmentMode   FulfillmentMode       @relation(fields: [fulfillmentModeId], references: [id], onDelete: Restrict)
+
+  @@id([fromStatusId, toStatusId, fulfillmentModeId])
+  @@index([fulfillmentModeId])
+  @@map("order_status_transition_modes")
 }
 
 /// Qué rol activo puede hacer cada cambio de estado.
@@ -1411,6 +1442,7 @@ model Order {
   adjustmentRequests OrderAdjustmentRequest[]
   cancellation       OrderCancellation?
   incidents          Incident[]
+  merchantAcceptance MerchantOrderAcceptance?
 
   @@index([customerUserId, createdAt(sort: Desc)])
   @@index([customerUserId, statusId])
@@ -1930,12 +1962,14 @@ model OrderItemAdjustment {
 
 /// E10 (aquí porque una consulta puede terminar el pedido): CUSTOMER_REQUEST, ALL_ITEMS_UNAVAILABLE, ...
 model CancellationReason {
-  id            Int                 @id @default(autoincrement()) @db.SmallInt
-  code          String              @unique @db.VarChar(40)
-  sortOrder     Int                 @map("sort_order") @db.SmallInt
-  deactivatedAt DateTime?           @map("deactivated_at") @db.Timestamptz(6)
-  isAutomatic   Boolean             @map("is_automatic")
-  cancellations OrderCancellation[]
+  id               Int                 @id @default(autoincrement()) @db.SmallInt
+  code             String              @unique @db.VarChar(40)
+  sortOrder        Int                 @map("sort_order") @db.SmallInt
+  deactivatedAt    DateTime?           @map("deactivated_at") @db.Timestamptz(6)
+  isAutomatic      Boolean             @map("is_automatic")
+  /// La elige el comercio aliado al rechazar un pedido directo (E15); el operador no la ve en su lista.
+  isMerchantReason Boolean             @default(false) @map("is_merchant_reason")
+  cancellations    OrderCancellation[]
 
   @@map("cancellation_reasons")
 }
@@ -2044,4 +2078,72 @@ model IncidentStatusHistory {
 
   @@index([incidentId, occurredAt])
   @@map("incident_status_history")
+}
+
+// ═══════════════════════════ E15 · Comercios aliados ═══════════════════════════
+
+/// Convenio con un comercio aliado: es aliado mientras tiene uno vigente (sin traslapes, EXCLUDE en SQL).
+model EstablishmentPartnership {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  establishmentId String        @map("establishment_id") @db.Uuid
+  /// Fechas de negocio en la zona horaria del municipio; ended_on es el primer día sin convenio.
+  startedOn       DateTime      @map("started_on") @db.Date
+  endedOn         DateTime?     @map("ended_on") @db.Date
+  /// El contrato firmado (PDF o foto, privado).
+  agreementFileId String?       @map("agreement_file_id") @db.Uuid
+  createdByUserId String        @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  endedByUserId   String?       @map("ended_by_user_id") @db.Uuid
+  establishment   Establishment @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  agreementFile   File?         @relation(fields: [agreementFileId], references: [id], onDelete: Restrict)
+  createdBy       User          @relation("PartnershipCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  endedBy         User?         @relation("PartnershipEndedBy", fields: [endedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([establishmentId, startedOn])
+  @@map("establishment_partnerships")
+}
+
+/// Quién del comercio entra a su portal y con qué local. Un usuario puede atender varios locales.
+model EstablishmentStaff {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String        @map("user_id") @db.Uuid
+  establishmentId String        @map("establishment_id") @db.Uuid
+  grantedByUserId String        @map("granted_by_user_id") @db.Uuid
+  grantedAt       DateTime      @default(now()) @map("granted_at") @db.Timestamptz(6)
+  revokedByUserId String?       @map("revoked_by_user_id") @db.Uuid
+  revokedAt       DateTime?     @map("revoked_at") @db.Timestamptz(6)
+  user            User          @relation("EstablishmentStaffUser", fields: [userId], references: [id], onDelete: Restrict)
+  establishment   Establishment @relation(fields: [establishmentId], references: [id], onDelete: Restrict)
+  grantedBy       User          @relation("EstablishmentStaffGrantedBy", fields: [grantedByUserId], references: [id], onDelete: Restrict)
+  revokedBy       User?         @relation("EstablishmentStaffRevokedBy", fields: [revokedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([establishmentId])
+  @@map("establishment_staff")
+}
+
+/// El comercio aceptó el pedido directo y dijo cuánto tarda (el tiempo real, no el del menú).
+model MerchantOrderAcceptance {
+  orderId            String                  @id @map("order_id") @db.Uuid
+  acceptedByUserId   String                  @map("accepted_by_user_id") @db.Uuid
+  preparationMinutes Int                     @map("preparation_minutes") @db.SmallInt
+  acceptedAt         DateTime                @default(dbgenerated("clock_timestamp()")) @map("accepted_at") @db.Timestamptz(6)
+  order              Order                   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  acceptedBy         User                    @relation(fields: [acceptedByUserId], references: [id], onDelete: Restrict)
+  readiness          MerchantOrderReadiness?
+
+  @@index([acceptedByUserId])
+  @@map("merchant_order_acceptances")
+}
+
+/// "Listo para recoger": el comercio terminó de prepararlo. Solo existe si antes lo aceptó.
+model MerchantOrderReadiness {
+  orderId        String                  @id @map("order_id") @db.Uuid
+  markedByUserId String                  @map("marked_by_user_id") @db.Uuid
+  readyAt        DateTime                @default(dbgenerated("clock_timestamp()")) @map("ready_at") @db.Timestamptz(6)
+  acceptance     MerchantOrderAcceptance @relation(fields: [orderId], references: [orderId], onDelete: Restrict)
+  markedBy       User                    @relation(fields: [markedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([markedByUserId])
+  @@map("merchant_order_readiness")
 }

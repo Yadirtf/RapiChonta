@@ -59,6 +59,8 @@ export const CATALOGS: CatalogSeed[] = [
         ['COLLECTION_QR', 2, ['image/jpeg', 'image/png', 'image/webp'], false],
         ['PAYMENT_METHOD_IMAGE', 1, ['image/jpeg', 'image/png', 'image/webp'], false],
         ['LEGAL_DOCUMENT', 10, ['application/pdf'], false],
+        // E15: foto del convenio firmado con el comercio aliado (privada, la ve solo el administrador).
+        ['PARTNERSHIP_AGREEMENT', 8, ['image/jpeg', 'image/png', 'image/webp'], false],
       ].map(([code, megabytes, mimeTypes, camera]) => ({
         code: code as string,
         max_size_bytes: (megabytes as number) * 1024 * 1024,
@@ -95,6 +97,9 @@ export const CATALOGS: CatalogSeed[] = [
         'CATEGORY_CHANGED',
         'MUNICIPALITY_CHANGED',
         'PAYMENT_METHOD_CHANGED',
+        // E15: convenio con un comercio aliado y quién del comercio atiende cada local.
+        'PARTNERSHIP_CHANGED',
+        'STORE_STAFF_CHANGED',
       ].map((code) => ({ code })),
     ),
   },
@@ -123,6 +128,8 @@ export const CATALOGS: CatalogSeed[] = [
       { code: 'COURIER', requires_password: true, is_self_assignable: false, is_staff: false, requires_municipality: true },
       { code: 'OPERATOR', requires_password: true, is_self_assignable: false, is_staff: true, requires_municipality: true },
       { code: 'ADMIN', requires_password: true, is_self_assignable: false, is_staff: true, requires_municipality: false },
+      // E15: el dueño o la persona del comercio aliado. Su alcance son sus locales (establishment_staff), no un municipio.
+      { code: 'MERCHANT', requires_password: true, is_self_assignable: false, is_staff: false, requires_municipality: false },
     ]),
   },
   { table: 'platforms', key: 'code', rows: ordered(['ANDROID', 'IOS', 'WEB'].map((code) => ({ code }))) },
@@ -260,15 +267,7 @@ export const CATALOGS: CatalogSeed[] = [
   },
 
   // ─────────────── E04 · Pedido del cliente ───────────────
-  {
-    table: 'fulfillment_modes',
-    key: 'code',
-    rows: ordered([
-      { code: 'COURIER_PURCHASE', deactivated_at: null },
-      // Comercios aliados (E15): existe para que el diseño no cambie, pero no se usa hasta entonces.
-      { code: 'MERCHANT_DIRECT', deactivated_at: new Date('2026-10-21T00:00:00Z') },
-    ]),
-  },
+  // fulfillment_modes va aparte (FULFILLMENT_MODES): su estado inicial es una llave hacia order_statuses.
   {
     // sort_order es el orden del recorrido: la línea de tiempo del cliente lo sigue.
     table: 'order_statuses',
@@ -278,6 +277,8 @@ export const CATALOGS: CatalogSeed[] = [
         [
           // code, visible al cliente, paso del recorrido, revela datos de entrega, cuenta como entregado, avisa por push (H06.2),
           // tiene domiciliario (E07: exactamente una asignación vigente)
+          // E15: el pedido directo nace aquí; el comercio aliado lo acepta (con su tiempo) o lo rechaza.
+          ['AWAITING_MERCHANT', true, true, false, false, false, false],
           ['PENDING_ASSIGNMENT', true, true, false, false, false, false],
           ['OFFERED', false, false, false, false, false, false],
           ['ACCEPTED', true, true, false, false, true, true],
@@ -303,7 +304,7 @@ export const CATALOGS: CatalogSeed[] = [
             notifies_customer: notifies,
             requires_courier: courier,
           },
-          code === 'PENDING_ASSIGNMENT',
+          code === 'PENDING_ASSIGNMENT' || code === 'AWAITING_MERCHANT',
           code === 'DELIVERED' || code === 'CANCELLED',
         ),
       ),
@@ -377,6 +378,8 @@ export const CATALOGS: CatalogSeed[] = [
           ['DELIVERY_PROOF_PENDING', true],
           // E09: al domiciliario, el pedido que llevaba se canceló (desde la consulta al cliente).
           ['TRIP_CANCELLED', true],
+          // E15: al domiciliario, el comercio aliado marcó listo el pedido directo que va a recoger.
+          ['MERCHANT_ORDER_READY', true],
         ] as const
       ).map(([code, high]) => ({ code, is_high_priority: high })),
     ),
@@ -415,21 +418,25 @@ export const CATALOGS: CatalogSeed[] = [
     ),
   },
   // E10: por qué se canceló un pedido (E09 usa CUSTOMER_REQUEST y ALL_ITEMS_UNAVAILABLE). Automática = la pone el
-  // sistema o la resolución de una novedad; el operador elige entre las demás al cancelar (H10.5).
+  // sistema o la resolución de una novedad; el operador elige entre las demás al cancelar (H10.5). E15: las del
+  // comercio las elige el comercio aliado al rechazar un pedido directo, y el operador no las ve.
   {
     table: 'cancellation_reasons',
     key: 'code',
     rows: ordered(
       (
         [
-          ['CUSTOMER_REQUEST', false],
-          ['NO_COURIER_AVAILABLE', false],
-          ['ESTABLISHMENT_CLOSED', false],
-          ['ALL_ITEMS_UNAVAILABLE', true],
-          ['CUSTOMER_UNREACHABLE', false],
-          ['INCIDENT_RESOLUTION', true],
+          ['CUSTOMER_REQUEST', false, false],
+          ['NO_COURIER_AVAILABLE', false, false],
+          ['ESTABLISHMENT_CLOSED', false, false],
+          ['ALL_ITEMS_UNAVAILABLE', true, false],
+          ['CUSTOMER_UNREACHABLE', false, false],
+          ['INCIDENT_RESOLUTION', true, false],
+          ['MERCHANT_OUT_OF_STOCK', false, true],
+          ['MERCHANT_TOO_BUSY', false, true],
+          ['MERCHANT_CLOSING', false, true],
         ] as const
-      ).map(([code, automatic]) => ({ code, is_automatic: automatic })),
+      ).map(([code, automatic, merchant]) => ({ code, is_automatic: automatic, is_merchant_reason: merchant })),
     ),
   },
   // ─────────────── E10 · Incidencias ───────────────
@@ -525,10 +532,27 @@ export const TRANSITIONS: { table: string; catalog: string; pairs: [string, stri
 ];
 
 /**
- * Máquina de estados del pedido (Docs/14-base-de-datos/E04): quién puede hacer cada cambio. `system`: lo hace
- * la API sin una persona (geocerca, temporizador). Solo se agregan pares y roles; quitar uno es una migración.
+ * Modos de cumplimiento (E04, E15) y el estado con que nace su pedido. requiresPartnership: solo en locales con
+ * convenio vigente (v_establishment_partners).
  */
-export const ORDER_TRANSITIONS: { from: string; to: string; roles: string[]; system?: boolean }[] = [
+export const FULFILLMENT_MODES: { code: string; initialStatus: string; requiresPartnership: boolean }[] = [
+  // El comercio aliado prepara y entrega al domiciliario: va primero porque es el que se sugiere en un local aliado.
+  { code: 'MERCHANT_DIRECT', initialStatus: 'AWAITING_MERCHANT', requiresPartnership: true },
+  { code: 'COURIER_PURCHASE', initialStatus: 'PENDING_ASSIGNMENT', requiresPartnership: false },
+];
+
+const COURIER_PURCHASE_ONLY = ['COURIER_PURCHASE'];
+const MERCHANT_DIRECT_ONLY = ['MERCHANT_DIRECT'];
+
+/**
+ * Máquina de estados del pedido (Docs/14-base-de-datos/E04): quién puede hacer cada cambio. `system`: lo hace
+ * la API sin una persona (geocerca, temporizador). `modes`: en qué modo de cumplimiento existe (E15; si falta, en
+ * los dos). Solo se agregan pares, roles y modos; quitar uno es una migración.
+ */
+export const ORDER_TRANSITIONS: { from: string; to: string; roles: string[]; system?: boolean; modes?: string[] }[] = [
+  // E15: el comercio acepta (con su tiempo de preparación) y el pedido pasa al despacho, o lo rechaza.
+  { from: 'AWAITING_MERCHANT', to: 'PENDING_ASSIGNMENT', roles: ['MERCHANT'], modes: MERCHANT_DIRECT_ONLY },
+  { from: 'AWAITING_MERCHANT', to: 'CANCELLED', roles: ['MERCHANT', 'CUSTOMER', 'OPERATOR', 'ADMIN'], modes: MERCHANT_DIRECT_ONLY },
   { from: 'PENDING_ASSIGNMENT', to: 'OFFERED', roles: ['OPERATOR', 'ADMIN'] },
   { from: 'PENDING_ASSIGNMENT', to: 'CANCELLED', roles: ['CUSTOMER', 'OPERATOR', 'ADMIN'] },
   { from: 'OFFERED', to: 'ACCEPTED', roles: ['COURIER'] },
@@ -537,13 +561,15 @@ export const ORDER_TRANSITIONS: { from: string; to: string; roles: string[]; sys
   { from: 'ACCEPTED', to: 'AT_ESTABLISHMENT', roles: [], system: true },
   { from: 'ACCEPTED', to: 'PENDING_ASSIGNMENT', roles: ['COURIER', 'OPERATOR', 'ADMIN'] },
   { from: 'ACCEPTED', to: 'CANCELLED', roles: ['OPERATOR', 'ADMIN'] },
-  { from: 'AT_ESTABLISHMENT', to: 'AWAITING_CUSTOMER', roles: ['COURIER'] },
-  { from: 'AT_ESTABLISHMENT', to: 'PREPARING', roles: ['COURIER'] },
+  { from: 'AT_ESTABLISHMENT', to: 'AWAITING_CUSTOMER', roles: ['COURIER'], modes: COURIER_PURCHASE_ONLY },
+  { from: 'AT_ESTABLISHMENT', to: 'PREPARING', roles: ['COURIER'], modes: COURIER_PURCHASE_ONLY },
+  // E15: en el pedido directo no hay compra; el domiciliario recoge lo que preparó el comercio (y le paga al recoger).
+  { from: 'AT_ESTABLISHMENT', to: 'ON_THE_WAY', roles: ['COURIER'], modes: MERCHANT_DIRECT_ONLY },
   { from: 'AT_ESTABLISHMENT', to: 'PENDING_ASSIGNMENT', roles: ['OPERATOR', 'ADMIN'] },
   { from: 'AT_ESTABLISHMENT', to: 'CANCELLED', roles: ['OPERATOR', 'ADMIN'] },
-  { from: 'AWAITING_CUSTOMER', to: 'AT_ESTABLISHMENT', roles: ['CUSTOMER'], system: true },
-  { from: 'AWAITING_CUSTOMER', to: 'CANCELLED', roles: ['CUSTOMER'], system: true },
-  { from: 'PREPARING', to: 'ON_THE_WAY', roles: ['COURIER'] },
+  { from: 'AWAITING_CUSTOMER', to: 'AT_ESTABLISHMENT', roles: ['CUSTOMER'], system: true, modes: COURIER_PURCHASE_ONLY },
+  { from: 'AWAITING_CUSTOMER', to: 'CANCELLED', roles: ['CUSTOMER'], system: true, modes: COURIER_PURCHASE_ONLY },
+  { from: 'PREPARING', to: 'ON_THE_WAY', roles: ['COURIER'], modes: COURIER_PURCHASE_ONLY },
   // La geocerca, o el domiciliario con "Llegué" si el GPS no la dispara.
   { from: 'ON_THE_WAY', to: 'ARRIVING', roles: ['COURIER'], system: true },
   // El cliente con "Recibí mi pedido", o el domiciliario con el código de entrega que le dice el cliente.
@@ -585,7 +611,11 @@ const ADMIN_PERMISSIONS = [
   'legal.manage',
   'categories.manage',
   'municipalities.manage',
+  // E15: convenios con comercios aliados y quién del comercio entra a su portal.
+  'partners.manage',
 ];
+/** E15: el comercio aliado. products.manage con alcance a sus locales (establishment_staff), no a un municipio. */
+const MERCHANT_PERMISSIONS = ['store.respond_orders', 'store.manage_status', 'products.manage'];
 
 /**
  * Tipos de movimiento de la caja del domiciliario (Docs/14-base-de-datos/E11). direction: +1 aumenta lo que el
@@ -630,6 +660,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
   COURIER: ['account.manage_own', ...COURIER_PERMISSIONS],
   OPERATOR: ['account.manage_own', ...STAFF_PERMISSIONS],
   ADMIN: ['account.manage_own', ...STAFF_PERMISSIONS, ...ADMIN_PERMISSIONS],
+  MERCHANT: ['account.manage_own', ...MERCHANT_PERMISSIONS],
 };
 
 /** Documentos legales que debe aceptar quien tiene cada rol. */
@@ -638,6 +669,7 @@ export const LEGAL_REQUIREMENTS: Record<string, string[]> = {
   COURIER: ['TERMS_OF_SERVICE', 'DATA_PROCESSING_POLICY', 'COURIER_LOCATION_AUTHORIZATION'],
   OPERATOR: ['TERMS_OF_SERVICE', 'DATA_PROCESSING_POLICY'],
   ADMIN: ['TERMS_OF_SERVICE', 'DATA_PROCESSING_POLICY'],
+  MERCHANT: ['TERMS_OF_SERVICE', 'DATA_PROCESSING_POLICY'],
 };
 
 /** Primera versión publicada de cada documento legal (el texto vive en la web: /legal/<documento>). */
@@ -666,6 +698,8 @@ export const SETTINGS: {
   { key: 'delivery.arriving_meters', type: 'METERS', value: 80, min: 10, max: 1000, scoped: true },
   { key: 'delivery.proof_after_seconds', type: 'SECONDS', value: 300, min: 60, max: 3600, scoped: true },
   { key: 'delivery.review_auto_close_seconds', type: 'SECONDS', value: 7200, min: 600, max: 86400, scoped: true },
+  // E15: un pedido directo sin respuesta del comercio en este tiempo aparece como alerta en el panel de pedidos.
+  { key: 'merchant.response_alert_seconds', type: 'SECONDS', value: 180, min: 60, max: 1800, scoped: true },
   { key: 'geofence.consecutive_readings', type: 'INTEGER', value: 2, min: 1, max: 10, scoped: false },
   { key: 'preparation.recheck_seconds', type: 'SECONDS', value: 300, min: 60, max: 3600, scoped: false },
   { key: 'location.retention_days', type: 'DAYS', value: 30, min: 1, max: 365, scoped: false },

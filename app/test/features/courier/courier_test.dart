@@ -22,6 +22,8 @@ void main() {
       expect(PendingRules.effectiveStatus('AT_ESTABLISHMENT', [step(StepKind.purchase)]), 'PREPARING');
       expect(PendingRules.effectiveStatus('AT_ESTABLISHMENT', [step(StepKind.purchase), step(StepKind.ready)]), 'ON_THE_WAY');
       expect(PendingRules.effectiveStatus('PREPARING', [step(StepKind.delay)]), 'PREPARING');
+      // E15: en el pedido directo se recoge lo que el local preparó, sin compra ni preparación.
+      expect(PendingRules.effectiveStatus('AT_ESTABLISHMENT', [step(StepKind.pickUp)]), 'ON_THE_WAY');
       // Un paso que ya no aplica (el servidor avanzó por otro lado) no mueve nada.
       expect(PendingRules.effectiveStatus('ON_THE_WAY', [step(StepKind.purchase)]), 'ON_THE_WAY');
       // "Llegué" y la entrega con foto sin señal.

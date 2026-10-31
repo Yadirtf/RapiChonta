@@ -109,6 +109,12 @@ export class CreateOrderDto extends QuoteOrderDto {
   @MaxLength(40)
   paymentMethod: string;
 
+  /** E15: sin modo, la compra por RapiChonta (lo que entienden las apps de antes). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  fulfillmentMode?: string | null;
+
   @IsOptional()
   @ValidateNested()
   @Type(() => RecipientDto)

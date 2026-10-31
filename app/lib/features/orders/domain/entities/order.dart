@@ -121,6 +121,7 @@ class OrderQuote extends Equatable {
     required this.prepMinutes,
     required this.zoneName,
     this.newCustomerLimit,
+    this.fulfillmentModes = const [defaultFulfillmentMode],
   });
 
   final int itemsCents;
@@ -130,9 +131,19 @@ class OrderQuote extends Equatable {
   final String zoneName;
   final NewCustomerLimit? newCustomerLimit;
 
+  /// E15: cómo puede surtirse el pedido en este local; el primero es el que se sugiere. Más de uno solo en un
+  /// comercio aliado, donde el cliente elige.
+  final List<String> fulfillmentModes;
+
   @override
-  List<Object?> get props => [itemsCents, feeCents, totalCents, zoneName, newCustomerLimit];
+  List<Object?> get props => [itemsCents, feeCents, totalCents, zoneName, newCustomerLimit, fulfillmentModes];
 }
+
+/// E15: el comercio aliado recibe el pedido, lo prepara y el domiciliario lo recoge.
+const directFulfillmentMode = 'MERCHANT_DIRECT';
+
+/// La compra de siempre: el domiciliario va al local y compra por el cliente.
+const defaultFulfillmentMode = 'COURIER_PURCHASE';
 
 class OrderSummary extends Equatable {
   const OrderSummary({
@@ -146,6 +157,7 @@ class OrderSummary extends Equatable {
     required this.itemCount,
     required this.totalCents,
     this.logoUrl,
+    this.fulfillmentMode = defaultFulfillmentMode,
   });
 
   final String code;
@@ -158,9 +170,10 @@ class OrderSummary extends Equatable {
   final bool active;
   final int itemCount;
   final int totalCents;
+  final String fulfillmentMode;
 
   @override
-  List<Object?> get props => [code, status, statusAt, active];
+  List<Object?> get props => [code, status, statusAt, active, fulfillmentMode];
 }
 
 class OrderLine extends Equatable {
@@ -199,6 +212,7 @@ class OrderDetail extends OrderSummary {
     required super.active,
     required super.itemCount,
     required super.totalCents,
+    super.fulfillmentMode,
     required this.lines,
     required this.itemsCents,
     required this.feeCents,
@@ -216,6 +230,7 @@ class OrderDetail extends OrderSummary {
     this.adjustments = const [],
     this.incident,
     this.cancellationReason,
+    this.merchant,
   });
 
   final List<OrderLine> lines;
@@ -250,8 +265,11 @@ class OrderDetail extends OrderSummary {
   /// Código de cancellation_reasons si se canceló (lo explica la app con su texto).
   final String? cancellationReason;
 
+  /// Pedido directo (E15): a qué hora dijo el comercio que estaría y si ya lo marcó listo.
+  final ({DateTime estimatedReadyAt, DateTime? readyAt})? merchant;
+
   @override
-  List<Object?> get props => [...super.props, timeline, preparation, purchase, delivery, adjustments, incident, cancellationReason];
+  List<Object?> get props => [...super.props, timeline, preparation, purchase, delivery, adjustments, incident, cancellationReason, merchant];
 }
 
 /// Un caso del pedido: cuándo se reportó, cuándo alguien de RapiChonta lo tomó y cómo terminó.
@@ -292,12 +310,17 @@ class OrderDelivery extends Equatable {
 }
 
 class OrderHistory {
-  const OrderHistory({required this.active, required this.past, required this.journey, this.nextBefore});
+  const OrderHistory({required this.active, required this.past, required this.journey, this.journeys = const {}, this.nextBefore});
 
   final List<OrderSummary> active;
   final List<OrderSummary> past;
   final String? nextBefore;
   final List<String> journey;
+
+  /// E15: el recorrido de cada modo (el directo espera al comercio y no pasa por la compra).
+  final Map<String, List<String>> journeys;
+
+  List<String> journeyOf(OrderSummary order) => journeys[order.fulfillmentMode] ?? journey;
 }
 
 enum StopState { done, current, upcoming }

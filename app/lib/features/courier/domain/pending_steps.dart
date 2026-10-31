@@ -14,6 +14,9 @@ enum StepKind {
   /// "Ya está listo": PREPARING → ON_THE_WAY.
   ready,
 
+  /// E15, pedido directo: "Recogí el pedido": AT_ESTABLISHMENT → ON_THE_WAY.
+  pickUp,
+
   /// "Sigue en preparación": se queda en PREPARING.
   delay,
 
@@ -140,6 +143,7 @@ abstract final class PendingRules {
       status = switch ((status, step.kind)) {
         ('AT_ESTABLISHMENT', StepKind.purchase) => 'PREPARING',
         ('PREPARING', StepKind.ready) => 'ON_THE_WAY',
+        ('AT_ESTABLISHMENT', StepKind.pickUp) => 'ON_THE_WAY',
         ('ON_THE_WAY', StepKind.arrived) => 'ARRIVING',
         ('ARRIVING', StepKind.proof) => 'PENDING_REVIEW',
         _ => status,

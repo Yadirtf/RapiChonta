@@ -351,6 +351,34 @@
   "checkoutStepWhere": "¿Dónde te lo llevamos?",
   "checkoutStepWho": "¿Quién lo recibe?",
   "checkoutStepPay": "¿Cómo pagas al recibir?",
+  "checkoutStepHow": "¿Cómo te llega el pedido?",
+  "checkoutModePartner": "Aliado",
+  "checkoutModeSamePrice": "Mismo precio y mismo domicilio. Pagas al recibir, como siempre.",
+  "checkoutModeDirectTitle": "Directo de {store}",
+  "@checkoutModeDirectTitle": {
+    "placeholders": {
+      "store": {
+        "type": "String"
+      }
+    }
+  },
+  "checkoutModeDirectBody": "{store} recibe tu pedido, lo prepara y un domiciliario de RapiChonta pasa a recogerlo.",
+  "@checkoutModeDirectBody": {
+    "placeholders": {
+      "store": {
+        "type": "String"
+      }
+    }
+  },
+  "checkoutModePurchaseTitle": "RapiChonta te lo compra",
+  "checkoutModePurchaseBody": "Un domiciliario va a {store}, compra lo tuyo con factura y te lo lleva.",
+  "@checkoutModePurchaseBody": {
+    "placeholders": {
+      "store": {
+        "type": "String"
+      }
+    }
+  },
   "checkoutSavedPlaces": "Tus lugares",
   "checkoutHereNow": "Donde estoy",
   "checkoutHereGps": "Según tu GPS",
@@ -448,6 +476,32 @@
   "statusDeliveredBody": "¡Buen provecho! Gracias por pedir con RapiChonta.",
   "statusCancelledLabel": "Cancelado",
   "statusCancelledBody": "Este pedido se canceló. No tienes nada que pagar.",
+  "statusAwaitingMerchantLabel": "Esperando al local",
+  "statusAwaitingMerchantBody": "El local está viendo tu pedido. Apenas lo acepte, buscamos domiciliario.",
+  "statusDirectPendingAssignmentLabel": "El local lo está preparando",
+  "statusDirectPendingAssignmentBody": "El local aceptó tu pedido y lo está preparando. Ya buscamos domiciliario para recogerlo.",
+  "statusDirectAcceptedBody": "Ya va al local a recoger tu pedido.",
+  "statusDirectAtEstablishmentLabel": "Recogiendo en el local",
+  "statusDirectAtEstablishmentBody": "El domiciliario está recogiendo tu pedido.",
+  "orderMerchantReadyAround": "{store} lo tiene listo hacia las {time}",
+  "@orderMerchantReadyAround": {
+    "placeholders": {
+      "store": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "orderMerchantReady": "{store} ya lo tiene listo",
+  "@orderMerchantReady": {
+    "placeholders": {
+      "store": {
+        "type": "String"
+      }
+    }
+  },
   "ordersTitle": "Mis pedidos",
   "ordersBackToMap": "Volver al mapa",
   "ordersSignInTitle": "Entra para ver tus pedidos",
@@ -640,6 +694,7 @@
   "noticeIncidentOpened": "El cliente dice que no recibió el pedido",
   "noticeIncidentResolved": "Cerramos el caso del pedido",
   "noticeProofPending": "Falta la foto de entrega",
+  "noticeMerchantOrderReady": "El local ya tiene listo el pedido",
   "noticeGeneric": "Novedad en tu pedido",
   "pushAskTitle": "¿Te avisamos por el camino?",
   "pushAskBody": "Te contamos cuando un domiciliario tome tu pedido, cuando salga del local y cuando esté llegando, aunque tengas el teléfono bloqueado. Solo avisos de tus pedidos, nada de publicidad.",
@@ -769,6 +824,7 @@
   "railPrep": "Preparación",
   "railRoad": "En camino",
   "railDoor": "Entrega",
+  "railPickUp": "Recoger",
   "tripStageOf": "Paso {step} de {total}: {name}",
   "@tripStageOf": {
     "placeholders": {
@@ -843,6 +899,29 @@
   "tripReceiptMissing": "Falta la foto de la factura",
   "tripConfirmPurchase": "Pagué y tengo la factura",
   "tripPurchaseHint": "Empieza la cuenta de preparación y el cliente ve que su pedido se está preparando.",
+  "tripPickUpCheck": "Revisa el pedido",
+  "tripPayMerchant": "Págale al local",
+  "tripPayMerchantHint": "Lo de los productos, de tu caja del día. El domicilio te lo paga el cliente.",
+  "tripConfirmPickUp": "Recogí el pedido",
+  "tripPickUpHint": "El cliente ve que su pedido va en camino.",
+  "tripMerchantPreparing": "El local lo tiene hacia las {time}",
+  "@tripMerchantPreparing": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "tripMerchantPreparingHint": "Comercio aliado: ellos lo preparan, tú lo recoges.",
+  "tripMerchantReady": "El local ya lo tiene listo",
+  "tripMerchantReadyAt": "Lo marcó listo a las {time}",
+  "@tripMerchantReadyAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "tripQueued": "Guardado sin señal: se envía solo al volver la conexión.",
   "tripPreparingTitle": "Están preparando el pedido",
   "tripPreparingBody": "Espera en el local. Si te lo entregan antes, marca que ya está listo.",
@@ -1112,6 +1191,9 @@
   "cancelReasonAllUnavailable": "No había ningún producto",
   "cancelReasonUnreachable": "No logramos contactarte",
   "cancelReasonIncident": "Lo resolvimos al revisar tu caso",
+  "cancelReasonMerchantOutOfStock": "Al local se le acabó algo de tu pedido",
+  "cancelReasonMerchantTooBusy": "El local tenía demasiados pedidos",
+  "cancelReasonMerchantClosing": "El local estaba por cerrar",
   "cancelReasonOther": "RapiChonta canceló el pedido",
   "caseTab": "Caso {code}",
   "@caseTab": {"placeholders": {"code": {"type": "String"}}},

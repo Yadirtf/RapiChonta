@@ -41,6 +41,10 @@ export interface BoardOrder {
   purchase: { amount: string; receiptFileId: string } | null;
   /** H08.5: hora estimada de listo y si el local dijo "Sigue en preparación" (alerta del panel). */
   preparation: { estimatedReadyAt: Date; delayed: boolean } | null;
+  /** COURIER_PURCHASE o MERCHANT_DIRECT (E15): en el directo no hay compra, el domiciliario recoge. */
+  fulfillmentMode: string;
+  /** E15: el comercio aliado aceptó; cuándo dijo que estaría listo y si ya lo marcó. */
+  merchant: { estimatedReadyAt: Date; readyAt: Date | null } | null;
 }
 
 /**

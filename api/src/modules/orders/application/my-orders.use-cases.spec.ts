@@ -9,6 +9,7 @@ const summary = (code: string, day: number, terminal: boolean, owner = customer.
   establishment: { id: 'local-1', name: 'Asadero', logoFileId: null },
   createdAt: new Date(Date.UTC(2026, 9, day)),
   status: { code: terminal ? 'DELIVERED' : 'PENDING_ASSIGNMENT', at: new Date(Date.UTC(2026, 9, day)), terminal },
+  fulfillmentMode: 'COURIER_PURCHASE',
   itemCount: 1,
   total: '10000.00',
 });

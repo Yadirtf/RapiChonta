@@ -10,6 +10,7 @@ import {
   INITIAL_LEGAL_VERSION,
   LEGAL_REQUIREMENTS,
   ORDER_TRANSITIONS,
+  FULFILLMENT_MODES,
   CASH_MOVEMENT_TYPES,
   INCIDENT_RESOLUTIONS,
   ROLE_PERMISSIONS,
@@ -55,11 +56,26 @@ async function seedCatalogs() {
     }
   }
 
-  for (const { from, to, roles, system = false } of ORDER_TRANSITIONS) {
+  for (const [index, m] of FULFILLMENT_MODES.entries()) {
+    await prisma.$executeRaw`
+      INSERT INTO fulfillment_modes (code, sort_order, initial_status_id, requires_partnership, deactivated_at)
+      VALUES (${m.code}, ${index + 1}, (SELECT id FROM order_statuses WHERE code = ${m.initialStatus}), ${m.requiresPartnership}, NULL)
+      ON CONFLICT (code) DO UPDATE SET sort_order = EXCLUDED.sort_order, initial_status_id = EXCLUDED.initial_status_id,
+        requires_partnership = EXCLUDED.requires_partnership, deactivated_at = NULL
+    `;
+  }
+
+  for (const { from, to, roles, system = false, modes = FULFILLMENT_MODES.map((m) => m.code) } of ORDER_TRANSITIONS) {
     await prisma.$executeRaw`
       INSERT INTO order_status_transitions (from_status_id, to_status_id, allows_system)
       SELECT f.id, t.id, ${system} FROM order_statuses f, order_statuses t WHERE f.code = ${from} AND t.code = ${to}
       ON CONFLICT (from_status_id, to_status_id) DO UPDATE SET allows_system = EXCLUDED.allows_system
+    `;
+    await prisma.$executeRaw`
+      INSERT INTO order_status_transition_modes (from_status_id, to_status_id, fulfillment_mode_id)
+      SELECT f.id, t.id, m.id FROM order_statuses f, order_statuses t, fulfillment_modes m
+      WHERE f.code = ${from} AND t.code = ${to} AND m.code IN (${Prisma.join(modes)})
+      ON CONFLICT DO NOTHING
     `;
     if (!roles.length) continue;
     await prisma.$executeRaw`

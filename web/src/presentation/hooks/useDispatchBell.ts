@@ -2,18 +2,19 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const STORAGE_KEY = "rc_dispatch_bell";
-const HEARD_KEY = "rc_dispatch_heard";
-
 type Chime = "new" | "returned";
 
 /**
  * La campana de la tienda del barrio (H07.1). Se sintetiza con Web Audio (sin archivos): dos notas
  * brillantes para un pedido nuevo y tres más graves y seguidas para uno que volvió sin domiciliario.
  * El navegador solo deja sonar después de un clic, así que el operador la activa una vez (se recuerda).
- * Lo que ya sonó se guarda en la sesión del navegador: recargar la página no repite la alerta.
+ * Lo que ya sonó se guarda en la sesión del navegador: recargar la página no repite la alerta. Desde E15 la usa
+ * también el mostrador del comercio aliado (`scope` separa lo que recuerda cada pantalla).
  */
-export function useDispatchBell() {
+export function useDispatchBell(scope = "dispatch") {
+  // Cada pantalla con campana (despacho, mostrador del comercio) recuerda la suya.
+  const STORAGE_KEY = `rc_${scope}_bell`;
+  const HEARD_KEY = `rc_${scope}_heard`;
   const [enabled, setEnabled] = useState(false);
   const context = useRef<AudioContext | null>(null);
   const heard = useRef<Set<string>>(new Set());
@@ -25,7 +26,7 @@ export function useDispatchBell() {
     } catch {
       // Sin almacenamiento: empieza apagada y sin memoria.
     }
-  }, []);
+  }, [STORAGE_KEY, HEARD_KEY]);
 
   const audio = useCallback(() => {
     if (!context.current) {
@@ -77,7 +78,7 @@ export function useDispatchBell() {
       if (next) ring("new");
       return next;
     });
-  }, [ring]);
+  }, [ring, STORAGE_KEY]);
 
   /** Suena una vez por cada clave nueva (pedido nuevo o regreso al panel). Devuelve las claves que sonaron. */
   const announce = useCallback(
@@ -93,7 +94,7 @@ export function useDispatchBell() {
       if (enabled) ring(fresh.some((a) => a.chime === "returned") ? "returned" : "new");
       return fresh.map((a) => a.key);
     },
-    [enabled, ring],
+    [enabled, ring, HEARD_KEY],
   );
 
   return { enabled, toggle, announce };

@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Ban, ChevronDown, History, ImagePlus, Star, X } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import type { AdminProduct, AdminSection, CatalogOptions, ProductInput, ProductVersion } from "@/core/domain/entities/catalog-admin";
+import type { AdminProduct, AdminSection, MenuLimits, ProductInput, ProductVersion } from "@/core/domain/entities/catalog-admin";
 import type { ContentLanguage } from "@/core/domain/entities/establishment";
 import { parsePriceInput, toCents } from "@/core/domain/entities/money";
 import { container } from "@/infrastructure/di/container";
@@ -24,7 +24,7 @@ interface Props {
   sections: AdminSection[];
   product: AdminProduct | null;
   defaultSectionId?: string;
-  limits: CatalogOptions["limits"];
+  limits: MenuLimits;
   onClose: () => void;
   /** Tras guardar; `created` deja el diálogo abierto en el producto nuevo para agregar fotos. */
   onSaved: (productId: string, result: { created: boolean; newVersion: boolean }) => Promise<void>;

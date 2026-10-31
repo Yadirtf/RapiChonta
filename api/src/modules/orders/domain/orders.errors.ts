@@ -17,6 +17,9 @@ export const OrderErrors = {
   newCustomerLimit: (limit: string, available: string) =>
     new DomainError('Tu primer pedido tiene un tope mientras recibes tu primera entrega', 'NEW_CUSTOMER_LIMIT', { limit, available }),
   paymentMethodUnavailable: () => new DomainError('Ese medio de pago no está disponible', 'PAYMENT_METHOD_UNAVAILABLE'),
+  /** E15: el pedido directo solo existe en locales aliados (y el convenio pudo terminar mientras el cliente pedía). */
+  fulfillmentModeUnavailable: (available: string[]) =>
+    new DomainError('Ese local no recibe pedidos de esa forma', 'FULFILLMENT_MODE_UNAVAILABLE', { available }),
   paymentMethodNotFound: () => new NotFoundError('PAYMENT_METHOD_NOT_FOUND', 'Medio de pago no encontrado'),
   /** El cliente siempre debe tener al menos un medio para pagar al recibir. */
   lastPaymentMethod: () => new DomainError('Debe quedar al menos un medio de pago visible para los clientes', 'LAST_PAYMENT_METHOD'),

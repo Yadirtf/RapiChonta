@@ -132,6 +132,9 @@ class FakeCourierRepository implements CourierRepository {
   Future<StepOutcome> ready(String code, TripStepEvent event) => _record('ready', code, event);
 
   @override
+  Future<StepOutcome> pickUp(String code, TripStepEvent event) => _record('pickUp', code, event);
+
+  @override
   Future<StepOutcome> delay(String code, TripStepEvent event) => _record('delay', code, event);
 
   @override

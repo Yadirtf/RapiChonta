@@ -43,6 +43,11 @@ export class InMemoryEstablishments extends EstablishmentAdminRepository {
     const row = this.rows.get(id);
     return row ? { municipalityId: row.municipalityId, status: row.status } : null;
   }
+  /** E15: `${userId}:${establishmentId}` de quien atiende cada local. */
+  staff = new Set<string>();
+  async servedBy(id: string, userId: string) {
+    return this.staff.has(`${userId}:${id}`);
+  }
   async create(data: EstablishmentData): Promise<string> {
     const id = `e-${++this.seq}`;
     this.rows.set(id, { ...data, status: 'DRAFT' });

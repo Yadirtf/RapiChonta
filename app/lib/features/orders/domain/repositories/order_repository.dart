@@ -14,6 +14,9 @@ abstract class OrderRepository {
     required String? notes,
     required String clientRequestId,
     required String language,
+
+    /// E15: sin modo, la compra por RapiChonta.
+    String? fulfillmentMode,
   });
   Future<OrderHistory> mine({String? before});
   Future<OrderDetail> find(String code, {required String language});

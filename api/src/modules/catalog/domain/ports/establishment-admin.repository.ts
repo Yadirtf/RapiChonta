@@ -46,6 +46,8 @@ export abstract class EstablishmentAdminRepository {
   abstract list(filter: { municipalityId: number | null; status?: EstablishmentStatusCode; search?: string }): Promise<EstablishmentSummary[]>;
   abstract findById(id: string): Promise<EstablishmentDetail | null>;
   abstract scopeOf(id: string): Promise<{ municipalityId: number; status: EstablishmentStatusCode } | null>;
+  /** E15: el usuario del comercio atiende este local hoy (acceso vigente y convenio vigente, v_merchant_establishments). */
+  abstract servedBy(id: string, userId: string): Promise<boolean>;
   abstract create(data: EstablishmentData, actorUserId: string): Promise<string>;
   abstract update(id: string, data: EstablishmentData, actorUserId: string): Promise<void>;
   abstract isTransitionAllowed(from: EstablishmentStatusCode, to: EstablishmentStatusCode): Promise<boolean>;

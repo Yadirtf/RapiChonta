@@ -271,6 +271,7 @@ export class FakePermissions extends RolePermissions {
       COURIER: ['account.manage_own', 'offers.respond'],
       OPERATOR: ['account.manage_own', 'orders.assign'],
       ADMIN: ['account.manage_own', 'orders.assign', 'users.manage_staff', 'couriers.manage', 'couriers.verify'],
+      MERCHANT: ['account.manage_own', 'store.respond_orders', 'store.manage_status', 'products.manage'],
     };
     return new Set(map[role]);
   }

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ROLES } from '../../../identity/domain/identity.codes';
 import { Principal } from '../../../identity/domain/principal';
 import { CatalogErrors } from '../../domain/catalog.errors';
 import { PRODUCT_STATUSES, ProductStatusCode } from '../../domain/catalog.codes';
@@ -17,7 +18,10 @@ export interface ProductInput {
   prepMinutes: number;
 }
 
-/** Acceso al menú de un local según el alcance del rol (404 si no es suyo). */
+/**
+ * Acceso al menú de un local según el alcance del rol (404 si no es suyo): el municipio del operador, o los locales
+ * que atiende el comercio aliado (E15).
+ */
 @Injectable()
 export class MenuAccess {
   constructor(
@@ -26,6 +30,10 @@ export class MenuAccess {
   ) {}
 
   async establishment(principal: Principal, establishmentId: string): Promise<void> {
+    if (principal.role === ROLES.MERCHANT) {
+      if (!(await this.establishments.servedBy(establishmentId, principal.userId))) throw CatalogErrors.establishmentNotFound();
+      return;
+    }
     ensureInScope(principal, (await this.establishments.scopeOf(establishmentId))?.municipalityId);
   }
 

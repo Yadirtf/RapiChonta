@@ -351,6 +351,25 @@ void main() {
     expect(button.onPressed, isNotNull);
   });
 
+  testWidgets('E15: en un pedido directo se recoge lo que el local preparó y se le paga lo suyo, sin factura', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 2400));
+    final json = {
+      ...tripJson(status: 'AT_ESTABLISHMENT'),
+      'fulfillmentMode': 'MERCHANT_DIRECT',
+      'merchant': {'estimatedReadyAt': '2026-10-21T20:45:00.000Z', 'readyAt': '2026-10-21T20:40:00.000Z'},
+    };
+    final repository = FakeCourierRepository(currentTrip: tripFromJson(json));
+    await tester.pumpWidget(_app('/turno/pedido/RC-7K3M', repository));
+    await _settle(tester);
+
+    expect(find.text('El local ya lo tiene listo'), findsOneWidget);
+    expect(find.text('Recoger'), findsOneWidget);
+    expect(find.text('Pagué y tengo la factura'), findsNothing);
+    await tester.tap(find.text('Recogí el pedido'));
+    await _settle(tester);
+    expect(repository.steps.single.kind, 'pickUp');
+  });
+
   group('E09: producto faltante o precio distinto', () {
     testWidgets('en el local marca lo que falta y el precio nuevo, y le pregunta al cliente en una sola consulta', (tester) async {
       await tester.binding.setSurfaceSize(const Size(390, 2400));

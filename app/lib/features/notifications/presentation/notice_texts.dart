@@ -16,6 +16,7 @@ String noticeTitle(AppLocalizations l10n, AppNotification n) {
     'INCIDENT_OPENED' => l10n.noticeIncidentOpened,
     'INCIDENT_RESOLVED' => l10n.noticeIncidentResolved,
     'DELIVERY_PROOF_PENDING' => l10n.noticeProofPending,
+    'MERCHANT_ORDER_READY' => l10n.noticeMerchantOrderReady,
     _ => l10n.noticeGeneric,
   };
 }

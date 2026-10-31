@@ -25,6 +25,8 @@ export class OrdersPresenter {
   quote({ establishment, checkout, delivery }: Quote) {
     return {
       establishment: { id: establishment.id, name: establishment.name },
+      // E15: en un comercio aliado el cliente elige; el primero es el que se sugiere.
+      fulfillmentModes: establishment.fulfillmentModes,
       lines: checkout.lines.map((l) => ({
         productId: l.productId,
         productVersionId: l.productVersionId,
@@ -52,6 +54,7 @@ export class OrdersPresenter {
       status: o.status.code,
       statusAt: o.status.at.toISOString(),
       active: !o.status.terminal,
+      fulfillmentMode: o.fulfillmentMode,
       itemCount: o.itemCount,
       total: o.total,
     };
@@ -71,6 +74,9 @@ export class OrdersPresenter {
       notes: o.customerNotes,
       timeline: o.timeline.map((t) => ({ status: t.code, at: t.at.toISOString() })),
       journey: o.journey,
+      merchant: o.merchant
+        ? { acceptedAt: o.merchant.acceptedAt.toISOString(), estimatedReadyAt: o.merchant.estimatedReadyAt.toISOString(), readyAt: o.merchant.readyAt?.toISOString() ?? null }
+        : null,
       preparation: o.preparation ? { estimatedReadyAt: o.preparation.estimatedReadyAt.toISOString(), delayed: o.preparation.delayed } : null,
       purchase: o.purchase ? { amount: o.purchase.amount, receiptUrl: this.urls.url(o.purchase.receiptFileId) } : null,
       delivery: {

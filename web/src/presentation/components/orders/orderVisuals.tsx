@@ -2,6 +2,7 @@ import {
   Banknote,
   Bike,
   Camera,
+  ChefHat,
   CircleHelp,
   CookingPot,
   MapPinCheck,
@@ -26,6 +27,7 @@ import type { OrderStatusCode, PaymentMethodCode } from "@/core/domain/entities/
 const STATUS_ICONS: Record<string, LucideIcon> = {
   PENDING_ASSIGNMENT: Search,
   ACCEPTED: UserCheck,
+  AWAITING_MERCHANT: ChefHat,
   AT_ESTABLISHMENT: Store,
   AWAITING_CUSTOMER: MessageCircleQuestion,
   PREPARING: CookingPot,

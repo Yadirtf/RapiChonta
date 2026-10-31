@@ -8,11 +8,13 @@ export const ROLES = {
   COURIER: 'COURIER',
   OPERATOR: 'OPERATOR',
   ADMIN: 'ADMIN',
+  /** E15: el comercio aliado. Entra con contraseña + código a su portal; su alcance son sus locales. */
+  MERCHANT: 'MERCHANT',
 } as const;
 export type RoleCode = (typeof ROLES)[keyof typeof ROLES];
 export const ROLE_CODES = Object.values(ROLES);
 /** Prioridad al elegir el rol de una sesión de personal cuando no se pide uno. */
-export const STAFF_ROLE_PRIORITY: RoleCode[] = [ROLES.ADMIN, ROLES.OPERATOR, ROLES.COURIER];
+export const STAFF_ROLE_PRIORITY: RoleCode[] = [ROLES.ADMIN, ROLES.OPERATOR, ROLES.MERCHANT, ROLES.COURIER];
 
 export const USER_STATUSES = {
   ACTIVE: 'ACTIVE',
