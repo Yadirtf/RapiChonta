@@ -15,7 +15,7 @@ dependencies:
   # Estado e inyección de dependencias
   flutter_riverpod: ^3.4.3
   # Navegación declarativa
-  go_router: ^18.1.1
+  go_router: ^18.1.2
   # HTTP
   dio: ^5.7.0
   # Mapa vectorial de MapLibre con datos de OpenStreetMap (el mismo motor de la web): no depende de Google
@@ -38,7 +38,7 @@ dependencies:
   # Modo domiciliario (E08): foto de la factura, cola sin señal guardada en el teléfono y su huella SHA-256.
   image_picker: ^1.2.4
   path_provider: ^2.1.6
-  crypto: ^3.0.7
+  crypto: ^3.0.8
 
 dev_dependencies:
   flutter_test:
